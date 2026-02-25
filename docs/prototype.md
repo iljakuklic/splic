@@ -19,23 +19,23 @@ The power function is an ideal test case: it has a loop (requires object-level c
 ```splic
 fn power(exp: u64, x: code(u64)) -> code(u64) {
     match exp {
-        0 => quote(1),
+        0 => #(1),
         1 => x,
         exp => {
-            let exp2 = quote {
+            let exp2 = #{
                 let x2 = $(power(exp / 2, x));
                 x2 * x2
             };
             match (exp & 1) == 1 {
                 false => exp2,
-                true => quote(exp2 * $x),
+                true => #(exp2 * $x),
             }
         }
     }
 }
 
 fn code pow5(x: u64) -> u64 {
-    $(power(5, quote(x)))
+    $(power(5, #(x)))
 }
 ```
 
@@ -56,11 +56,12 @@ Note how the recursive call to `power` with compile-time exponent 5 gets fully u
 
 ### Quotations and splices
 
-- `quote(e)` — produces object-level code from a meta-level expression
+- `#(expr)` — produces object-level code from a meta-level expression
+- `#{ stmts }` — produces object-level code from a block (equivalent to `#({ stmts })`)
 - `$e` — splices a meta-level expression producing object-level code into surrounding object-level context
 - `code(T)` — type representing object-level code of type T (lifting)
 
-The `$` syntax mimics Rust macros, which should feel familiar.
+The `$` syntax mimics Rust macros, which should feel familiar. The `#` syntax is concise and extensible.
 
 ### Functions
 
@@ -113,19 +114,13 @@ Requirements:
 - Exhaustive: must cover all cases or include a match-all (`_`, `x`)
 - No nested matching for the prototype
 
-### Lambda
-
-```
-|x| e
-```
-
 ## Type System
 
 ### Universes
 
 Two separate universes:
 - `Type` — meta-level types
-- `Type0` — object-level types
+- `VmType` — object-level types
 
 Both are type-in-type for now (no universe hierarchy). This simplifies the prototype significantly.
 
@@ -160,7 +155,7 @@ The body expressions are inferred.
 
 - **`code` keyword**: Explicit marking avoids phase inference complexity until patterns become clear.
 - **No implicit arguments**: Skips Agda-style unification with pruning, eta-expansion, flexible/rigid spines.
-- **Type-in-type**: Simpler than cumulative universe hierarchy—just need `Type` and `Type0`.
+- **Type-in-type**: Simpler than cumulative universe hierarchy—just need `Type` and `VmType`.
 - **Bidirection without unification**: Syntax-directed only, no constraint solving—enough for prototype.
 - **Separate universes**: Makes stage explicit at type level, easier to reason about than per-value stages.
 
