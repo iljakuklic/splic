@@ -50,7 +50,7 @@ fn code pow5(x: u64) -> u64 {
 }
 ```
 
-Note how the recursive call to `power` with compile-time exponent 5 gets fully unrolled—the loop becomes straight-line code.
+Note how the recursive call to `power` with compile-time exponent 5 gets fully unrolled into straight-line code.
 
 ## Syntax Constructs
 
