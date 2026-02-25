@@ -27,8 +27,8 @@ fn power(exp: u64, x: code(u64)) -> code(u64) {
                 x2 * x2
             };
             match (exp & 1) == 1 {
-                false => exp2,
-                true => #(exp2 * $x),
+                0 => exp2,
+                1 => #(exp2 * $x),
             }
         }
     }
