@@ -56,6 +56,15 @@ end():
 
 Basic blocks behave as pure functions—iteration is achieved through tail-calling the block with different arguments.
 
+### Termination Checking
+
+With functional goto, each basic block is effectively a separate function. Standard structural recursion checks apply to individual blocks. The key question is whether the language permits partial functions at all, and if so, how:
+
+- **Total-only meta-level**: All recursive goto-loops must pass termination checking, same as any recursive function
+- **Allow partial functions**: Like Coq's `Program Fixpoint` or Idris, termination becomes a programmer responsibility for certain definitions
+
+This is not unique to functional goto—the same trade-off exists with standard recursion. The difference is more visible syntactically.
+
 ## Trade-offs
 
 ### Functional Goto: Advantages
@@ -70,10 +79,9 @@ Basic blocks behave as pure functions—iteration is achieved through tail-calli
 
 - **Variable scoping complexity**: Either all variables must pass through block arguments (verbose), or local variables follow CFG dominator tree visibility rules
 - **Dependent types interaction**: Return types must unify across all goto targets from a given block; with dependent types where the result type depends on the branch, this becomes nontrivial
-- **Termination checking**: Standard structural recursion checks do not apply; tail-call loops require separate proof mechanisms
-- **Partiality**: Must handle distinction between total and partial code; goto loops are clearly partial
 - **Staged compilation interaction**: How do gotos behave when meta-level functions are quoted into object-level code?
 - **Ergonomics**: More verbose than `for i in 0..n { ... }`
+- **Tooling complexity**: IDE features like go-to-definition, rename refactoring, and code analysis require understanding of dominator-tree scoping — more complex than standard lexical scoping
 - **Backend mismatch**: Some zkVMs use WebAssembly (or are modelled after it) which enforces structured control flow; converting from source-level SSA-like format would be required, losing the direct mapping advantage
 
 ### Standard Approach: Advantages
