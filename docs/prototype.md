@@ -58,7 +58,8 @@ Note how the recursive call to `power` with compile-time exponent 5 gets fully u
 
 - `#(expr)` — produces object-level code from a meta-level expression
 - `#{ stmts }` — produces object-level code from a block (equivalent to `#({ stmts })`)
-- `$e` — splices a meta-level expression producing object-level code into surrounding object-level context
+- `$(expr)` — splices a meta-level expression producing object-level code into surrounding object-level context
+- `${ stmts }` — a code block variant (equivalent to `#({ stmts })`)
 - `code(T)` — type representing object-level code of type T (lifting)
 
 The `$` syntax mimics Rust macros, which should feel familiar. The `#` syntax is concise and extensible.
