@@ -17,7 +17,7 @@ The power function is an ideal test case: it has a loop (requires object-level c
 ### User-facing syntax
 
 ```splic
-fn power(exp: u64, x: code(u64)) -> code(u64) {
+fn power(exp: u64, x: [[u64]]) -> [[u64]] {
     match exp {
         0 => #(1),
         1 => x,
@@ -26,9 +26,9 @@ fn power(exp: u64, x: code(u64)) -> code(u64) {
                 let x2 = $(power(exp / 2, x));
                 x2 * x2
             };
-            match (exp & 1) == 1 {
+            match exp & 1 {
                 0 => exp2,
-                1 => #(exp2 * $x),
+                1 => #{exp2 * $x},
             }
         }
     }
@@ -60,7 +60,7 @@ Note how the recursive call to `power` with compile-time exponent 5 gets fully u
 - `#{ stmts }` — produces object-level code from a block (equivalent to `#({ stmts })`)
 - `$(expr)` — splices a meta-level expression producing object-level code into surrounding object-level context
 - `${ stmts }` — a code block variant (equivalent to `#({ stmts })`)
-- `code(T)` — type representing object-level code of type T (lifting)
+- `[[T]]` — type representing object-level code of type T (lifting)
 
 The `$` syntax mimics Rust macros, which should feel familiar. The `#` syntax is concise and extensible.
 
@@ -86,7 +86,7 @@ The `code` keyword explicitly marks object-level functions. This is temporary—
 
 - Arithmetic: `+`, `-`, `*`, `/`
 - Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
-- Bitwise: `~`, `&`, `|`
+- Bitwise: `!`, `&`, `|`
 
 ### Tuples
 
@@ -127,8 +127,7 @@ Both are type-in-type for now (no universe hierarchy). This simplifies the proto
 
 ### Lifting
 
-- `Lift A` — meta-level type representing object-level code of type A
-- `code` keyword is sugar for `Lift`
+- `[[T]]` — meta-level type representing object-level code of type T
 
 ### Bidirectional Type Checking
 
