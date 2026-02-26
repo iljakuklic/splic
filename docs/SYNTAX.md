@@ -29,16 +29,18 @@ Identifiers matching `u[0-9]+` are reserved for primitive types.
 
 ## Operators
 
-### Arithmetic
-`+` `-` `*` `/`
+Lowest to highest, left-associative unless noted:
 
-### Comparison
-`==` `!=` `<` `>` `<=` `>=`
+| Precedence | Operators |
+|------------|-----------|
+| 1 | `|` |
+| 2 | `&` |
+| 3 | `==` `!=` `<` `>` `<=` `>=` |
+| 4 | `+` `-` |
+| 5 | `*` `/` |
+| 6 | `!` (unary) |
 
-Note: These operators are provisional. See [bs/comparison_operators.md] for discussion.
-
-### Bitwise / Logical
-`!` `&` `|`
+Note: The comparison operators are provisional. See [bs/comparison_operators.md] for discussion.
 
 ## Grammar (EBNF-like)
 
@@ -60,12 +62,11 @@ type        ::= primitive_type
 
 block       ::= "{" stmt* expr "}"
 stmt        ::= "let" identifier "=" expr ";"
-             | "match" expr "{" match_arm* "}"
-             | expr ";"
 
-match_arm   ::= literal "=>" expr ","
-             | identifier "=>" expr ","
-             | "_" "=>" expr ","
+match_arm   ::= pattern "=>" expr ","
+
+pattern     ::= literal
+             | identifier    -- note: "_" is parsed as an identifier too
 
 expr        ::= literal
              | identifier
