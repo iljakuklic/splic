@@ -34,7 +34,7 @@ fn power(exp: u64, x: code(u64)) -> code(u64) {
     }
 }
 
-fn code pow5(x: u64) -> u64 {
+code fn pow5(x: u64) -> u64 {
     $(power(5, #(x)))
 }
 ```
@@ -42,7 +42,7 @@ fn code pow5(x: u64) -> u64 {
 ### Expected expansion
 
 ```splic
-fn code pow5(x: u64) -> u64 {
+code fn pow5(x: u64) -> u64 {
     let x2 = x * x;
     let x4 = x2 * x2;
     let x5 = x4 * x;
@@ -67,7 +67,7 @@ The `$` syntax mimics Rust macros, which should feel familiar. The `#` syntax is
 ### Functions
 
 - `fn foo() -> T` — meta-level function (default)
-- `fn code foo() -> T` — object-level function
+- `code fn foo() -> T` — object-level function
 
 The `code` keyword explicitly marks object-level functions. This is temporary—we expect to infer this from context once phase polymorphism is better understood.
 
