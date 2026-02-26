@@ -33,7 +33,7 @@ Lowest to highest, left-associative unless noted:
 
 | Precedence | Operators |
 |------------|-----------|
-| 1 | `|` |
+| 1 | `\|` |
 | 2 | `&` |
 | 3 | `==` `!=` `<` `>` `<=` `>=` |
 | 4 | `+` `-` |
