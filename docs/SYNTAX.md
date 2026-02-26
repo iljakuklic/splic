@@ -40,7 +40,7 @@ Lowest to highest, left-associative unless noted:
 | 5 | `*` `/` |
 | 6 | `!` (unary) |
 
-Note: The comparison operators are provisional. See [bs/comparison_operators.md] for discussion.
+Note: The comparison operators are provisional. See [bs/comparison_operators.md](bs/comparison_operators.md) for discussion.
 
 ## Grammar (EBNF-like)
 
