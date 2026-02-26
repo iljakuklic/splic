@@ -22,8 +22,14 @@ This skill is derived from (and intended to be read alongside) the following pap
    DOI: 10.1145/3408986
    Source PDF (original URL): https://pauldownen.com/publications/kacc.pdf
 
+4. András Kovács.
+   *ICFP 2022 presentation slides: Staged Compilation with Two-Level Type Theory.*
+   Presented 12 September 2022, ICFP Ljubljana.
+   Source PDF (original URL):
+   https://github.com/AndrasKovacs/staged/blob/main/icfp22prez/ICFP-Kov%C3%A1cs-StagedCompilationwithTwoLevelTypeTheory.pdf
+
 ## Reference implementation
 
-4. András Kovács.
+5. András Kovács.
    *staged* demo implementation.
    GitHub repository: https://github.com/AndrasKovacs/staged
