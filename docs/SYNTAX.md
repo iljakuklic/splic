@@ -1,6 +1,6 @@
 # Syntax
 
-Splic is a two-level language built on two-level type theory (2LTT).
+Splic is a two-level language built on two-level type theory (2LTT). There is no syntactic distinction between type-level and term-level expressions.
 
 ## Keywords
 
@@ -23,7 +23,7 @@ Splic is a two-level language built on two-level type theory (2LTT).
 | `u64`     | 64-bit unsigned |
 | `Type`    | Meta-level universe |
 | `VmType`  | Object-level universe |
-| `[[T]]`   | Lifting (code type) |
+| `[[e]]`   | Lifting (code type) |
 
 Identifiers matching `u[0-9]+` are reserved for primitive types.
 
@@ -50,18 +50,14 @@ program     ::= top_stmt*
 top_stmt    ::= fn_def
              | code_fn_def
 
-fn_def      ::= "fn" identifier "(" params ")" "->" type block
+fn_def      ::= "fn" identifier "(" params ")" "->" expr block
 code_fn_def ::= "code" fn_def
 
 params      ::= (param ("," param)*)?
-param       ::= identifier ":" type
+param       ::= identifier ":" expr
 
-type        ::= primitive_type
-             | "[[" expr "]]"
-             | "(" type ("," type)* ")"
-
-block       ::= "{" stmt* expr "}"
-stmt        ::= "let" identifier "=" expr ";"
+block       ::= "{" stmt* expr "}"   -- returns value of expr
+stmt        ::= "let" identifier (":" expr)? "=" expr ";"
 
 match_arm   ::= pattern "=>" expr ","
 
@@ -70,16 +66,16 @@ pattern     ::= literal
 
 expr        ::= literal
              | identifier
-             | expr "(" expr ("," expr)* ")"
+             | expr "(" expr ("," expr)* ")"   -- application
              | expr binary_op expr
              | unary_op expr
-             | "#(" expr ")"
-             | "#{" stmt* expr "}"
-             | "$(" expr ")"
-             | "${" stmt* expr "}"
-             | "let" identifier "=" expr "in" expr
+             | "#(" expr ")"                   -- quotation
+             | "#{" stmt* expr "}"              -- block quotation
+             | "$(" expr ")"                    -- splice
+             | "${" stmt* expr "}"              -- block splice
+             | "[[" expr "]]"                   -- lifting
              | "match" expr "{" match_arm* "}"
-             | "(" expr ("," expr)* ")"
+             | "(" expr ("," expr)* ")"         -- tuple
              | block
 
 binary_op   ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&" | "|"

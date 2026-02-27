@@ -97,10 +97,11 @@ Syntax: `(a, b)`. Only 2-tuples in the prototype, N-tuples achieved by nesting.
 ### Let binding
 
 ```
-let x = e1 in e2
+let x = e1;
+let x: T = e1;
 ```
 
-No pattern matching in let for the prototype—just simple variable binding.
+Optional type annotation. Required when type cannot be inferred. No pattern matching in let for the prototype—just simple variable binding.
 
 ### Match
 
