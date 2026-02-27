@@ -75,7 +75,6 @@ expr        ::= literal
              | "${" stmt* expr "}"              -- block splice
              | "[[" expr "]]"                   -- lifting
              | "match" expr "{" match_arm* "}"
-             | "(" expr ("," expr)* ")"         -- tuple
              | block
 
 binary_op   ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&" | "|"

@@ -88,10 +88,6 @@ The `code` keyword explicitly marks object-level functions. This is temporary—
 - Comparison: `==`, `!=`, `<`, `>`, `<=`, `>=`
 - Bitwise: `!`, `&`, `|`
 
-### Tuples
-
-Syntax: `(a, b)`. Only 2-tuples in the prototype, N-tuples achieved by nesting.
-
 ## Language Constructs
 
 ### Let binding
