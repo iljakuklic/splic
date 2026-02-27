@@ -17,13 +17,13 @@ The power function is an ideal test case: it has a loop (requires object-level c
 ### User-facing syntax
 
 ```splic
-fn power(exp: u64, x: [[u64]]) -> [[u64]] {
+fn power(x: [[u64]], exp: u64) -> [[u64]] {
     match exp {
         0 => #(1),
         1 => x,
         exp => {
             let exp2 = #{
-                let x2 = $(power(exp / 2, x));
+                let x2 = $(power(x, exp / 2));
                 x2 * x2
             };
             match exp & 1 {
@@ -35,11 +35,11 @@ fn power(exp: u64, x: [[u64]]) -> [[u64]] {
 }
 
 code fn pow5(x: u64) -> u64 {
-    $(power(5, #(x)))
+    $(power(#(x), 5))
 }
 ```
 
-### Expected expansion
+Expands to:
 
 ```splic
 code fn pow5(x: u64) -> u64 {
@@ -51,6 +51,29 @@ code fn pow5(x: u64) -> u64 {
 ```
 
 Note how the recursive call to `power` with compile-time exponent 5 gets fully unrolled into straight-line code.
+
+### Compile-time Computation
+
+Pre-compute a value at compile time, splice into object code:
+
+```splic
+fn sum_n(n: u64) ->u64 {
+    match n {
+        0 => 0,
+        n => sum_n(n - 1) + n,
+    }
+}
+
+code fn sum_to_five() -> u64 { $(sum_n(5)) }
+```
+
+Expands to:
+
+```splic
+code fn sum_to_five() -> u64 { 15 }
+```
+
+This pattern—meta-level computation spliced into object-level code—is the core use case for 2LTT.
 
 ## Syntax Constructs
 
