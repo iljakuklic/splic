@@ -34,16 +34,16 @@ pub enum Token<'a> {
     HashLBrace,
     DollarLParen,
     DollarLBrace,
-    LBracketLBracket,
-    RBracketRBracket,
+    DoubleLBracket,
+    DoubleRBracket,
     DArrow,
     Num(u64),
     Ident(&'a str),
 }
 
 const SYMBOLS: &[(&str, Token<'static>)] = &[
-    ("[[", Token::LBracketLBracket),
-    ("]]", Token::RBracketRBracket),
+    ("[[", Token::DoubleLBracket),
+    ("]]", Token::DoubleRBracket),
     ("#(", Token::HashLParen),
     ("#{", Token::HashLBrace),
     ("$(", Token::DollarLParen),
@@ -120,10 +120,6 @@ impl<'a> Lexer<'a> {
         };
         Ok(token)
     }
-}
-
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token<'a>>;
 
     fn next(&mut self) -> Option<Result<Token<'a>>> {
         self.skip_whitespace();
@@ -147,5 +143,13 @@ impl<'a> Iterator for Lexer<'a> {
         }
 
         Some(Err(anyhow!("unexpected character: {}", c)))
+    }
+}
+
+impl<'a> Iterator for Lexer<'a> {
+    type Item = Result<Token<'a>>;
+
+    fn next(&mut self) -> Option<Result<Token<'a>>> {
+        self.next()
     }
 }
