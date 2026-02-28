@@ -86,29 +86,22 @@ impl<'a> Lexer<'a> {
 
     fn consume(&mut self) -> Option<char> {
         let c = self.input.chars().next()?;
-        self.input = &self.input[c.len_utf8()..];
+        self.input = self.input.strip_prefix(c).unwrap();
         Some(c)
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some(c) = self.input.chars().next() {
-            if c.is_whitespace() {
-                self.input = &self.input[c.len_utf8()..];
-            } else {
-                break;
-            }
-        }
+        self.input = self.input.trim_start();
     }
 
     fn read_number(&mut self, first: char) -> Result<Token<'a>> {
         let start = self.input.len();
-        while let Some(c) = self.input.chars().next() {
-            if c.is_ascii_digit() {
-                self.input = &self.input[c.len_utf8()..];
-            } else {
-                break;
-            }
-        }
+        let len = self
+            .input
+            .chars()
+            .take_while(|c| c.is_ascii_digit())
+            .count();
+        self.input = &self.input[len..];
         let num_str = &self.input[start - first.len_utf8()..start];
         let num = num_str
             .parse()
@@ -118,13 +111,12 @@ impl<'a> Lexer<'a> {
 
     fn read_ident(&mut self, first: char) -> Result<Token<'a>> {
         let start = self.input.len();
-        while let Some(c) = self.input.chars().next() {
-            if c.is_alphanumeric() || c == '_' {
-                self.input = &self.input[c.len_utf8()..];
-            } else {
-                break;
-            }
-        }
+        let len = self
+            .input
+            .chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .count();
+        self.input = &self.input[len..];
         let ident = &self.input[start - first.len_utf8()..start];
         let token = match ident {
             "fn" => Token::Fn,
@@ -147,8 +139,8 @@ impl<'a> Iterator for Lexer<'a> {
 
         // Try matching symbols (longer first due to table order)
         for (pfx, tok) in SYMBOLS {
-            if self.input.starts_with(pfx) {
-                self.input = &self.input[pfx.len()..];
+            if let Some(remainder) = self.input.strip_prefix(pfx) {
+                self.input = remainder;
                 return Some(Ok(*tok));
             }
         }
