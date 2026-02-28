@@ -2,6 +2,10 @@
 members = ["compiler"]
 resolver = "3"
 
+[workspace.dependencies]
+anyhow = { version = "1", default-features = false }
+bumpalo = { version = "3", default-features = false }
+
 [workspace.package]
 version = "0.1.0"
 edition = "2024"
