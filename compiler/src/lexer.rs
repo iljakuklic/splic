@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Token<'a> {
@@ -88,29 +88,24 @@ impl<'a> Lexer<'a> {
         self.input = self.input.trim_start();
     }
 
-    fn read_number(&mut self) -> Result<Token<'a>> {
-        let len = self
-            .input
-            .find(|c: char| !c.is_ascii_digit())
-            .unwrap_or(self.input.len());
-        let (num_str, rest) = self.input.split_at(len);
+    fn split_pred<F: Fn(char) -> bool>(&mut self, pred: F) -> &'a str {
+        let len = self.input.find(pred).unwrap_or(self.input.len());
+        let (token, rest) = self.input.split_at(len);
         self.input = rest;
-
-        Ok(Token::Num(num_str.parse()?))
+        token
     }
 
     fn is_ident_char(c: char) -> bool {
         c.is_ascii_alphanumeric() || c == '_'
     }
 
-    fn read_ident(&mut self) -> Result<Token<'a>> {
-        let len = self
-            .input
-            .find(|c| !Self::is_ident_char(c))
-            .unwrap_or(self.input.len());
-        let (ident, rest) = self.input.split_at(len);
-        self.input = rest;
+    fn read_number(&mut self) -> Result<Token<'a>> {
+        let num_str = self.split_pred(|c| !c.is_ascii_digit());
+        Ok(Token::Num(num_str.parse()?))
+    }
 
+    fn read_ident(&mut self) -> Result<Token<'a>> {
+        let ident = self.split_pred(|c| !Self::is_ident_char(c));
         let token = match ident {
             "fn" => Token::Fn,
             "code" => Token::Code,
