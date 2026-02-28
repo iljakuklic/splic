@@ -57,7 +57,7 @@ Note how the recursive call to `power` with compile-time exponent 5 gets fully u
 Pre-compute a value at compile time, splice into object code:
 
 ```splic
-fn sum_n(n: u64) ->u64 {
+fn sum_n(n: u64) -> u64 {
     match n {
         0 => 0,
         n => sum_n(n - 1) + n,

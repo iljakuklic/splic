@@ -17,7 +17,7 @@ fn repeat(f: [[u64]] -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
 }
 
 code fn square_twce(x: u64) -> u64 {
-    $(repeat(|y| #($(y) * $(y)), #(x)))
+    $(repeat(|y| #($(y) * $(y)), 2, #(x)))
 }
 ```
 
@@ -91,7 +91,7 @@ fn map(n: u64, f: [[u64]] -> [[u64]], xs: [[Vec(n, u64)]]) -> [[Vec(n, u64)]] {
 }
 
 code fn example(x: $(Vec(3, u64))) -> $(Vec(3, u64)) {
-    $(map(3, #(y => y + 2), #(x)))
+    $(map(3, #(|y| y + 2), #(x)))
 }
 ```
 
@@ -100,11 +100,15 @@ Expands to:
 code fn example(xs: (u64, (u64, (u64, u0)))) -> (u64, (u64, (u64, u0))) {
     let (x0, xs0) = xs;
     let x0_new = x0 + 2;
-    let (x1, xs1) = xs0;
-    let x1_new = x1 + 2;
-    let (x2, xs2) = xs1;
-    let x2_new = x2 + 2;
-    (x0_new, x1_new, x2_new, 0_u0)
+    (x0_new, {
+        let (x1, xs1) = xs0;
+        let x1_new = x1 + 2;
+        (x1_new, {
+            let (x2, xs2) = xs1;
+            let x2_new = x2 + 2;
+            (x2_new, 0_u0)
+        })
+    })
 }
 ```
 
