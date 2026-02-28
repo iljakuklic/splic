@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Token<'a> {
@@ -84,40 +84,33 @@ impl<'a> Lexer<'a> {
         Self { input }
     }
 
-    fn consume(&mut self) -> Option<char> {
-        let c = self.input.chars().next()?;
-        self.input = self.input.strip_prefix(c).unwrap();
-        Some(c)
-    }
-
     fn skip_whitespace(&mut self) {
         self.input = self.input.trim_start();
     }
 
-    fn read_number(&mut self, first: char) -> Result<Token<'a>> {
-        let start = self.input.len();
+    fn read_number(&mut self) -> Result<Token<'a>> {
         let len = self
             .input
-            .chars()
-            .take_while(|c| c.is_ascii_digit())
-            .count();
-        self.input = &self.input[len..];
-        let num_str = &self.input[start - first.len_utf8()..start];
-        let num = num_str
-            .parse()
-            .map_err(|_| anyhow!("invalid number: {}", num_str))?;
-        Ok(Token::Num(num))
+            .find(|c: char| !c.is_ascii_digit())
+            .unwrap_or(self.input.len());
+        let (num_str, rest) = self.input.split_at(len);
+        self.input = rest;
+
+        Ok(Token::Num(num_str.parse()?))
     }
 
-    fn read_ident(&mut self, first: char) -> Result<Token<'a>> {
-        let start = self.input.len();
+    fn is_ident_char(c: char) -> bool {
+        c.is_ascii_alphanumeric() || c == '_'
+    }
+
+    fn read_ident(&mut self) -> Result<Token<'a>> {
         let len = self
             .input
-            .chars()
-            .take_while(|c| c.is_alphanumeric() || *c == '_')
-            .count();
-        self.input = &self.input[len..];
-        let ident = &self.input[start - first.len_utf8()..start];
+            .find(|c| !Self::is_ident_char(c))
+            .unwrap_or(self.input.len());
+        let (ident, rest) = self.input.split_at(len);
+        self.input = rest;
+
         let token = match ident {
             "fn" => Token::Fn,
             "code" => Token::Code,
@@ -135,8 +128,6 @@ impl<'a> Iterator for Lexer<'a> {
     fn next(&mut self) -> Option<Result<Token<'a>>> {
         self.skip_whitespace();
 
-        let c = self.consume()?;
-
         // Try matching symbols (longer first due to table order)
         for (pfx, tok) in SYMBOLS {
             if let Some(remainder) = self.input.strip_prefix(pfx) {
@@ -145,12 +136,14 @@ impl<'a> Iterator for Lexer<'a> {
             }
         }
 
+        let c = self.input.chars().next()?;
+
         // Number or identifier
         if c.is_ascii_digit() {
-            return Some(self.read_number(c));
+            return Some(self.read_number());
         }
         if c.is_alphabetic() || c == '_' {
-            return Some(self.read_ident(c));
+            return Some(self.read_ident());
         }
 
         Some(Err(anyhow!("unexpected character: {}", c)))
