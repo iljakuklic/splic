@@ -7,19 +7,8 @@ pub enum Phase {
 pub struct Name<'a>(pub &'a str);
 
 #[derive(Clone, Copy)]
-pub enum PrimTy {
-    U0,
-    U1,
-    U8,
-    U16,
-    U32,
-    U64,
-    Type,
-    VmType,
-}
-
-#[derive(Clone, Copy)]
-pub enum BinaryOp {
+pub enum Primitive {
+    // Arithmetic ops
     Add,
     Sub,
     Mul,
@@ -32,11 +21,18 @@ pub enum BinaryOp {
     Ge,
     BitAnd,
     BitOr,
-}
-
-#[derive(Clone, Copy)]
-pub enum UnaryOp {
     Not,
+
+    // Builtin types
+    U0,
+    U1,
+    U8,
+    U16,
+    U32,
+    U64,
+
+    // Universes
+    Type(Phase),
 }
 
 pub enum Pat<'a> {
@@ -80,15 +76,7 @@ pub enum Term<'a> {
         func: &'a Term<'a>,
         args: &'a [&'a Term<'a>],
     },
-    Binary {
-        op: BinaryOp,
-        lhs: &'a Term<'a>,
-        rhs: &'a Term<'a>,
-    },
-    Unary {
-        op: UnaryOp,
-        arg: &'a Term<'a>,
-    },
+    Prim(Primitive),
     Quote(&'a Term<'a>),
     Splice(&'a Term<'a>),
     Lift(&'a Term<'a>),
