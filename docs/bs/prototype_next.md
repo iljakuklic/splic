@@ -22,6 +22,7 @@ code fn square_twce(x: u64) -> u64 {
 ```
 
 Expands to:
+
 ```splic
 code fn square_twce(x: u64) -> u64 {
     (x * x) * (x * x)
@@ -82,11 +83,11 @@ A `map` function that is defined in terms of Vec—the recursion happens at comp
 fn map(n: u64, f: [[u64]] -> [[u64]], xs: [[Vec(n, u64)]]) -> [[Vec(n, u64)]] {
     match n {
         0 => #(0_u0),
-        n => #(
+        n => #{
             let (x0, xs0) = $(xs);
             let x0_new = $(f #(x0));
             (x0_new, $(map(n - 1, f, xs0)))
-        ),
+        },
     }
 }
 
