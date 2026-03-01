@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Token<'a> {
@@ -85,7 +85,19 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip_whitespace(&mut self) {
-        self.input = self.input.trim_start();
+        loop {
+            self.input = self.input.trim_start();
+            if self.input.starts_with("//") {
+                match self.input.split_once('\n') {
+                    Some((_comment, rest)) => {
+                        self.input = rest;
+                        continue;
+                    }
+                    None => self.input = "",
+                }
+            }
+            break;
+        }
     }
 
     fn split_pred<F: Fn(char) -> bool>(&mut self, pred: F) -> &'a str {
