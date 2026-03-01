@@ -119,6 +119,8 @@ impl<'a> Lexer<'a> {
     fn next(&mut self) -> Option<Result<Token<'a>>> {
         self.skip_whitespace();
 
+        let c = self.input.chars().next()?;
+
         // Try matching symbols (longer first due to table order)
         for (pfx, tok) in SYMBOLS {
             if let Some(remainder) = self.input.strip_prefix(pfx) {
@@ -126,8 +128,6 @@ impl<'a> Lexer<'a> {
                 return Some(Ok(*tok));
             }
         }
-
-        let c = self.input.chars().next()?;
 
         // Number or identifier
         if c.is_ascii_digit() {
