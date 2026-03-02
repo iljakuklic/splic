@@ -23,7 +23,9 @@ Splic is a two-level language built on two-level type theory (2LTT). There is no
 | `u64`     | 64-bit unsigned |
 | `Type`    | Meta-level universe |
 | `VmType`  | Object-level universe |
-| `[[e]]`   | Lifting (code type) |
+| `[[e]]`   | Lifting (code type), corresponds to ⇑ in 2LTT literature |
+| `#(e)`    | Quote, corresponds to ⟨⟩ in 2LTT literature |
+| `$(e)`    | Splice, corresponds to ∼ in 2LTT literature |
 
 Identifiers matching `u[0-9]+` are reserved for primitive types.
 

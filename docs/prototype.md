@@ -77,22 +77,31 @@ This pattern—meta-level computation spliced into object-level code—is the co
 
 ## Syntax Constructs
 
-### Quotations and splices
+### Quotations and Splices
 
 - `#(expr)` — produces object-level code from a meta-level expression
 - `#{ stmts }` — produces object-level code from a block (equivalent to `#({ stmts })`)
 - `$(expr)` — splices a meta-level expression producing object-level code into surrounding object-level context
-- `${ stmts }` — a code block variant (equivalent to `#({ stmts })`)
+- `${ stmts }` — block splice (equivalent to `$( { stmts } )`)
 - `[[T]]` — type representing object-level code of type T (lifting)
 
 The `$` syntax mimics Rust macros, which should feel familiar. The `#` syntax is concise and extensible.
 
 ### Functions
 
-- `fn foo() -> T` — meta-level function (default)
-- `code fn foo() -> T` — object-level function
+- `fn foo() -> T` — meta-level function (runs at compile time)
+- `code fn foo() -> T` — object-level function (included in runtime binary)
 
-The `code` keyword explicitly marks object-level functions. This is temporary—we expect to infer this from context once phase polymorphism is better understood.
+A `fn` with `[[T]]` parameters/return type manipulates code at compile time. A `code fn` defines a function that exists in the resulting binary. The `code` keyword explicitly marks object-level functions—this is temporary until phase polymorphism is better understood.
+
+### Phase Context
+
+Expressions are checked in either meta-level or object-level context:
+
+- `fn` signatures use meta-level types (`Type`); `code fn` signatures use object-level types (`VmType`)
+- Inside `[[T]]`, the type `T` is in object-level context
+- `#(expr)` switches from meta-level to object-level context
+- `$(expr)` switches from object-level to meta-level context
 
 ## Primitive Types
 
@@ -122,6 +131,8 @@ let x: T = e1;
 
 Optional type annotation. Required when type cannot be inferred. No pattern matching in let for the prototype—just simple variable binding.
 
+**Note:** Use `let` bindings generously inside splices to avoid duplicating computations. Without explicit lets, the same code may be generated multiple times.
+
 ### Match
 
 ```
@@ -148,6 +159,14 @@ Both are type-in-type for now (no universe hierarchy). This simplifies the proto
 ### Lifting
 
 - `[[T]]` — meta-level type representing object-level code of type T
+
+### Definitional Equality
+
+Quote and splice cancel each other out:
+- Splicing a quoted expression yields the original expression
+- Quoting a spliced code value yields the original code
+
+These rules enable meta-level computation to "run" during staging, producing splice-free object code. See Kovács 2022 for the formal treatment.
 
 ### Bidirectional Type Checking
 
