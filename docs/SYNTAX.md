@@ -2,6 +2,15 @@
 
 Splic is a two-level language built on two-level type theory (2LTT). There is no syntactic distinction between type-level and term-level expressions.
 
+## Comments
+
+Line comments start with `//` and extend to the end of the line:
+
+```
+// This is a comment
+x + y  // This is also a comment
+```
+
 ## Keywords
 
 | Keyword   | Description |
