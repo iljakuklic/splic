@@ -145,7 +145,7 @@ impl<'a> Lexer<'a> {
         if c.is_ascii_digit() {
             return Some(self.read_number());
         }
-        if c.is_alphabetic() || c == '_' {
+        if Self::is_ident_char(c) {
             return Some(self.read_ident());
         }
 
