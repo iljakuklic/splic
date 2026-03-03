@@ -9,5 +9,6 @@ anyhow.workspace = true
 bumpalo.workspace = true
 
 [dev-dependencies]
-rstest = "0.26"
+bolero.workspace = true
 expect-test = "1.5"
+rstest = "0.26"

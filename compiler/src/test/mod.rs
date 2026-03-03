@@ -1,7 +1,10 @@
+pub mod fuzz;
+
 use crate::lexer::Lexer;
 use expect_test::expect_file;
 use rstest::rstest;
 use std::path::PathBuf;
+use std::time::Duration;
 
 #[rstest]
 #[timeout(std::time::Duration::from_secs(1))] // 1s timeout to catch infinite loops on invalid input

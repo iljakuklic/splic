@@ -5,6 +5,13 @@ resolver = "3"
 [workspace.dependencies]
 anyhow = { version = "1", default-features = false }
 bumpalo = { version = "3", default-features = false }
+bolero = "0.13"
+
+[profile.fuzz]
+inherits = "release"
+opt-level = 3
+debug = 1
+codegen-units = 1
 
 [workspace.package]
 version = "0.1.0"
