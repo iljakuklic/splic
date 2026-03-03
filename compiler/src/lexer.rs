@@ -149,6 +149,8 @@ impl<'a> Lexer<'a> {
             return Some(self.read_ident());
         }
 
+        // Unknown character - consume it to avoid infinite loop
+        self.input = &self.input[c.len_utf8()..];
         Some(Err(anyhow!("unexpected character: {}", c)))
     }
 }
