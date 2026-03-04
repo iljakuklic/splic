@@ -35,16 +35,16 @@ where
     fn take(&mut self, expected: Token<'a>) -> Result<Token<'a>> {
         match self.next() {
             Some(Ok(token)) if token == expected => Ok(token),
-            Some(Ok(token)) => Err(anyhow::anyhow!("expected {:?}, got {:?}", expected, token)),
+            Some(Ok(token)) => Err(anyhow::anyhow!("expected {expected:?}, got {token:?}")),
             Some(Err(e)) => Err(e),
-            None => Err(anyhow::anyhow!("expected {:?}, got end of input", expected)),
+            None => Err(anyhow::anyhow!("expected {expected:?}, got end of input")),
         }
     }
 
     fn take_ident(&mut self) -> Result<&'a str> {
         match self.next() {
             Some(Ok(Token::Ident(name))) => Ok(name),
-            Some(Ok(token)) => Err(anyhow::anyhow!("expected identifier, got {:?}", token)),
+            Some(Ok(token)) => Err(anyhow::anyhow!("expected identifier, got {token:?}")),
             Some(Err(e)) => Err(e),
             None => Err(anyhow::anyhow!("expected identifier, got end of input")),
         }
@@ -101,15 +101,12 @@ where
             return Ok(params);
         }
         loop {
-            let name = self.take_ident().context("expected parameter name")?;
+            let name = Name(self.take_ident().context("expected parameter name")?);
             self.take(Token::Colon)
                 .context("expected ':' in parameter")?;
             let ty = self.parse_expr().context("expected parameter type")?;
             let ty = self.arena.alloc(ty);
-            params.push(Param {
-                name: Name(name),
-                ty,
-            });
+            params.push(Param { name, ty });
             if self.peek() == Some(Token::Comma) {
                 self.next();
             } else {
