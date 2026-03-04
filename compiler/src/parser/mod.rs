@@ -56,7 +56,7 @@ where
             let fun = self.parse_fn_def().context("parsing function definition")?;
             functions.push(fun);
         }
-        let functions = self.arena.alloc(functions.into_boxed_slice());
+        let functions = self.arena.alloc_slice_fill_iter(functions);
         Ok(Program { functions })
     }
 
@@ -89,7 +89,7 @@ where
         Ok(Function {
             phase,
             name: Name(name),
-            params: self.arena.alloc(params.into_boxed_slice()),
+            params: self.arena.alloc_slice_fill_iter(params),
             ret_ty,
             body,
         })
@@ -129,7 +129,7 @@ where
         self.take(Token::RBrace).context("expected '}'")?;
 
         Ok(Term::Block {
-            stmts: self.arena.alloc(stmts.into_boxed_slice()),
+            stmts: self.arena.alloc_slice_fill_iter(stmts),
             expr: self.arena.alloc(expr),
         })
     }
@@ -256,7 +256,7 @@ where
                                 .parse_expr()
                                 .context("parsing expression in block quote")?;
                             let block = Term::Block {
-                                stmts: self.arena.alloc(stmts.into_boxed_slice()),
+                                stmts: self.arena.alloc_slice_fill_iter(stmts),
                                 expr: self.arena.alloc(expr),
                             };
                             return Ok(Term::Quote(self.arena.alloc(block)));
@@ -300,7 +300,7 @@ where
                                 .parse_expr()
                                 .context("parsing expression in block splice")?;
                             let block = Term::Block {
-                                stmts: self.arena.alloc(stmts.into_boxed_slice()),
+                                stmts: self.arena.alloc_slice_fill_iter(stmts),
                                 expr: self.arena.alloc(expr),
                             };
                             return Ok(Term::Splice(self.arena.alloc(block)));
@@ -338,7 +338,7 @@ where
                 let scrutinee = self.arena.alloc(scrutinee);
                 Ok(Term::Match {
                     scrutinee,
-                    arms: self.arena.alloc(arms.into_boxed_slice()),
+                    arms: self.arena.alloc_slice_fill_iter(arms),
                 })
             }
             Token::LBrace => {
@@ -354,7 +354,7 @@ where
                     .context("expected '}' after expression in block")?;
 
                 Ok(Term::Block {
-                    stmts: self.arena.alloc(stmts.into_boxed_slice()),
+                    stmts: self.arena.alloc_slice_fill_iter(stmts),
                     expr: self.arena.alloc(expr),
                 })
             }
