@@ -2,11 +2,22 @@ use crate::lexer::Lexer;
 use bolero::check;
 
 #[test]
-fn fuzz_lexer() {
-    use std::hint::black_box;
-
+fn lexer() {
     check!().with_type::<String>().for_each(|input: &String| {
         let lexer = Lexer::new(&input);
-        let _ = black_box(lexer.collect::<Vec<_>>());
+        let tokens = lexer.collect::<Vec<_>>();
+        if tokens.iter().any(|t| t.is_ok()) {
+            eprintln!("[len={:3}] {input:?} {tokens:?}", input.len());
+        }
+    });
+}
+
+#[test]
+fn token() {
+    check!().with_type::<String>().for_each(|input: &String| {
+        let token = Lexer::new(&input).next();
+        if let Some(Ok(token)) = token {
+            eprintln!("{token:?}");
+        }
     });
 }

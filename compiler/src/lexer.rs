@@ -84,6 +84,7 @@ impl<'a> Lexer<'a> {
         Self { input }
     }
 
+    #[inline]
     fn skip_whitespace(&mut self) {
         loop {
             self.input = self.input.trim_start();
@@ -128,9 +129,8 @@ impl<'a> Lexer<'a> {
         Ok(token)
     }
 
-    fn next(&mut self) -> Option<Result<Token<'a>>> {
-        self.skip_whitespace();
-
+    #[inline]
+    fn read_token_impl(&mut self) -> Option<Result<Token<'a>>> {
         let c = self.input.chars().next()?;
 
         // Try matching symbols (longer first due to table order)
@@ -152,6 +152,21 @@ impl<'a> Lexer<'a> {
         // Unknown character - consume it to avoid infinite loop
         self.input = &self.input[c.len_utf8()..];
         Some(Err(anyhow!("unexpected character: {}", c)))
+    }
+
+    #[inline]
+    fn read_token(&mut self) -> Option<Result<Token<'a>>> {
+        let orig_len = self.input.len();
+        let result = self.read_token_impl();
+        // Ensure lexer either made progress or reports an end of input
+        assert!(result.is_none() || self.input.len() < orig_len);
+        result
+    }
+
+    #[inline]
+    fn next(&mut self) -> Option<Result<Token<'a>>> {
+        self.skip_whitespace();
+        self.read_token()
     }
 }
 
