@@ -48,6 +48,9 @@ cargo bolero test           # Run bolero fuzz tests
 
 ## Coding Guidelines
 
+### Formatting
+- Use inline style formatters in error messages: `format!("expected {expected}, got {token:?}")` instead of `format!("expected {}, got {:?}", expected, token)`
+
 ### Error Handling
 - Use `anyhow` for error handling
 - Default features disabled for minimal dependencies
