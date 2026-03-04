@@ -1,4 +1,4 @@
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Phase {
     Meta,
     Object,
@@ -6,7 +6,7 @@ pub enum Phase {
 
 pub struct Name<'a>(pub &'a str);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum Primitive {
     // Arithmetic ops
     Add,
