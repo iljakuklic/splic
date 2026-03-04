@@ -50,15 +50,6 @@ where
         }
     }
 
-    fn take_num(&mut self) -> Result<u64> {
-        match self.next() {
-            Some(Ok(Token::Num(n))) => Ok(n),
-            Some(Ok(token)) => Err(anyhow::anyhow!("expected number, got {:?}", token)),
-            Some(Err(e)) => Err(e),
-            None => Err(anyhow::anyhow!("expected number, got end of input")),
-        }
-    }
-
     pub fn parse_program(&mut self) -> Result<Program<'a>> {
         let mut functions = Vec::new();
         while self.peek().is_some() {
@@ -131,31 +122,19 @@ where
     fn parse_block(&mut self) -> Result<Term<'a>> {
         self.take(Token::LBrace).context("expected '{'")?;
         let mut stmts = Vec::new();
-        loop {
-            match self.peek() {
-                Some(Token::Let) => {
-                    let let_stmt = self.parse_let_stmt().context("parsing let statement")?;
-                    stmts.push(let_stmt);
-                }
-                Some(Token::RBrace) => {
-                    self.next();
-                    break;
-                }
-                Some(_) => {
-                    let expr = self.parse_expr().context("parsing expression in block")?;
-                    if self.peek() == Some(Token::Semi) {
-                        self.next();
-                    }
-                    let expr = self.arena.alloc(expr);
-                    return Ok(Term::Block {
-                        stmts: self.arena.alloc(stmts.into_boxed_slice()),
-                        expr,
-                    });
-                }
-                None => return Err(anyhow::anyhow!("unclosed block")),
-            }
+
+        while self.peek() == Some(Token::Let) {
+            let let_stmt = self.parse_let_stmt().context("parsing let statement")?;
+            stmts.push(let_stmt);
         }
-        unreachable!("parse_block: unreachable reached")
+
+        let expr = self.parse_expr().context("parsing expression in block")?;
+        self.take(Token::RBrace).context("expected '}'")?;
+
+        Ok(Term::Block {
+            stmts: self.arena.alloc(stmts.into_boxed_slice()),
+            expr: self.arena.alloc(expr),
+        })
     }
 
     fn parse_let_stmt(&mut self) -> Result<Let<'a>> {
@@ -367,37 +346,20 @@ where
             }
             Token::LBrace => {
                 let mut stmts = Vec::new();
-                loop {
-                    match self.peek() {
-                        Some(Token::Let) => {
-                            let let_stmt = self.parse_let_stmt().context("parsing let in block")?;
-                            stmts.push(let_stmt);
-                        }
-                        Some(Token::RBrace) => {
-                            self.next();
-                            let expr = self.parse_expr().context("parsing expression in block")?;
-                            if self.peek() == Some(Token::Semi) {
-                                self.next();
-                            }
-                            let block = Term::Block {
-                                stmts: self.arena.alloc(stmts.into_boxed_slice()),
-                                expr: self.arena.alloc(expr),
-                            };
-                            return Ok(block);
-                        }
-                        Some(_) => {
-                            let expr = self.parse_expr().context("parsing expression in block")?;
-                            self.take(Token::RBrace)
-                                .context("expected '}' after expression in block")?;
-                            let block = Term::Block {
-                                stmts: self.arena.alloc(stmts.into_boxed_slice()),
-                                expr: self.arena.alloc(expr),
-                            };
-                            return Ok(block);
-                        }
-                        None => return Err(anyhow::anyhow!("unclosed block")),
-                    }
+
+                while self.peek() == Some(Token::Let) {
+                    let let_stmt = self.parse_let_stmt().context("parsing let in block")?;
+                    stmts.push(let_stmt);
                 }
+
+                let expr = self.parse_expr().context("parsing expression in block")?;
+                self.take(Token::RBrace)
+                    .context("expected '}' after expression in block")?;
+
+                Ok(Term::Block {
+                    stmts: self.arena.alloc(stmts.into_boxed_slice()),
+                    expr: self.arena.alloc(expr),
+                })
             }
             _ => Err(anyhow::anyhow!(
                 "unexpected token in expression: {:?}",
@@ -443,6 +405,7 @@ struct BinOp {
 #[derive(PartialEq)]
 enum Assoc {
     Left,
+    #[expect(dead_code)]
     Right,
 }
 
@@ -453,45 +416,4 @@ impl BinOp {
 }
 
 #[cfg(test)]
-mod test {
-    use super::*;
-    use crate::lexer::Lexer;
-
-    #[test]
-    fn test_parse_trivial_block() {
-        let arena = bumpalo::Bump::new();
-        let lexer = Lexer::new("{ 0 + 1 }");
-        let mut parser = Parser::new(lexer, &arena);
-        let expr = parser.parse_expr().unwrap();
-        match expr {
-            Term::Block { .. } => {}
-            _ => panic!("expected Block"),
-        }
-    }
-
-    #[test]
-    fn test_parse_simple_fn() {
-        let arena = bumpalo::Bump::new();
-        let lexer = Lexer::new("fn add(x: u32, y: u32) -> u32 { x + y }");
-        let mut parser = Parser::new(lexer, &arena);
-        let program = parser.parse_program().unwrap();
-        assert_eq!(program.functions.len(), 1);
-        let f = &program.functions[0];
-        assert_eq!(f.name.0, "add");
-        assert_eq!(f.params.len(), 2);
-    }
-
-    #[test]
-    fn test_parse_expr_prec() {
-        let arena = bumpalo::Bump::new();
-        let lexer = Lexer::new("1 + 2 * 3");
-        let mut parser = Parser::new(lexer, &arena);
-        let expr = parser.parse_expr().unwrap();
-        match expr {
-            Term::App { func, args } => {
-                assert_eq!(args.len(), 2);
-            }
-            _ => panic!("expected App"),
-        }
-    }
-}
+mod test;
