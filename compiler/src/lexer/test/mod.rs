@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 #[rstest]
 #[timeout(std::time::Duration::from_secs(1))] // 1s timeout to catch infinite loops on invalid input
-fn lex(#[files("src/test/lex/*.input.txt")] path: PathBuf) {
+fn lex(#[files("src/lexer/test/lex/*.input.txt")] path: PathBuf) {
     let input = std::fs::read_to_string(&path).unwrap();
     let tokens: Vec<_> = Lexer::new(&input).collect();
 

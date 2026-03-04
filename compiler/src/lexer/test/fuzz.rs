@@ -17,7 +17,8 @@ fn token() {
     check!().with_type::<String>().for_each(|input: &String| {
         let token = Lexer::new(&input).next();
         if let Some(Ok(token)) = token {
-            eprintln!("{token:?}");
+            let len = input.len();
+            eprintln!("[len={len:03}] {input:?}: {token:?}");
         }
     });
 }

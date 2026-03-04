@@ -87,7 +87,7 @@ impl<'a> Lexer<'a> {
     #[inline]
     fn skip_whitespace(&mut self) {
         loop {
-            self.input = self.input.trim_start();
+            self.input = self.input.trim_ascii_start();
             if self.input.starts_with("//") {
                 match self.input.split_once('\n') {
                     Some((_comment, rest)) => {
@@ -177,3 +177,6 @@ impl<'a> Iterator for Lexer<'a> {
         self.next()
     }
 }
+
+#[cfg(test)]
+mod test;
