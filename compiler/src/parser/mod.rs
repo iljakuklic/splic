@@ -18,10 +18,8 @@ where
     I: Iterator<Item = Result<Token<'a>>>,
 {
     pub fn new(tokens: I, arena: &'a bumpalo::Bump) -> Self {
-        Self {
-            tokens: tokens.peekable(),
-            arena,
-        }
+        let tokens = tokens.peekable();
+        Self { tokens, arena }
     }
 
     fn peek(&mut self) -> Option<Token<'a>> {
