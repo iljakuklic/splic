@@ -1,4 +1,13 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct Name<'a>(pub &'a str);
+
+impl std::fmt::Debug for Name<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Token<'a> {
@@ -38,7 +47,7 @@ pub enum Token<'a> {
     DoubleRBracket,
     DArrow,
     Num(u64),
-    Ident(&'a str),
+    Ident(Name<'a>),
 }
 
 const SYMBOLS: &[(&str, Token<'static>)] = &[
@@ -124,7 +133,7 @@ impl<'a> Lexer<'a> {
             "code" => Token::Code,
             "let" => Token::Let,
             "match" => Token::Match,
-            _ => Token::Ident(ident),
+            _ => Token::Ident(Name(ident)),
         };
         Ok(token)
     }

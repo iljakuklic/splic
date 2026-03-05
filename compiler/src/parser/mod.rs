@@ -41,7 +41,7 @@ where
         }
     }
 
-    fn take_ident(&mut self) -> Result<&'a str> {
+    fn take_ident(&mut self) -> Result<Name<'a>> {
         match self.next() {
             Some(Ok(Token::Ident(name))) => Ok(name),
             Some(Ok(token)) => Err(anyhow::anyhow!("expected identifier, got {token:?}")),
@@ -87,7 +87,7 @@ where
 
         Ok(Function {
             phase,
-            name: Name(name),
+            name,
             params,
             ret_ty,
             body,
@@ -100,7 +100,7 @@ where
             return Ok(self.arena.alloc_slice_fill_iter(params));
         }
         loop {
-            let name = Name(self.take_ident().context("expected parameter name")?);
+            let name = self.take_ident().context("expected parameter name")?;
             self.take(Token::Colon)
                 .context("expected ':' in parameter")?;
             let ty = self.parse_expr().context("expected parameter type")?;
@@ -138,7 +138,7 @@ where
 
     fn parse_let_stmt(&mut self) -> Result<Let<'a>> {
         self.take(Token::Let).context("expected 'let'")?;
-        let name = Name(self.take_ident().context("expected variable name")?);
+        let name = self.take_ident().context("expected variable name")?;
         let ty = if self.peek() == Some(Token::Colon) {
             self.next();
             Some(self.parse_expr().context("expected type in let binding")?)
@@ -240,12 +240,9 @@ where
                     self.take(Token::RParen)
                         .context("expected ')' after function arguments")?;
                     let args = self.arena.alloc_slice_fill_iter(args);
-                    Ok(Term::App {
-                        func: Name(name),
-                        args,
-                    })
+                    Ok(Term::App { func: name, args })
                 } else {
-                    Ok(Term::Var(Name(name)))
+                    Ok(Term::Var(name))
                 }
             }
             Token::LParen => {
@@ -326,7 +323,7 @@ where
         let token = self.next().context("expected pattern")??;
         match token {
             Token::Num(n) => Ok(Pat::Lit(n)),
-            Token::Ident(name) => Ok(Pat::Name(Name(name))),
+            Token::Ident(name) => Ok(Pat::Name(name)),
             _ => Err(anyhow::anyhow!("unexpected token in pattern: {:?}", token)),
         }
     }

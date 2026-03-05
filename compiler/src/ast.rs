@@ -1,15 +1,9 @@
+pub use crate::lexer::Name;
+
 #[derive(Clone, Copy, Debug)]
 pub enum Phase {
     Meta,
     Object,
-}
-
-pub struct Name<'a>(pub &'a str);
-
-impl std::fmt::Debug for Name<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
 }
 
 #[derive(Clone, Copy, Debug)]
