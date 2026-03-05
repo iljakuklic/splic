@@ -16,6 +16,14 @@ splic/
 
 ## Development Commands
 
+### Verifying syntax and type correctness
+```bash
+cargo check -p splic-compiler --all-targets   # Check a specific crate
+cargo check --workspace --all-targets   # Check whole workspace
+```
+
+The `--all-targets` switch also includes the test code.
+
 ### Building
 ```bash
 cargo build                     # Build all workspace members
@@ -26,6 +34,7 @@ cargo build -p splic-compiler   # Build specific crate
 ```bash
 cargo test                     # Run all tests
 cargo test -p splic-compiler   # Run tests for specific crate
+cargo test --workspace   # Run tests for all crates crate
 ```
 
 ### Fuzzing
