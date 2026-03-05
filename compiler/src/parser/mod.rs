@@ -293,7 +293,6 @@ where
             let body = self.parse_expr().context("parsing match arm body")?;
             self.take(Token::Comma)
                 .context("expected ',' after match arm")?;
-            let pat = self.arena.alloc(pat);
             let body = self.arena.alloc(body);
             arms.push(MatchArm { pat, body });
         }

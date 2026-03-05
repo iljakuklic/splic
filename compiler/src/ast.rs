@@ -38,14 +38,13 @@ pub enum Primitive {
 
 #[derive(Debug)]
 pub enum Pat<'a> {
-    Wildcard,
     Name(Name<'a>),
     Lit(u64),
 }
 
 #[derive(Debug)]
 pub struct MatchArm<'a> {
-    pub pat: &'a Pat<'a>,
+    pub pat: Pat<'a>,
     pub body: &'a Term<'a>,
 }
 
