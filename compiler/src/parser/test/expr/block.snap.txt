@@ -1,0 +1,6 @@
+Block {
+    stmts: [],
+    expr: Lit(
+        1,
+    ),
+}

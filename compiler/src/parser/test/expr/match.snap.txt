@@ -1,0 +1,23 @@
+Match {
+    scrutinee: Var(
+        "x",
+    ),
+    arms: [
+        MatchArm {
+            pat: Lit(
+                0,
+            ),
+            body: Lit(
+                1,
+            ),
+        },
+        MatchArm {
+            pat: Name(
+                "n",
+            ),
+            body: Var(
+                "n",
+            ),
+        },
+    ],
+}

@@ -1,0 +1,39 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "add",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u32",
+                    ),
+                },
+                Param {
+                    name: "y",
+                    ty: Var(
+                        "u32",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "+",
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                        Var(
+                            "y",
+                        ),
+                    ],
+                },
+            },
+        },
+    ],
+}

@@ -1,5 +1,44 @@
-use super::*;
+use std::path::PathBuf;
+
+use expect_test::expect_file;
+use rstest::rstest;
+
 use crate::lexer::Lexer;
+use super::*;
+
+fn parse_expr(input: &str) -> String {
+    let arena = bumpalo::Bump::new();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer, &arena);
+    let expr = parser.parse_expr().unwrap();
+    format!("{expr:#?}\n")
+}
+
+fn parse_program(input: &str) -> String {
+    let arena = bumpalo::Bump::new();
+    let lexer = Lexer::new(input);
+    let mut parser = Parser::new(lexer, &arena);
+    let program = parser.parse_program().unwrap();
+    format!("{program:#?}\n")
+}
+
+#[rstest]
+#[timeout(std::time::Duration::from_secs(1))]
+fn expr(#[files("src/parser/test/expr/*.input.txt")] path: PathBuf) {
+    let input = std::fs::read_to_string(&path).unwrap();
+    let actual = parse_expr(&input);
+    let snap_path = path.with_extension("").with_extension("snap.txt");
+    expect_file![snap_path].assert_eq(&actual);
+}
+
+#[rstest]
+#[timeout(std::time::Duration::from_secs(1))]
+fn program(#[files("src/parser/test/program/*.input.txt")] path: PathBuf) {
+    let input = std::fs::read_to_string(&path).unwrap();
+    let actual = parse_program(&input);
+    let snap_path = path.with_extension("").with_extension("snap.txt");
+    expect_file![snap_path].assert_eq(&actual);
+}
 
 #[test]
 fn test_parse_trivial_block() {
@@ -34,10 +73,7 @@ fn test_parse_expr_prec() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            match func {
-                Term::Var(name) => assert_eq!(name.0, "+"),
-                _ => panic!("expected Var(+)"),
-            }
+            assert_eq!(func.0, "+");
         }
         _ => panic!("expected App"),
     }
@@ -52,10 +88,7 @@ fn test_parse_expr_prec2() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            match func {
-                Term::Var(name) => assert_eq!(name.0, "+"),
-                _ => panic!("expected Var(+)"),
-            }
+            assert_eq!(func.0, "+");
         }
         _ => panic!("expected App"),
     }
@@ -70,10 +103,7 @@ fn test_parse_expr_paren() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            match func {
-                Term::Var(name) => assert_eq!(name.0, "*"),
-                _ => panic!("expected Var(*)"),
-            }
+            assert_eq!(func.0, "*");
         }
         _ => panic!("expected App"),
     }

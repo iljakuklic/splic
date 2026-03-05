@@ -181,7 +181,7 @@ where
                 .parse_expr_prec(next_min_prec)
                 .context("parsing right-hand side of binary expression")?;
 
-            let func = self.arena.alloc(Term::Var(Name(op.name)));
+            let func = Name(op.name);
             let args = self.arena.alloc_slice_fill_iter([lhs, rhs]);
             lhs = self.arena.alloc(Term::App { func, args });
         }
@@ -190,7 +190,7 @@ where
             self.next();
             let expr = self.parse_expr_prec(7).context("parsing operand of '!'")?;
             lhs = self.arena.alloc(Term::App {
-                func: self.arena.alloc(Term::Var(Name("!"))),
+                func: Name("!"),
                 args: self.arena.alloc_slice_fill_iter([expr]),
             });
         }
@@ -232,7 +232,7 @@ where
                 self.take(Token::RParen)
                     .context("expected ')' after parenthesized expression")?;
                 Ok(Term::App {
-                    func: self.arena.alloc(Term::Var(Name("id"))),
+                    func: Name("id"),
                     args: self.arena.alloc_slice_fill_iter([expr]),
                 })
             }
