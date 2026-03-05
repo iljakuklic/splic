@@ -4,7 +4,7 @@ use expect_test::expect_file;
 use rstest::rstest;
 
 use super::*;
-use crate::lexer::Lexer;
+use crate::lexer::{Lexer, Token};
 
 fn parse_expr(input: &str) -> String {
     let arena = bumpalo::Bump::new();
@@ -65,6 +65,15 @@ fn test_parse_simple_fn() {
 }
 
 #[test]
+fn test_parse_simple_fn_and_junk() {
+    let arena = bumpalo::Bump::new();
+    let lexer = Lexer::new("fn foo() -> u32 { 0 } wat");
+    let mut parser = Parser::new(lexer, &arena);
+    let program = parser.parse_program();
+    assert!(program.is_err());
+}
+
+#[test]
 fn test_parse_expr_prec() {
     let arena = bumpalo::Bump::new();
     let lexer = Lexer::new("1 + 2 * 3");
@@ -107,4 +116,40 @@ fn test_parse_expr_paren() {
         }
         _ => panic!("expected App"),
     }
+}
+
+#[test]
+fn fuzz_parse_expr() {
+    bolero::check!()
+        .with_type::<Vec<Token<'static>>>()
+        .for_each(|tokens: &Vec<Token<'static>>| {
+            if tokens.is_empty() {
+                return;
+            }
+            let arena = bumpalo::Bump::new();
+            let iter = tokens.iter().map(|t| Ok(*t));
+            let mut parser = Parser::new(iter, &arena);
+            let _result = parser.parse_expr();
+            if let Ok(expr) = _result {
+                eprintln!("{tokens:?}: {expr:?}");
+            }
+        });
+}
+
+#[test]
+fn fuzz_parse_program() {
+    bolero::check!()
+        .with_type::<Vec<Token<'static>>>()
+        .for_each(|tokens: &Vec<Token<'static>>| {
+            if tokens.is_empty() {
+                return;
+            }
+            let arena = bumpalo::Bump::new();
+            let iter = tokens.iter().map(|t| Ok(*t));
+            let mut parser = Parser::new(iter, &arena);
+            let _result = parser.parse_program();
+            if let Ok(prog) = _result && !tokens.is_empty() {
+                eprintln!("{tokens:?}: {prog:?}");
+            }
+        });
 }

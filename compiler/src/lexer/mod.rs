@@ -1,5 +1,8 @@
 use anyhow::{anyhow, Result};
 
+#[cfg(test)]
+pub mod testutils;
+
 #[derive(Clone, Copy, PartialEq)]
 pub struct Name<'a>(pub &'a str);
 
@@ -49,6 +52,13 @@ pub enum Token<'a> {
     Num(u64),
     Ident(Name<'a>),
 }
+
+const KEYWORDS: &[(&str, Token<'static>)] = &[
+    ("fn", Token::Fn),
+    ("code", Token::Code),
+    ("let", Token::Let),
+    ("match", Token::Match),
+];
 
 const SYMBOLS: &[(&str, Token<'static>)] = &[
     ("[[", Token::DoubleLBracket),
@@ -128,13 +138,11 @@ impl<'a> Lexer<'a> {
 
     fn read_ident(&mut self) -> Result<Token<'a>> {
         let ident = self.split_pred(|c| !Self::is_ident_char(c));
-        let token = match ident {
-            "fn" => Token::Fn,
-            "code" => Token::Code,
-            "let" => Token::Let,
-            "match" => Token::Match,
-            _ => Token::Ident(Name(ident)),
-        };
+        let token = KEYWORDS
+            .iter()
+            .find(|(kw, _)| *kw == ident)
+            .map(|(_, tok)| *tok)
+            .unwrap_or(Token::Ident(Name(ident)));
         Ok(token)
     }
 
