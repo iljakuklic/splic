@@ -117,6 +117,11 @@ where
 
     fn parse_block(&mut self) -> Result<&'a Term<'a>> {
         self.take(Token::LBrace).context("expected '{'")?;
+        let (stmts, expr) = self.parse_block_inner()?;
+        Ok(self.arena.alloc(Term::Block { stmts, expr }))
+    }
+
+    fn parse_block_inner(&mut self) -> Result<(&'a [Let<'a>], &'a Term<'a>)> {
         let mut stmts = Vec::new();
 
         while self.peek() == Some(Token::Let) {
@@ -127,16 +132,13 @@ where
         let expr = self.parse_expr().context("parsing expression in block")?;
         self.take(Token::RBrace).context("expected '}'")?;
 
-        let block = Term::Block {
-            stmts: self.arena.alloc_slice_fill_iter(stmts),
-            expr: self.arena.alloc(expr),
-        };
-        Ok(self.arena.alloc(block))
+        let stmts = self.arena.alloc_slice_fill_iter(stmts);
+        Ok((stmts, self.arena.alloc(expr)))
     }
 
     fn parse_let_stmt(&mut self) -> Result<Let<'a>> {
         self.take(Token::Let).context("expected 'let'")?;
-        let name = self.take_ident().context("expected variable name")?;
+        let name = Name(self.take_ident().context("expected variable name")?);
         let ty = if self.peek() == Some(Token::Colon) {
             self.next();
             Some(self.parse_expr().context("expected type in let binding")?)
@@ -150,12 +152,8 @@ where
             .context("expected expression in let binding")?;
         self.take(Token::Semi)
             .context("expected ';' after let binding")?;
-        let expr = &*self.arena.alloc(expr);
-        Ok(Let {
-            name: Name(name),
-            ty,
-            expr,
-        })
+        let expr = self.arena.alloc(expr);
+        Ok(Let { name, ty, expr })
     }
 
     fn parse_expr(&mut self) -> Result<&'a Term<'a>> {
@@ -245,42 +243,8 @@ where
                 Ok(Term::Quote(self.arena.alloc(expr)))
             }
             Token::HashLBrace => {
-                let mut stmts = Vec::new();
-                loop {
-                    match self.peek() {
-                        Some(Token::Let) => {
-                            let let_stmt = self
-                                .parse_let_stmt()
-                                .context("parsing let in block quote")?;
-                            stmts.push(let_stmt);
-                        }
-                        Some(Token::RBrace) => {
-                            self.next();
-                            let expr = self
-                                .parse_expr()
-                                .context("parsing expression in block quote")?;
-                            let block = Term::Block {
-                                stmts: self.arena.alloc_slice_fill_iter(stmts),
-                                expr: self.arena.alloc(expr),
-                            };
-                            return Ok(Term::Quote(self.arena.alloc(block)));
-                        }
-                        Some(_) => {
-                            let expr = self
-                                .parse_expr()
-                                .context("parsing expression in block quote")?;
-                            if self.peek() == Some(Token::Semi) {
-                                self.next();
-                            }
-                            stmts.push(Let {
-                                name: Name("_"),
-                                ty: None,
-                                expr: self.arena.alloc(expr),
-                            });
-                        }
-                        None => return Err(anyhow::anyhow!("unclosed block quote")),
-                    }
-                }
+                let (stmts, expr) = self.parse_block_inner()?;
+                Ok(Term::Quote(self.arena.alloc(Term::Block { stmts, expr })))
             }
             Token::DollarLParen => {
                 let expr = self.parse_expr().context("parsing spliced expression")?;
@@ -289,42 +253,8 @@ where
                 Ok(Term::Splice(self.arena.alloc(expr)))
             }
             Token::DollarLBrace => {
-                let mut stmts = Vec::new();
-                loop {
-                    match self.peek() {
-                        Some(Token::Let) => {
-                            let let_stmt = self
-                                .parse_let_stmt()
-                                .context("parsing let in block splice")?;
-                            stmts.push(let_stmt);
-                        }
-                        Some(Token::RBrace) => {
-                            self.next();
-                            let expr = self
-                                .parse_expr()
-                                .context("parsing expression in block splice")?;
-                            let block = Term::Block {
-                                stmts: self.arena.alloc_slice_fill_iter(stmts),
-                                expr: self.arena.alloc(expr),
-                            };
-                            return Ok(Term::Splice(self.arena.alloc(block)));
-                        }
-                        Some(_) => {
-                            let expr = self
-                                .parse_expr()
-                                .context("parsing expression in block splice")?;
-                            if self.peek() == Some(Token::Semi) {
-                                self.next();
-                            }
-                            stmts.push(Let {
-                                name: Name("_"),
-                                ty: None,
-                                expr: self.arena.alloc(expr),
-                            });
-                        }
-                        None => return Err(anyhow::anyhow!("unclosed block splice")),
-                    }
-                }
+                let (stmts, expr) = self.parse_block_inner()?;
+                Ok(Term::Splice(self.arena.alloc(Term::Block { stmts, expr })))
             }
             Token::DoubleLBracket => {
                 let expr = self.parse_expr().context("parsing lifted expression")?;
@@ -344,21 +274,8 @@ where
                 Ok(Term::Match { scrutinee, arms })
             }
             Token::LBrace => {
-                let mut stmts = Vec::new();
-
-                while self.peek() == Some(Token::Let) {
-                    let let_stmt = self.parse_let_stmt().context("parsing let in block")?;
-                    stmts.push(let_stmt);
-                }
-
-                let expr = self.parse_expr().context("parsing expression in block")?;
-                self.take(Token::RBrace)
-                    .context("expected '}' after expression in block")?;
-
-                Ok(Term::Block {
-                    stmts: self.arena.alloc_slice_fill_iter(stmts),
-                    expr: self.arena.alloc(expr),
-                })
+                let (stmts, expr) = self.parse_block_inner()?;
+                Ok(Term::Block { stmts, expr })
             }
             _ => Err(anyhow::anyhow!(
                 "unexpected token in expression: {:?}",
