@@ -38,7 +38,7 @@ cargo bolero test           # Run bolero fuzz tests
 ### Test Structure
 - Tests located in `compiler/src/test/`
 - Uses **rstest** for parameterized tests
-- Snapshot testing with **expect-test**
+- Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `UPDATE_EXPECT=1 cargo test` to regenerate snapshots and verify actual state)
 - Fuzz tests in `fuzz.rs`
 
 ### Quality Tools

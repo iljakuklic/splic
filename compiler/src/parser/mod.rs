@@ -224,7 +224,30 @@ where
         let token = self.next().context("expected expression")??;
         match token {
             Token::Num(n) => Ok(Term::Lit(n)),
-            Token::Ident(name) => Ok(Term::Var(Name(name))),
+            Token::Ident(name) => {
+                if self.peek() == Some(Token::LParen) {
+                    self.next();
+                    let mut args = Vec::new();
+                    while self.peek() != Some(Token::RParen) {
+                        let arg = self.parse_expr().context("parsing function argument")?;
+                        args.push(arg);
+                        if self.peek() == Some(Token::Comma) {
+                            self.next();
+                        } else {
+                            break;
+                        }
+                    }
+                    self.take(Token::RParen)
+                        .context("expected ')' after function arguments")?;
+                    let args = self.arena.alloc_slice_fill_iter(args);
+                    Ok(Term::App {
+                        func: Name(name),
+                        args,
+                    })
+                } else {
+                    Ok(Term::Var(Name(name)))
+                }
+            }
             Token::LParen => {
                 let expr = self
                     .parse_expr()

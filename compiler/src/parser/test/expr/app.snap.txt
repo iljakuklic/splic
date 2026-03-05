@@ -1,3 +1,11 @@
-Var(
-    "f",
-)
+App {
+    func: "f",
+    args: [
+        Var(
+            "x",
+        ),
+        Var(
+            "y",
+        ),
+    ],
+}

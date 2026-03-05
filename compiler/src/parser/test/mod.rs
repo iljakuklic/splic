@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use expect_test::expect_file;
 use rstest::rstest;
 
-use crate::lexer::Lexer;
 use super::*;
+use crate::lexer::Lexer;
 
 fn parse_expr(input: &str) -> String {
     let arena = bumpalo::Bump::new();
