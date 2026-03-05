@@ -4,6 +4,7 @@ pub enum Phase {
     Object,
 }
 
+#[derive(Debug)]
 pub struct Name<'a>(pub &'a str);
 
 #[derive(Clone, Copy, Debug)]
@@ -35,28 +36,33 @@ pub enum Primitive {
     Type(Phase),
 }
 
+#[derive(Debug)]
 pub enum Pat<'a> {
     Wildcard,
     Name(Name<'a>),
     Lit(u64),
 }
 
+#[derive(Debug)]
 pub struct MatchArm<'a> {
     pub pat: &'a Pat<'a>,
     pub body: &'a Term<'a>,
 }
 
+#[derive(Debug)]
 pub struct Let<'a> {
     pub name: Name<'a>,
     pub ty: Option<&'a Term<'a>>,
     pub expr: &'a Term<'a>,
 }
 
+#[derive(Debug)]
 pub struct Param<'a> {
     pub name: Name<'a>,
     pub ty: &'a Term<'a>,
 }
 
+#[derive(Debug)]
 pub struct Function<'a> {
     pub phase: Phase,
     pub name: Name<'a>,
@@ -65,10 +71,12 @@ pub struct Function<'a> {
     pub body: &'a Term<'a>,
 }
 
+#[derive(Debug)]
 pub struct Program<'a> {
     pub functions: &'a [Function<'a>],
 }
 
+#[derive(Debug)]
 pub enum Term<'a> {
     Lit(u64),
     Var(Name<'a>),
