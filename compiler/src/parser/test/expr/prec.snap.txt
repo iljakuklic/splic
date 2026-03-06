@@ -1,11 +1,11 @@
 App {
-    func: "+",
+    func: Add,
     args: [
         Lit(
             1,
         ),
         App {
-            func: "*",
+            func: Mul,
             args: [
                 Lit(
                     2,

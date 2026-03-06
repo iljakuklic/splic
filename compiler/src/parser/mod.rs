@@ -2,7 +2,7 @@ use std::iter::Peekable;
 
 use anyhow::{Context, Result};
 
-use crate::ast::{Function, Let, MatchArm, Name, Param, Pat, Phase, Program, Term};
+use crate::ast::{BinOp, FunName, Function, Let, MatchArm, Name, UnOp, Param, Pat, Phase, Program, Term};
 use crate::lexer::Token;
 
 pub struct Parser<'a, I>
@@ -170,7 +170,7 @@ where
                 .context("parsing operand of '!'")?;
             let expr = &*self.arena.alloc(expr);
             Term::App {
-                func: Name("!"),
+                func: FunName::UnOp(UnOp::Not),
                 args: self.arena.alloc_slice_fill_iter([expr]),
             }
         } else {
@@ -181,12 +181,13 @@ where
             let Some(op) = Self::binop_prec(self.peek()) else {
                 break;
             };
-            if op.prec < min_prec {
+            let (prec, assoc) = Self::binop_info(op);
+            if prec < min_prec {
                 break;
             }
-            let next_min_prec = match op.assoc {
-                Assoc::Left => op.prec + 1,
-                Assoc::Right => op.prec,
+            let next_min_prec = match assoc {
+                Assoc::Left => prec + 1,
+                Assoc::Right => prec,
             };
             self.next();
 
@@ -195,7 +196,7 @@ where
                 .context("parsing right-hand side of binary expression")?;
             let rhs = &*self.arena.alloc(rhs);
 
-            let func = Name(op.name);
+            let func = FunName::BinOp(op);
             let lhs_ref = &*self.arena.alloc(lhs);
             let args = self.arena.alloc_slice_fill_iter([lhs_ref, rhs]);
             lhs = Term::App { func, args };
@@ -207,20 +208,37 @@ where
     const NOT_PREC: u8 = 7;
 
     fn binop_prec(token: Option<Token<'a>>) -> Option<BinOp> {
-        match token {
-            Some(Token::Bar) => Some(BinOp::new("|", 1, Assoc::Left)),
-            Some(Token::Ampersand) => Some(BinOp::new("&", 2, Assoc::Left)),
-            Some(Token::EqEq) => Some(BinOp::new("==", 3, Assoc::Left)),
-            Some(Token::Ne) => Some(BinOp::new("!=", 3, Assoc::Left)),
-            Some(Token::Lt) => Some(BinOp::new("<", 3, Assoc::Left)),
-            Some(Token::Gt) => Some(BinOp::new(">", 3, Assoc::Left)),
-            Some(Token::Le) => Some(BinOp::new("<=", 3, Assoc::Left)),
-            Some(Token::Ge) => Some(BinOp::new(">=", 3, Assoc::Left)),
-            Some(Token::Plus) => Some(BinOp::new("+", 4, Assoc::Left)),
-            Some(Token::Minus) => Some(BinOp::new("-", 4, Assoc::Left)),
-            Some(Token::Star) => Some(BinOp::new("*", 5, Assoc::Left)),
-            Some(Token::Slash) => Some(BinOp::new("/", 5, Assoc::Left)),
+        match token? {
+            Token::Bar => Some(BinOp::BitOr),
+            Token::Ampersand => Some(BinOp::BitAnd),
+            Token::EqEq => Some(BinOp::Eq),
+            Token::Ne => Some(BinOp::Ne),
+            Token::Lt => Some(BinOp::Lt),
+            Token::Gt => Some(BinOp::Gt),
+            Token::Le => Some(BinOp::Le),
+            Token::Ge => Some(BinOp::Ge),
+            Token::Plus => Some(BinOp::Add),
+            Token::Minus => Some(BinOp::Sub),
+            Token::Star => Some(BinOp::Mul),
+            Token::Slash => Some(BinOp::Div),
             _ => None,
+        }
+    }
+
+    fn binop_info(op: BinOp) -> (u8, Assoc) {
+        match op {
+            BinOp::BitOr => (1, Assoc::Left),
+            BinOp::BitAnd => (2, Assoc::Left),
+            BinOp::Eq => (3, Assoc::Left),
+            BinOp::Ne => (3, Assoc::Left),
+            BinOp::Lt => (3, Assoc::Left),
+            BinOp::Gt => (3, Assoc::Left),
+            BinOp::Le => (3, Assoc::Left),
+            BinOp::Ge => (3, Assoc::Left),
+            BinOp::Add => (4, Assoc::Left),
+            BinOp::Sub => (4, Assoc::Left),
+            BinOp::Mul => (5, Assoc::Left),
+            BinOp::Div => (5, Assoc::Left),
         }
     }
 
@@ -244,7 +262,10 @@ where
                     self.take(Token::RParen)
                         .context("expected ')' after function arguments")?;
                     let args = self.arena.alloc_slice_fill_iter(args);
-                    Ok(Term::App { func: name, args })
+                    Ok(Term::App {
+                        func: FunName::Name(name),
+                        args,
+                    })
                 } else {
                     Ok(Term::Var(name))
                 }
@@ -330,23 +351,10 @@ where
     }
 }
 
-struct BinOp {
-    name: &'static str,
-    prec: u8,
-    assoc: Assoc,
-}
-
 #[derive(PartialEq)]
 enum Assoc {
     Left,
-    #[expect(dead_code)]
     Right,
-}
-
-impl BinOp {
-    fn new(name: &'static str, prec: u8, assoc: Assoc) -> Self {
-        Self { name, prec, assoc }
-    }
 }
 
 #[cfg(test)]

@@ -16,7 +16,7 @@ Block {
         },
     ],
     expr: App {
-        func: "+",
+        func: Add,
         args: [
             Var(
                 "x",

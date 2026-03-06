@@ -1,14 +1,15 @@
 pub use crate::lexer::Name;
 
+/// Compilation phase
 #[derive(Clone, Copy, Debug)]
 pub enum Phase {
     Meta,
     Object,
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Primitive {
-    // Arithmetic ops
+/// Binary operator
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum BinOp {
     Add,
     Sub,
     Mul,
@@ -21,18 +22,30 @@ pub enum Primitive {
     Ge,
     BitAnd,
     BitOr,
+}
+
+/// Unary operator
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum UnOp {
     Not,
+}
 
-    // Builtin types
-    U0,
-    U1,
-    U8,
-    U16,
-    U32,
-    U64,
+/// Function or operator reference
+#[derive(Clone, Copy, PartialEq)]
+pub enum FunName<'a> {
+    Name(Name<'a>),
+    BinOp(BinOp),
+    UnOp(UnOp),
+}
 
-    // Universes
-    Type(Phase),
+impl std::fmt::Debug for FunName<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Name(n) => n.fmt(f),
+            Self::BinOp(o) => o.fmt(f),
+            Self::UnOp(o) => o.fmt(f),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -79,10 +92,9 @@ pub enum Term<'a> {
     Lit(u64),
     Var(Name<'a>),
     App {
-        func: Name<'a>,
+        func: FunName<'a>,
         args: &'a [&'a Term<'a>],
     },
-    Prim(Primitive),
     Quote(&'a Term<'a>),
     Splice(&'a Term<'a>),
     Lift(&'a Term<'a>),

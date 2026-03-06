@@ -4,6 +4,7 @@ use expect_test::expect_file;
 use rstest::rstest;
 
 use super::*;
+use crate::ast::{BinOp, FunName};
 use crate::lexer::{Lexer, Token};
 
 fn parse_expr(input: &str) -> String {
@@ -82,7 +83,7 @@ fn test_parse_expr_prec() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            assert_eq!(func.0, "+");
+            assert_eq!(func, &FunName::BinOp(BinOp::Add));
         }
         _ => panic!("expected App"),
     }
@@ -97,7 +98,7 @@ fn test_parse_expr_prec2() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            assert_eq!(func.0, "+");
+            assert_eq!(func, &FunName::BinOp(BinOp::Add));
         }
         _ => panic!("expected App"),
     }
@@ -112,7 +113,7 @@ fn test_parse_expr_paren() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            assert_eq!(func.0, "*");
+            assert_eq!(func, &FunName::BinOp(BinOp::Mul));
         }
         _ => panic!("expected App"),
     }

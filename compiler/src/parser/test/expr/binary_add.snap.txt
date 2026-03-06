@@ -1,5 +1,5 @@
 App {
-    func: "+",
+    func: Add,
     args: [
         Lit(
             1,

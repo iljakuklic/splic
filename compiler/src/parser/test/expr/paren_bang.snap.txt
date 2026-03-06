@@ -1,5 +1,5 @@
 App {
-    func: "!",
+    func: Not,
     args: [
         Var(
             "x",
