@@ -163,7 +163,19 @@ where
     }
 
     fn parse_expr_prec(&mut self, min_prec: u8) -> Result<Term<'a>> {
-        let mut lhs = self.parse_atom_owned()?;
+        let mut lhs = if self.peek() == Some(Token::Bang) {
+            self.next();
+            let expr = self
+                .parse_expr_prec(Self::NOT_PREC)
+                .context("parsing operand of '!'")?;
+            let expr = &*self.arena.alloc(expr);
+            Term::App {
+                func: Name("!"),
+                args: self.arena.alloc_slice_fill_iter([expr]),
+            }
+        } else {
+            self.parse_atom_owned()?
+        };
 
         loop {
             let Some(op) = Self::binop_prec(self.peek()) else {
@@ -187,18 +199,6 @@ where
             let lhs_ref = &*self.arena.alloc(lhs);
             let args = self.arena.alloc_slice_fill_iter([lhs_ref, rhs]);
             lhs = Term::App { func, args };
-        }
-
-        if self.peek() == Some(Token::Bang) {
-            self.next();
-            let expr = self
-                .parse_expr_prec(Self::NOT_PREC)
-                .context("parsing operand of '!'")?;
-            let expr = &*self.arena.alloc(expr);
-            lhs = Term::App {
-                func: Name("!"),
-                args: self.arena.alloc_slice_fill_iter([expr]),
-            };
         }
 
         Ok(lhs)
