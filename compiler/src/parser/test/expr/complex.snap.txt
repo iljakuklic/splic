@@ -1,0 +1,50 @@
+App {
+    func: "&",
+    args: [
+        App {
+            func: "|",
+            args: [
+                App {
+                    func: "!",
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+                Var(
+                    "y",
+                ),
+            ],
+        },
+        App {
+            func: "!",
+            args: [
+                App {
+                    func: "foo",
+                    args: [
+                        Var(
+                            "z",
+                        ),
+                        App {
+                            func: "!",
+                            args: [
+                                App {
+                                    func: "+",
+                                    args: [
+                                        Lit(
+                                            1,
+                                        ),
+                                        Var(
+                                            "w",
+                                        ),
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+}

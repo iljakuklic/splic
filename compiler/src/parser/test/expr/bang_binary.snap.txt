@@ -1,0 +1,16 @@
+App {
+    func: "+",
+    args: [
+        App {
+            func: "!",
+            args: [
+                Var(
+                    "x",
+                ),
+            ],
+        },
+        Lit(
+            1,
+        ),
+    ],
+}

@@ -1,0 +1,19 @@
+App {
+    func: "*",
+    args: [
+        Lit(
+            1,
+        ),
+        App {
+            func: "+",
+            args: [
+                Lit(
+                    2,
+                ),
+                Lit(
+                    3,
+                ),
+            ],
+        },
+    ],
+}
