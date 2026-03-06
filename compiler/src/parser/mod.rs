@@ -2,8 +2,10 @@ use std::iter::Peekable;
 
 use anyhow::{Context, Result};
 
-use crate::parser::ast::{BinOp, FunName, Function, Let, MatchArm, Name, UnOp, Param, Pat, Phase, Program, Term};
 use crate::lexer::Token;
+use crate::parser::ast::{
+    Assoc, BinOp, FunName, Function, Let, MatchArm, Name, Param, Pat, Phase, Program, Term, UnOp,
+};
 
 pub mod ast;
 
@@ -165,14 +167,14 @@ where
     }
 
     fn parse_expr_prec(&mut self, min_prec: u8) -> Result<Term<'a>> {
-        let mut lhs = if self.peek() == Some(Token::Bang) {
+        let mut lhs = if let Some(op) = self.match_unop() {
             self.next();
             let expr = self
-                .parse_expr_prec(Self::NOT_PREC)
+                .parse_expr_prec(op.precedence())
                 .context("parsing operand of '!'")?;
             let expr = &*self.arena.alloc(expr);
             Term::App {
-                func: FunName::UnOp(UnOp::Not),
+                func: FunName::UnOp(op),
                 args: self.arena.alloc_slice_fill_iter([expr]),
             }
         } else {
@@ -180,14 +182,14 @@ where
         };
 
         loop {
-            let Some(op) = Self::binop_prec(self.peek()) else {
+            let Some(op) = self.match_binop() else {
                 break;
             };
-            let (prec, assoc) = Self::binop_info(op);
+            let prec = op.precedence();
             if prec < min_prec {
                 break;
             }
-            let next_min_prec = match assoc {
+            let next_min_prec = match op.assoc() {
                 Assoc::Left => prec + 1,
                 Assoc::Right => prec,
             };
@@ -207,10 +209,15 @@ where
         Ok(lhs)
     }
 
-    const NOT_PREC: u8 = 7;
+    fn match_unop(&mut self) -> Option<UnOp> {
+        match self.peek()? {
+            Token::Bang => Some(UnOp::Not),
+            _ => None,
+        }
+    }
 
-    fn binop_prec(token: Option<Token<'a>>) -> Option<BinOp> {
-        match token? {
+    fn match_binop(&mut self) -> Option<BinOp> {
+        match self.peek()? {
             Token::Bar => Some(BinOp::BitOr),
             Token::Ampersand => Some(BinOp::BitAnd),
             Token::EqEq => Some(BinOp::Eq),
@@ -224,23 +231,6 @@ where
             Token::Star => Some(BinOp::Mul),
             Token::Slash => Some(BinOp::Div),
             _ => None,
-        }
-    }
-
-    fn binop_info(op: BinOp) -> (u8, Assoc) {
-        match op {
-            BinOp::BitOr => (1, Assoc::Left),
-            BinOp::BitAnd => (2, Assoc::Left),
-            BinOp::Eq => (3, Assoc::Left),
-            BinOp::Ne => (3, Assoc::Left),
-            BinOp::Lt => (3, Assoc::Left),
-            BinOp::Gt => (3, Assoc::Left),
-            BinOp::Le => (3, Assoc::Left),
-            BinOp::Ge => (3, Assoc::Left),
-            BinOp::Add => (4, Assoc::Left),
-            BinOp::Sub => (4, Assoc::Left),
-            BinOp::Mul => (5, Assoc::Left),
-            BinOp::Div => (5, Assoc::Left),
         }
     }
 
@@ -351,12 +341,6 @@ where
             _ => Err(anyhow::anyhow!("unexpected token in pattern: {:?}", token)),
         }
     }
-}
-
-#[derive(PartialEq)]
-enum Assoc {
-    Left,
-    Right,
 }
 
 #[cfg(test)]

@@ -24,10 +24,39 @@ pub enum BinOp {
     BitOr,
 }
 
+impl BinOp {
+    pub fn precedence(self) -> u8 {
+        match self {
+            BinOp::BitOr => 1,
+            BinOp::BitAnd => 2,
+            BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => 3,
+            BinOp::Add | BinOp::Sub => 4,
+            BinOp::Mul | BinOp::Div => 5,
+        }
+    }
+
+    pub fn assoc(self) -> Assoc {
+        Assoc::Left
+    }
+}
+
+/// Associativity
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum Assoc {
+    Left,
+    Right,
+}
+
 /// Unary operator
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum UnOp {
     Not,
+}
+
+impl UnOp {
+    pub fn precedence(self) -> u8 {
+        6
+    }
 }
 
 /// Function or operator reference
