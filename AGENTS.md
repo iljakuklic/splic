@@ -49,6 +49,7 @@ cargo bolero test           # Run bolero fuzz tests
 - Uses **rstest** for parameterized tests
 - Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `UPDATE_EXPECT=1 cargo test` to regenerate snapshots and verify actual state)
 - Fuzz tests in `fuzz.rs`
+- Note: When adding new `.input.txt` test files, run `cargo clean -p splic-compiler` first to ensure they're picked up by the test framework
 
 ### Quality Tools
 - Uses clippy defaults (no explicit config)
