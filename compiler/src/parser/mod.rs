@@ -155,11 +155,15 @@ where
     }
 
     fn parse_expr(&mut self) -> Result<&'a Term<'a>> {
+        Ok(self.arena.alloc(self.parse_expr_owned()?))
+    }
+
+    fn parse_expr_owned(&mut self) -> Result<Term<'a>> {
         self.parse_expr_prec(1)
     }
 
-    fn parse_expr_prec(&mut self, min_prec: u8) -> Result<&'a Term<'a>> {
-        let mut lhs = self.parse_atom()?;
+    fn parse_expr_prec(&mut self, min_prec: u8) -> Result<Term<'a>> {
+        let mut lhs = self.parse_atom_owned()?;
 
         loop {
             let Some(op) = Self::binop_prec(self.peek()) else {
@@ -168,33 +172,39 @@ where
             if op.prec < min_prec {
                 break;
             }
-            let next_min_prec = if op.assoc == Assoc::Left {
-                op.prec + 1
-            } else {
-                op.prec
+            let next_min_prec = match op.assoc {
+                Assoc::Left => op.prec + 1,
+                Assoc::Right => op.prec,
             };
             self.next();
 
             let rhs = self
                 .parse_expr_prec(next_min_prec)
                 .context("parsing right-hand side of binary expression")?;
+            let rhs = &*self.arena.alloc(rhs);
 
             let func = Name(op.name);
-            let args = self.arena.alloc_slice_fill_iter([lhs, rhs]);
-            lhs = self.arena.alloc(Term::App { func, args });
+            let lhs_ref = &*self.arena.alloc(lhs);
+            let args = self.arena.alloc_slice_fill_iter([lhs_ref, rhs]);
+            lhs = Term::App { func, args };
         }
 
         if self.peek() == Some(Token::Bang) {
             self.next();
-            let expr = self.parse_expr_prec(7).context("parsing operand of '!'")?;
-            lhs = self.arena.alloc(Term::App {
+            let expr = self
+                .parse_expr_prec(Self::NOT_PREC)
+                .context("parsing operand of '!'")?;
+            let expr = &*self.arena.alloc(expr);
+            lhs = Term::App {
                 func: Name("!"),
                 args: self.arena.alloc_slice_fill_iter([expr]),
-            });
+            };
         }
 
         Ok(lhs)
     }
+
+    const NOT_PREC: u8 = 7;
 
     fn binop_prec(token: Option<Token<'a>>) -> Option<BinOp> {
         match token {
@@ -212,10 +222,6 @@ where
             Some(Token::Slash) => Some(BinOp::new("/", 5, Assoc::Left)),
             _ => None,
         }
-    }
-
-    fn parse_atom(&mut self) -> Result<&'a Term<'a>> {
-        Ok(self.arena.alloc(self.parse_atom_owned()?))
     }
 
     fn parse_atom_owned(&mut self) -> Result<Term<'a>> {
@@ -245,14 +251,11 @@ where
             }
             Token::LParen => {
                 let expr = self
-                    .parse_expr()
+                    .parse_expr_owned()
                     .context("parsing expression in parentheses")?;
                 self.take(Token::RParen)
                     .context("expected ')' after parenthesized expression")?;
-                Ok(Term::App {
-                    func: Name("id"),
-                    args: self.arena.alloc_slice_fill_iter([expr]),
-                })
+                Ok(expr)
             }
             Token::HashLParen => {
                 let expr = self.parse_expr().context("parsing quoted expression")?;
