@@ -2,8 +2,10 @@ use std::iter::Peekable;
 
 use anyhow::{Context, Result};
 
-use crate::ast::{BinOp, FunName, Function, Let, MatchArm, Name, UnOp, Param, Pat, Phase, Program, Term};
+use crate::parser::ast::{BinOp, FunName, Function, Let, MatchArm, Name, UnOp, Param, Pat, Phase, Program, Term};
 use crate::lexer::Token;
+
+pub mod ast;
 
 pub struct Parser<'a, I>
 where

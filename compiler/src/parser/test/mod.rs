@@ -4,7 +4,7 @@ use expect_test::expect_file;
 use rstest::rstest;
 
 use super::*;
-use crate::ast::{BinOp, FunName};
+use crate::parser::ast::{BinOp, FunName};
 use crate::lexer::{Lexer, Token};
 
 fn parse_expr(input: &str) -> String {
