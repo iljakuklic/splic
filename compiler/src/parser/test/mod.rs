@@ -4,8 +4,8 @@ use expect_test::expect_file;
 use rstest::rstest;
 
 use super::*;
-use crate::parser::ast::{BinOp, FunName};
 use crate::lexer::{Lexer, Token};
+use crate::parser::ast::{BinOp, FunName};
 
 fn parse_expr(input: &str) -> String {
     let arena = bumpalo::Bump::new();
@@ -124,14 +124,14 @@ fn fuzz_parse_expr() {
     bolero::check!()
         .with_type::<Vec<Token<'static>>>()
         .for_each(|tokens: &Vec<Token<'static>>| {
-            if tokens.is_empty() {
-                return;
-            }
             let arena = bumpalo::Bump::new();
             let iter = tokens.iter().map(|t| Ok(*t));
             let mut parser = Parser::new(iter, &arena);
             let _result = parser.parse_expr();
             if let Ok(expr) = _result {
+                if parser.next().is_some() {
+                    return;
+                }
                 eprintln!("{tokens:?}: {expr:?}");
             }
         });
@@ -142,14 +142,11 @@ fn fuzz_parse_program() {
     bolero::check!()
         .with_type::<Vec<Token<'static>>>()
         .for_each(|tokens: &Vec<Token<'static>>| {
-            if tokens.is_empty() {
-                return;
-            }
             let arena = bumpalo::Bump::new();
             let iter = tokens.iter().map(|t| Ok(*t));
             let mut parser = Parser::new(iter, &arena);
             let _result = parser.parse_program();
-            if let Ok(prog) = _result && !tokens.is_empty() {
+            if let Ok(prog) = _result {
                 eprintln!("{tokens:?}: {prog:?}");
             }
         });
