@@ -148,6 +148,8 @@ Requirements:
 
 ## Type System
 
+Core representation is documented in more detail in (bs/prototype-core.md)[bs/prototype-core.md].
+
 ### Universes
 
 Two separate universes:
