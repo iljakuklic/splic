@@ -1,7 +1,7 @@
 pub use crate::lexer::Name;
 
 /// Compilation phase
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Phase {
     Meta,
     Object,

@@ -95,12 +95,26 @@ pub struct Arm<'a> {
     pub body: &'a Term<'a>,
 }
 
-/// Top-level function signature (stored in the globals table)
+/// Top-level function signature (stored in the globals table during elaboration)
 #[derive(Debug)]
 pub struct FunSig<'a> {
     pub params:  &'a [(&'a str, &'a Term<'a>)],  // (name, type) pairs
     pub ret_ty:  &'a Term<'a>,
     pub phase:   Phase,
+}
+
+/// Elaborated top-level function definition
+#[derive(Debug)]
+pub struct Function<'a> {
+    pub name: &'a str,
+    pub sig:  FunSig<'a>,
+    pub body: &'a Term<'a>,
+}
+
+/// Elaborated program: a sequence of top-level function definitions
+#[derive(Debug)]
+pub struct Program<'a> {
+    pub functions: &'a [Function<'a>],
 }
 
 /// Core term / type (terms and types are unified)
@@ -154,6 +168,7 @@ Pass 2 — elaborate_bodies:
   Locals context starts empty and is extended as let-bindings and match arms are entered.
 
 Core operations:
-  infer(ctx, surface_term) -> (&'a Term<'a>, &'a Term<'a>)   // (elaborated term, its type)
-  check(ctx, surface_term, expected_type) -> &'a Term<'a>     // elaborated term
+  elaborate_program(arena, surface_program) -> Result<core::Program<'a>>
+  infer(ctx, surface_term) -> Result<(&'a Term<'a>, &'a Term<'a>)>   // (elaborated term, its type)
+  check(ctx, surface_term, expected_type) -> Result<&'a Term<'a>>    // elaborated term
 ```

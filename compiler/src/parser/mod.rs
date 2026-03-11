@@ -40,9 +40,9 @@ where
         F: FnOnce(Token<'a>) -> Option<T>,
     {
         match self.next() {
-            Some(Ok(token)) => f(token).ok_or_else(|| {
-                anyhow::anyhow!("expected {description}, got {token:?}")
-            }),
+            Some(Ok(token)) => {
+                f(token).ok_or_else(|| anyhow::anyhow!("expected {description}, got {token:?}"))
+            }
             Some(Err(e)) => Err(e),
             None => Err(anyhow::anyhow!("expected {description}, got end of input")),
         }
@@ -56,7 +56,11 @@ where
 
     fn take_ident(&mut self) -> Result<Name<'a>> {
         self.expect_token("identifier", |token| {
-            if let Token::Ident(name) = token { Some(name) } else { None }
+            if let Token::Ident(name) = token {
+                Some(name)
+            } else {
+                None
+            }
         })
     }
 
@@ -112,11 +116,7 @@ where
     }
 
     /// Parse a comma-separated list of items bounded by a terminator token
-    fn parse_separated_list<T, F>(
-        &mut self,
-        terminator: Token<'a>,
-        mut parser: F,
-    ) -> Result<Vec<T>>
+    fn parse_separated_list<T, F>(&mut self, terminator: Token<'a>, mut parser: F) -> Result<Vec<T>>
     where
         F: FnMut(&mut Self) -> Result<T>,
     {
