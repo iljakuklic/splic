@@ -7,6 +7,15 @@ pub enum Phase {
     Object,
 }
 
+impl std::fmt::Display for Phase {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Phase::Meta => f.write_str("meta"),
+            Phase::Object => f.write_str("object"),
+        }
+    }
+}
+
 /// Binary operator
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum BinOp {

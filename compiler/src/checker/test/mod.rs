@@ -442,11 +442,33 @@ fn check_lit_against_matching_int_type_succeeds() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let expected = ctx.u32_ty();
+    let expected = ctx.int_ty(IntWidth::U32, Phase::Object);
 
     let term = src_arena.alloc(ast::Term::Lit(42));
     let result = check(&mut ctx, Phase::Object, term, expected).expect("should check");
     assert!(matches!(result, core::Term::Lit(42)));
+}
+
+// `check` at meta phase with an object-phase expected type must fail (universe mismatch).
+#[test]
+fn check_meta_term_against_object_type_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+    let obj_u32 = ctx.int_ty(IntWidth::U32, Phase::Object);
+    let term = src_arena.alloc(ast::Term::Lit(42));
+    assert!(check(&mut ctx, Phase::Meta, term, obj_u32).is_err());
+}
+
+// `check` at object phase with a meta-phase expected type must fail (universe mismatch).
+#[test]
+fn check_object_term_against_meta_type_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+    let meta_u32 = ctx.u32_ty(); // u32 at meta phase
+    let term = src_arena.alloc(ast::Term::Lit(42));
+    assert!(check(&mut ctx, Phase::Object, term, meta_u32).is_err());
 }
 
 // `check` a literal against a non-integer type (universe) must fail.
@@ -562,6 +584,36 @@ fn infer_global_call_wrong_arity_fails() {
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
 }
 
+// Calling an object-phase global from a meta-phase context must fail.
+#[test]
+fn infer_global_call_phase_mismatch_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    // `code fn f() -> u64` — object-phase function
+    let u64_obj = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+        IntWidth::U64,
+        Phase::Object,
+    ))));
+    let mut globals = HashMap::new();
+    globals.insert(
+        "f",
+        FunSig {
+            params: &[],
+            ret_ty: u64_obj,
+            phase: Phase::Object,
+        },
+    );
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
+
+    // Call `f()` from meta phase — should be rejected.
+    let term = src_arena.alloc(ast::Term::App {
+        func: FunName::Name(ast::Name::new("f")),
+        args: &[],
+    });
+    assert!(infer(&mut ctx, Phase::Meta, term).is_err());
+}
+
 // Calling a global with correct args type-checks arguments and infers the return type.
 #[test]
 fn infer_global_call_with_arg_checks_arg_type() {
@@ -598,10 +650,10 @@ fn check_binop_add_against_u32_succeeds() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u32_ty = ctx.u32_ty();
-    // push two u32 locals to use as operands
-    ctx.push_local("a", u32_ty);
-    ctx.push_local("b", u32_ty);
+    let u32_obj = ctx.int_ty(IntWidth::U32, Phase::Object);
+    // push two object-phase u32 locals to use as operands
+    ctx.push_local("a", u32_obj);
+    ctx.push_local("b", u32_obj);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -611,7 +663,7 @@ fn check_binop_add_against_u32_succeeds() {
         args,
     });
 
-    let expected = ctx.u32_ty();
+    let expected = ctx.int_ty(IntWidth::U32, Phase::Object);
     let result = check(&mut ctx, Phase::Object, term, expected).expect("should check");
     assert!(matches!(
         result,
@@ -623,6 +675,67 @@ fn check_binop_add_against_u32_succeeds() {
             ..
         }
     ));
+}
+
+// Comparison ops always return u1, so they are inferable without a type annotation.
+#[test]
+fn infer_comparison_op_returns_u1() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+    let u64_obj = ctx.int_ty(IntWidth::U64, Phase::Object);
+    ctx.push_local("a", u64_obj);
+    ctx.push_local("b", u64_obj);
+
+    let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
+    let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
+    let args = src_arena.alloc_slice_fill_iter([a as &ast::Term, b as &ast::Term]);
+    let term = src_arena.alloc(ast::Term::App {
+        func: FunName::BinOp(BinOp::Eq),
+        args,
+    });
+
+    // Eq is inferable: result is u1, prim carries the operand type (u64).
+    let (core_term, ty) = infer(&mut ctx, Phase::Object, term).expect("should infer");
+    assert!(matches!(
+        core_term,
+        core::Term::App {
+            head: Head::Prim(Prim::Eq(IntType {
+                width: IntWidth::U64,
+                ..
+            })),
+            ..
+        }
+    ));
+    assert!(matches!(
+        ty,
+        core::Term::Prim(Prim::IntTy(IntType {
+            width: IntWidth::U1,
+            ..
+        }))
+    ));
+}
+
+// Comparison operands must have matching types: a: u64, b: u32 must fail.
+#[test]
+fn infer_comparison_op_mismatched_operands_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+    let u64_ty = ctx.u64_ty();
+    let u32_ty = ctx.u32_ty();
+    ctx.push_local("a", u64_ty);
+    ctx.push_local("b", u32_ty); // different type
+
+    let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
+    let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
+    let args = src_arena.alloc_slice_fill_iter([a as &ast::Term, b as &ast::Term]);
+    let term = src_arena.alloc(ast::Term::App {
+        func: FunName::BinOp(BinOp::Lt),
+        args,
+    });
+
+    assert!(infer(&mut ctx, Phase::Object, term).is_err());
 }
 
 // `infer` on a bare binary op application (without expected type) must fail.
@@ -671,13 +784,14 @@ fn check_binop_add_with_mismatched_operand_types_fails() {
 }
 
 // A comparison `==` always produces u1, regardless of operand width.
-// Checking it against VmType::U1 at the object phase must succeed.
+// Checking it against u1 at the meta phase must succeed; the prim carries the operand type.
 #[test]
 fn check_eq_op_produces_u1() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u64_ty = ctx.u64_ty();
+    // Use meta-phase locals so the phase is consistent throughout.
+    let u64_ty = ctx.u64_ty(); // u64 at meta phase
     ctx.push_local("a", u64_ty);
     ctx.push_local("b", u64_ty);
 
@@ -689,12 +803,17 @@ fn check_eq_op_produces_u1() {
         args,
     });
 
+    // Checking at meta phase against meta-phase u1.
     let expected = ctx.u1_ty();
-    let result = check(&mut ctx, Phase::Object, term, expected).expect("should check");
+    let result = check(&mut ctx, Phase::Meta, term, expected).expect("should check");
+    // The prim carries the operand type (u64), not u1.
     assert!(matches!(
         result,
         core::Term::App {
-            head: Head::Prim(Prim::Eq(_)),
+            head: Head::Prim(Prim::Eq(IntType {
+                width: IntWidth::U64,
+                ..
+            })),
             ..
         }
     ));
@@ -744,6 +863,27 @@ fn infer_let_unannotated_uninferrable_expr_fails() {
     let stmts = src_arena.alloc_slice_fill_iter([ast::Let {
         name: ast::Name::new("x"),
         ty: None,
+        expr,
+    }]);
+    let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
+
+    assert!(infer(&mut ctx, Phase::Meta, block).is_err());
+}
+
+// A let binding with a `VmType` annotation in meta context must fail (wrong-phase type).
+#[test]
+fn infer_let_wrong_phase_annotation_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+
+    // `let x: VmType = ...; x` at meta phase — `VmType` is an object-phase universe, illegal here.
+    let ty_ann = src_arena.alloc(ast::Term::Var(ast::Name::new("VmType")));
+    let expr = src_arena.alloc(ast::Term::Lit(0));
+    let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
+    let stmts = src_arena.alloc_slice_fill_iter([ast::Let {
+        name: ast::Name::new("x"),
+        ty: Some(ty_ann),
         expr,
     }]);
     let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
@@ -849,6 +989,138 @@ fn infer_match_all_arms_same_type_succeeds() {
     ));
 }
 
+// A match on u1 covering both 0 and 1 with no wildcard is exhaustive — must succeed.
+#[test]
+fn infer_match_u1_fully_covered_succeeds() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    let u1_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+        IntWidth::U1,
+        Phase::Meta,
+    ))));
+    let mut globals = HashMap::new();
+    globals.insert(
+        "k1",
+        FunSig {
+            params: &[],
+            ret_ty: u1_ty_core,
+            phase: Phase::Meta,
+        },
+    );
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
+    ctx.push_local("x", u1_ty_core);
+
+    let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
+    let arm0_body = src_arena.alloc(ast::Term::App {
+        func: FunName::Name(ast::Name::new("k1")),
+        args: &[],
+    });
+    let arm1_body = src_arena.alloc(ast::Term::App {
+        func: FunName::Name(ast::Name::new("k1")),
+        args: &[],
+    });
+    // Both values of u1 are covered — exhaustive without a wildcard.
+    let arms = src_arena.alloc_slice_fill_iter([
+        ast::MatchArm {
+            pat: ast::Pat::Lit(0),
+            body: arm0_body,
+        },
+        ast::MatchArm {
+            pat: ast::Pat::Lit(1),
+            body: arm1_body,
+        },
+    ]);
+    let term = src_arena.alloc(ast::Term::Match { scrutinee, arms });
+
+    assert!(infer(&mut ctx, Phase::Meta, term).is_ok());
+}
+
+// A match on u1 covering only 0 with no wildcard is not exhaustive — must fail.
+#[test]
+fn infer_match_u1_partially_covered_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    let u1_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+        IntWidth::U1,
+        Phase::Meta,
+    ))));
+    let mut globals = HashMap::new();
+    globals.insert(
+        "k1",
+        FunSig {
+            params: &[],
+            ret_ty: u1_ty_core,
+            phase: Phase::Meta,
+        },
+    );
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
+    ctx.push_local("x", u1_ty_core);
+
+    let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
+    let arm0_body = src_arena.alloc(ast::Term::App {
+        func: FunName::Name(ast::Name::new("k1")),
+        args: &[],
+    });
+    // Only 0 covered, 1 is missing — not exhaustive.
+    let arms = src_arena.alloc_slice_fill_iter([ast::MatchArm {
+        pat: ast::Pat::Lit(0),
+        body: arm0_body,
+    }]);
+    let term = src_arena.alloc(ast::Term::Match { scrutinee, arms });
+
+    assert!(infer(&mut ctx, Phase::Meta, term).is_err());
+}
+
+// A match with only literal arms and no catch-all is not exhaustive — must fail.
+#[test]
+fn infer_match_no_catch_all_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    let u32_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+        IntWidth::U32,
+        Phase::Meta,
+    ))));
+    let mut globals = HashMap::new();
+    globals.insert(
+        "k32",
+        FunSig {
+            params: &[],
+            ret_ty: u32_ty_core,
+            phase: Phase::Meta,
+        },
+    );
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
+    let u32_ty = ctx.u32_ty();
+    ctx.push_local("x", u32_ty);
+
+    let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
+    let arm0_body = src_arena.alloc(ast::Term::App {
+        func: FunName::Name(ast::Name::new("k32")),
+        args: &[],
+    });
+    let arm1_body = src_arena.alloc(ast::Term::App {
+        func: FunName::Name(ast::Name::new("k32")),
+        args: &[],
+    });
+    // Only literal arms, no wildcard/bind — not exhaustive.
+    let arms = src_arena.alloc_slice_fill_iter([
+        ast::MatchArm {
+            pat: ast::Pat::Lit(0),
+            body: arm0_body,
+        },
+        ast::MatchArm {
+            pat: ast::Pat::Lit(1),
+            body: arm1_body,
+        },
+    ]);
+    let term = src_arena.alloc(ast::Term::Match { scrutinee, arms });
+
+    assert!(infer(&mut ctx, Phase::Meta, term).is_err());
+}
+
 // Arms that return different types must fail.
 #[test]
 fn infer_match_arms_type_mismatch_fails() {
@@ -928,6 +1200,20 @@ fn infer_lift_of_object_type_returns_type_universe() {
     assert!(matches!(ty, core::Term::Prim(Prim::U(Phase::Meta))));
 }
 
+// `[[u64]]` is illegal at object phase — Lift is only meaningful in meta context.
+#[test]
+fn infer_lift_at_object_phase_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+
+    let inner = src_arena.alloc(ast::Term::Var(ast::Name::new("u64")));
+    let term = src_arena.alloc(ast::Term::Lift(inner));
+
+    // Lift is only legal at meta phase.
+    assert!(infer(&mut ctx, Phase::Object, term).is_err());
+}
+
 // Lifting a non-type value must fail.
 #[test]
 fn infer_lift_of_non_type_fails() {
@@ -985,6 +1271,37 @@ fn infer_quote_of_global_call_returns_lifted_type() {
     assert!(matches!(ty, core::Term::Lift(_)));
 }
 
+// `#(...)` at object phase is illegal — Quote is only meaningful in meta context.
+#[test]
+fn infer_quote_at_object_phase_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    let u64_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+        IntWidth::U64,
+        Phase::Object,
+    ))));
+    let mut globals = HashMap::new();
+    globals.insert(
+        "f",
+        FunSig {
+            params: &[],
+            ret_ty: u64_ty_core,
+            phase: Phase::Object,
+        },
+    );
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
+
+    let inner = src_arena.alloc(ast::Term::App {
+        func: FunName::Name(ast::Name::new("f")),
+        args: &[],
+    });
+    let term = src_arena.alloc(ast::Term::Quote(inner));
+
+    // Quote is only legal at meta phase.
+    assert!(infer(&mut ctx, Phase::Object, term).is_err());
+}
+
 // `#(42)` — literal inside quote is not inferable, so the whole quote is not inferrable.
 #[test]
 fn infer_quote_of_literal_fails() {
@@ -1007,9 +1324,9 @@ fn check_quote_switches_to_object_phase() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
 
-    // x : [[u64]] — meta variable holding object code
-    let u64_ty = ctx.u64_ty();
-    let lifted = ctx.lift_ty(u64_ty);
+    // x : [[u64]] — meta variable holding object code; Lift contains an object-phase type.
+    let u64_obj = ctx.int_ty(IntWidth::U64, Phase::Object);
+    let lifted = ctx.lift_ty(u64_obj);
     ctx.push_local("x", lifted);
 
     // `#($(x))` — splice x inside a quote; type should be [[u64]]
@@ -1017,12 +1334,12 @@ fn check_quote_switches_to_object_phase() {
     let splice_x = src_arena.alloc(ast::Term::Splice(x));
     let term = src_arena.alloc(ast::Term::Quote(splice_x));
 
-    // [[u64]] as the expected meta type
-    let u64_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+    // [[u64(object)]] as the expected meta type
+    let u64_obj_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
         IntWidth::U64,
-        Phase::Meta,
+        Phase::Object,
     ))));
-    let expected = core_arena.alloc(core::Term::Lift(u64_ty_core));
+    let expected = core_arena.alloc(core::Term::Lift(u64_obj_core));
 
     let result = check(&mut ctx, Phase::Meta, term, expected).expect("should check");
     assert!(matches!(result, core::Term::Quote(_)));
@@ -1058,6 +1375,53 @@ fn infer_splice_of_lifted_var_returns_inner_type() {
     ));
 }
 
+// `$(x)` at meta phase is illegal — Splice is only meaningful in object context.
+#[test]
+fn infer_splice_at_meta_phase_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+
+    let u64_ty = ctx.u64_ty();
+    let lifted = ctx.lift_ty(u64_ty);
+    ctx.push_local("x", lifted); // x: [[u64]]
+
+    let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
+    let term = src_arena.alloc(ast::Term::Splice(x));
+
+    // Splice is only legal at object phase.
+    assert!(infer(&mut ctx, Phase::Meta, term).is_err());
+}
+
+// `$(x)` where `x: u32` at meta phase splices a meta integer into object context.
+#[test]
+fn infer_splice_of_meta_int_succeeds() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+    let mut ctx = test_ctx(&core_arena);
+
+    // x: u32 at meta phase
+    let u32_meta = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+        IntWidth::U32,
+        Phase::Meta,
+    ))));
+    ctx.push_local("x", u32_meta);
+
+    let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
+    let term = src_arena.alloc(ast::Term::Splice(x));
+
+    // $(x) at object phase: result type is u32 at object phase.
+    let (core_term, ty) = infer(&mut ctx, Phase::Object, term).expect("should infer");
+    assert!(matches!(core_term, core::Term::Splice(_)));
+    assert!(matches!(
+        ty,
+        core::Term::Prim(Prim::IntTy(IntType {
+            width: IntWidth::U32,
+            phase: Phase::Object,
+        }))
+    ));
+}
+
 // `$(42)` — literal inside splice has no type, so infer fails.
 #[test]
 fn infer_splice_of_literal_fails() {
@@ -1071,15 +1435,16 @@ fn infer_splice_of_literal_fails() {
     assert!(infer(&mut ctx, Phase::Object, term).is_err());
 }
 
-// `$(x)` where `x: u64` (not lifted) must fail — splice requires `[[T]]`.
+// `$(x)` where `x: u64` at meta phase succeeds — meta integers can be spliced.
+// `$(x)` where `x: Type` (not an integer, not lifted) must fail.
 #[test]
-fn infer_splice_of_non_lifted_var_fails() {
+fn infer_splice_of_non_lifted_non_int_var_fails() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
 
-    let u64_ty = ctx.u64_ty();
-    ctx.push_local("x", u64_ty); // x: u64, NOT [[u64]]
+    let type_ty = ctx.type_ty(); // Type (meta universe), not an integer or [[T]]
+    ctx.push_local("x", type_ty);
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));
@@ -1178,6 +1543,88 @@ fn collect_signatures_two_functions() {
             ..
         }))
     ));
+}
+
+// `[[T]]` as a return type annotation in an object-phase (`code fn`) function must fail.
+#[test]
+fn collect_signatures_lift_in_object_fn_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    // `code fn bad() -> [[u64]] { ... }` — object-level function cannot have [[T]] as return type.
+    let lifted_ret = src_arena.alloc(ast::Term::Lift(
+        src_arena.alloc(ast::Term::Var(ast::Name::new("u64"))),
+    ));
+    let body = src_arena.alloc(ast::Term::Lit(0));
+
+    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+        phase: Phase::Object,
+        name: ast::Name::new("bad"),
+        params: &[],
+        ret_ty: lifted_ret,
+        body,
+    }]);
+    let program = ast::Program { functions };
+
+    assert!(
+        super::collect_signatures(&core_arena, &program).is_err(),
+        "[[T]] in object-phase function signature should fail"
+    );
+}
+
+// `Type` as a parameter type in a `code fn` is a meta type in an object context — must fail.
+#[test]
+fn collect_signatures_type_universe_in_object_fn_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    // `code fn bad(x: Type) -> u64` — `Type` is meta-phase, illegal as object-fn param.
+    let type_ann = src_arena.alloc(ast::Term::Var(ast::Name::new("Type")));
+    let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("u64")));
+    let body = src_arena.alloc(ast::Term::Lit(0));
+    let params = src_arena.alloc_slice_fill_iter([ast::Param {
+        name: ast::Name::new("x"),
+        ty: type_ann,
+    }]);
+
+    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+        phase: Phase::Object,
+        name: ast::Name::new("bad"),
+        params,
+        ret_ty,
+        body,
+    }]);
+    let program = ast::Program { functions };
+
+    assert!(
+        super::collect_signatures(&core_arena, &program).is_err(),
+        "`Type` in object-phase function param should fail"
+    );
+}
+
+// `VmType` as a return type in a meta `fn` is an object-universe type in meta context — must fail.
+#[test]
+fn collect_signatures_vmtype_in_meta_fn_fails() {
+    let src_arena = bumpalo::Bump::new();
+    let core_arena = bumpalo::Bump::new();
+
+    // `fn bad() -> VmType` — `VmType` is object-phase, illegal as meta-fn return type.
+    let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("VmType")));
+    let body = src_arena.alloc(ast::Term::Lit(0));
+
+    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+        phase: Phase::Meta,
+        name: ast::Name::new("bad"),
+        params: &[],
+        ret_ty,
+        body,
+    }]);
+    let program = ast::Program { functions };
+
+    assert!(
+        super::collect_signatures(&core_arena, &program).is_err(),
+        "`VmType` in meta-phase function return type should fail"
+    );
 }
 
 // Two functions with the same name must produce an error.

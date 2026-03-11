@@ -78,6 +78,16 @@ pub enum Pat<'a> {
     Wildcard,      // _ pattern
 }
 
+impl<'a> Pat<'a> {
+    /// Return the name bound by this pattern, if any.
+    pub fn bound_name(&self) -> Option<&'a str> {
+        match self {
+            Pat::Bind(name) => Some(name),
+            Pat::Lit(_) | Pat::Wildcard => None,
+        }
+    }
+}
+
 /// Match arm
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Arm<'a> {
