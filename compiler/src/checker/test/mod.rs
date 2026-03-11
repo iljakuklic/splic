@@ -11,15 +11,20 @@ use crate::parser::ast::{self, BinOp, FunName, MatchArm, Phase};
 // ---------------------------------------------------------------------------
 
 /// Helper to create a test context with empty globals
-fn test_ctx(arena: &bumpalo::Bump) -> Ctx<'_> {
-    Ctx::new(arena, HashMap::new())
+fn test_ctx(arena: &bumpalo::Bump) -> Ctx<'_, '_> {
+    static EMPTY: std::sync::OnceLock<HashMap<&'static str, core::FunSig<'static>>> =
+        std::sync::OnceLock::new();
+    let globals = EMPTY.get_or_init(HashMap::new);
+    Ctx::new(arena, globals)
 }
 
-/// Helper to create a test context with a given globals table
-fn test_ctx_with_globals<'core>(
+/// Helper to create a test context with a given globals table.
+///
+/// The caller must ensure `globals` outlives the returned `Ctx`.
+fn test_ctx_with_globals<'core, 'globals>(
     arena: &'core bumpalo::Bump,
-    globals: HashMap<&'core str, core::FunSig<'core>>,
-) -> Ctx<'core> {
+    globals: &'globals HashMap<&'core str, core::FunSig<'core>>,
+) -> Ctx<'core, 'globals> {
     Ctx::new(arena, globals)
 }
 
@@ -509,7 +514,7 @@ fn infer_global_call_no_args_returns_ret_ty() {
     let core_arena = bumpalo::Bump::new();
     let mut globals = HashMap::new();
     globals.insert("f", sig_no_params_returns_u64(&core_arena));
-    let mut ctx = test_ctx_with_globals(&core_arena, globals);
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
         func: FunName::Name(ast::Name::new("f")),
@@ -548,7 +553,7 @@ fn infer_global_call_wrong_arity_fails() {
     let args = src_arena.alloc_slice_fill_iter([extra_arg as &ast::Term]);
     let mut globals = HashMap::new();
     globals.insert("f", sig_no_params_returns_u64(&core_arena));
-    let mut ctx = test_ctx_with_globals(&core_arena, globals);
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
         func: FunName::Name(ast::Name::new("f")),
@@ -565,7 +570,7 @@ fn infer_global_call_with_arg_checks_arg_type() {
     // `f(x: u32) -> u64`; call `f(42u32)` — arg should be checked against u32
     let mut globals = HashMap::new();
     globals.insert("f", sig_one_param_returns_u64(&core_arena));
-    let mut ctx = test_ctx_with_globals(&core_arena, globals);
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let arg = src_arena.alloc(ast::Term::Lit(42));
     let args = src_arena.alloc_slice_fill_iter([arg as &ast::Term]);
@@ -810,7 +815,7 @@ fn infer_match_all_arms_same_type_succeeds() {
             phase: Phase::Meta,
         },
     );
-    let mut ctx = test_ctx_with_globals(&core_arena, globals);
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = ctx.u32_ty();
     ctx.push_local("x", u32_ty);
 
@@ -875,7 +880,7 @@ fn infer_match_arms_type_mismatch_fails() {
             phase: Phase::Meta,
         },
     );
-    let mut ctx = test_ctx_with_globals(&core_arena, globals);
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = ctx.u32_ty();
     ctx.push_local("x", u32_ty);
 
@@ -964,7 +969,7 @@ fn infer_quote_of_global_call_returns_lifted_type() {
             phase: Phase::Object,
         },
     );
-    let mut ctx = test_ctx_with_globals(&core_arena, globals);
+    let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     // Surface: `#(f())`
     let inner = src_arena.alloc(ast::Term::App {

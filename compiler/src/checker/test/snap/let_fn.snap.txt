@@ -1,0 +1,80 @@
+Program {
+    functions: [
+        Function {
+            name: "sub",
+            sig: FunSig {
+                params: [
+                    (
+                        "x",
+                        Prim(
+                            IntTy(
+                                IntType {
+                                    width: U32,
+                                    phase: Meta,
+                                },
+                            ),
+                        ),
+                    ),
+                    (
+                        "y",
+                        Prim(
+                            IntTy(
+                                IntType {
+                                    width: U32,
+                                    phase: Meta,
+                                },
+                            ),
+                        ),
+                    ),
+                ],
+                ret_ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U32,
+                            phase: Meta,
+                        },
+                    ),
+                ),
+                phase: Meta,
+            },
+            body: Let {
+                name: "d",
+                ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U32,
+                            phase: Meta,
+                        },
+                    ),
+                ),
+                expr: App {
+                    head: Prim(
+                        Sub(
+                            IntType {
+                                width: U32,
+                                phase: Meta,
+                            },
+                        ),
+                    ),
+                    args: [
+                        Var(
+                            Lvl(
+                                0,
+                            ),
+                        ),
+                        Var(
+                            Lvl(
+                                1,
+                            ),
+                        ),
+                    ],
+                },
+                body: Var(
+                    Lvl(
+                        2,
+                    ),
+                ),
+            },
+        },
+    ],
+}

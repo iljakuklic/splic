@@ -1,0 +1,64 @@
+Program {
+    functions: [
+        Function {
+            name: "add",
+            sig: FunSig {
+                params: [
+                    (
+                        "x",
+                        Prim(
+                            IntTy(
+                                IntType {
+                                    width: U32,
+                                    phase: Meta,
+                                },
+                            ),
+                        ),
+                    ),
+                    (
+                        "y",
+                        Prim(
+                            IntTy(
+                                IntType {
+                                    width: U32,
+                                    phase: Meta,
+                                },
+                            ),
+                        ),
+                    ),
+                ],
+                ret_ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U32,
+                            phase: Meta,
+                        },
+                    ),
+                ),
+                phase: Meta,
+            },
+            body: App {
+                head: Prim(
+                    Add(
+                        IntType {
+                            width: U32,
+                            phase: Meta,
+                        },
+                    ),
+                ),
+                args: [
+                    Var(
+                        Lvl(
+                            0,
+                        ),
+                    ),
+                    Var(
+                        Lvl(
+                            1,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ],
+}
