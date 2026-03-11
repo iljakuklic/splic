@@ -85,7 +85,8 @@ pub enum Head<'a> {
 #[derive(Debug)]
 pub enum Pat<'a> {
     Lit(u64),
-    Bind(Option<&'a str>),  // None = wildcard, Some(name) = named binding
+    Bind(&'a str),  // named binding
+    Wildcard,       // _ pattern
 }
 
 /// Match arm
@@ -169,6 +170,30 @@ Pass 2 — elaborate_bodies:
 
 Core operations:
   elaborate_program(arena, surface_program) -> Result<core::Program<'a>>
-  infer(ctx, surface_term) -> Result<(&'a Term<'a>, &'a Term<'a>)>   // (elaborated term, its type)
-  check(ctx, surface_term, expected_type) -> Result<&'a Term<'a>>    // elaborated term
+  // 'src = source AST lifetime, 'core = core IR lifetime (separate arenas)
+  // phase shifts locally on Quote (meta->object), Splice (object->meta), Lift (always object)
+  infer<'src, 'core>(ctx: &mut Ctx<'core>, phase: Phase, term: &'src ast::Term<'src>) -> Result<(&'core Term<'core>, &'core Term<'core>)>
+  check<'src, 'core>(ctx: &mut Ctx<'core>, phase: Phase, term: &'src ast::Term<'src>, expected: &'core Term<'core>) -> Result<&'core Term<'core>>
 ```
+
+## Inference vs. Check Mode
+
+The typechecker is bidirectional. Each term form is either inferable (its type can
+be synthesised without context) or check-only (a type must be pushed down to it).
+
+| Term form                   | Mode                          | Reason                                                          |
+|-----------------------------|-------------------------------|-----------------------------------------------------------------|
+| `Var`                       | **infer**                     | Type looked up in locals by level                               |
+| `App { head: Global, .. }`  | **infer**                     | Return type looked up in globals table                          |
+| `App { head: Prim, .. }`    | **check only**                | Width resolved from the expected type flowing down              |
+| `Lit`                       | **check only**                | No intrinsic type; requires annotation, e.g. `let x: u32 = 42` |
+| `Quote(t)`                  | **infer iff `t` is inferable**| Transparent: type becomes `[[T]]` where `T` inferred from `t`  |
+| `Splice(t)`                 | **infer iff `t` is inferable**| Transparent: type becomes `T` if `t` infers as `[[T]]`         |
+| `Lift(T)`                   | **infer**                     | Type is the relevant universe (`Type` or `VmType`)              |
+| `Let`                       | **infer** (annotation req'd)  | Body inferred after binding; annotation required on `let`       |
+| `Match`                     | **infer iff arms inferable**  | All arms must agree on a common type                            |
+
+Note that `Quote` and `Splice` are transparent with respect to mode: `#(42)` cannot
+be inferred (the literal inside needs a type pushed down), but `#(foo(x))` can if
+`foo` is a known global `code fn`. Similarly, `$(x)` where `x: [[u64]]` is inferable,
+but `$(42)` is not.

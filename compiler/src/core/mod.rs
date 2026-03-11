@@ -11,29 +11,42 @@ pub enum IntWidth {
     U64,
 }
 
+/// Integer type: width + phase (meta vs. object)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct IntType {
+    pub width: IntWidth,
+    pub phase: Phase,
+}
+
+impl IntType {
+    pub fn new(width: IntWidth, phase: Phase) -> Self {
+        IntType { width, phase }
+    }
+}
+
 /// Built-in types and operations, fully resolved by the elaborator
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Prim {
-    // Types (inhabit VmType at object phase, Type at meta phase)
-    IntTy(IntWidth),
+    // Integer type (inhabits VmType at object phase, Type at meta phase)
+    IntTy(IntType),
     // Universe: U(Meta) = Type, U(Object) = VmType
     U(Phase),
     // Arithmetic (binary)
-    Add(IntWidth),
-    Sub(IntWidth),
-    Mul(IntWidth),
-    Div(IntWidth),
+    Add(IntType),
+    Sub(IntType),
+    Mul(IntType),
+    Div(IntType),
     // Bitwise
-    BitAnd(IntWidth),
-    BitOr(IntWidth),
-    BitNot(IntWidth),
-    // Comparison (return U1)
-    Eq(IntWidth),
-    Ne(IntWidth),
-    Lt(IntWidth),
-    Gt(IntWidth),
-    Le(IntWidth),
-    Ge(IntWidth),
+    BitAnd(IntType),
+    BitOr(IntType),
+    BitNot(IntType),
+    // Comparison (return U1 at the same phase)
+    Eq(IntType),
+    Ne(IntType),
+    Lt(IntType),
+    Gt(IntType),
+    Le(IntType),
+    Ge(IntType),
 }
 
 /// De Bruijn level (counts from the outermost binder)

@@ -1,10 +1,20 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 #[cfg(test)]
 pub mod testutils;
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct Name<'a>(pub &'a str);
+
+impl<'a> Name<'a> {
+    pub fn new(s: &'a str) -> Self {
+        Name(s)
+    }
+
+    pub fn as_str(self) -> &'a str {
+        self.0
+    }
+}
 
 impl std::fmt::Debug for Name<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
