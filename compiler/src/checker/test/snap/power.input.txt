@@ -1,10 +1,6 @@
 fn power(x: [[u64]], exp: u64) -> [[u64]] {
     match exp {
-        // 0 => #(1),
-        0 => #{
-            let one: u64 = 1;
-            one
-        },
+        0 => #(1),
         1 => x,
         exp => {
             let exp2: [[u64]] = #{

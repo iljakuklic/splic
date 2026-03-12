@@ -40,6 +40,8 @@ pub enum Prim {
     BitAnd(IntType),
     BitOr(IntType),
     BitNot(IntType),
+    // Embed a meta-level integer into object-level code: IntTy(w, Meta) -> [[IntTy(w, Object)]]
+    Embed(IntWidth),
     // Comparison (return U1 at the same phase)
     Eq(IntType),
     Ne(IntType),

@@ -476,6 +476,8 @@ pub fn infer<'src, 'core>(
 
         // ------------------------------------------------------------------ Splice
         // `$(t)` — infer iff `t` infers as `[[T]]`; result type is `T` (phase shifts object→meta).
+        // If `t` infers as a meta integer `IntTy(w, Meta)`, insert an implicit `Embed(w)`
+        // to produce `[[IntTy(w, Object)]]` before splicing.
         ast::Term::Splice(inner) => {
             // Splice is only legal in object phase.
             if phase != Phase::Object {
@@ -487,8 +489,8 @@ pub fn infer<'src, 'core>(
                     let core_term = ctx.alloc(core::Term::Splice(core_inner));
                     Ok((core_term, object_ty))
                 }
-                // A meta-level integer value can be spliced directly into object context.
-                // `$(x)` where `x : IntTy(w, Meta)` produces a value of `IntTy(w, Object)`.
+                // A meta-level integer is implicitly embedded: insert Embed(w) so that
+                // the splice argument has type `[[IntTy(w, Object)]]`.
                 core::Term::Prim(Prim::IntTy(IntType {
                     width,
                     phase: Phase::Meta,
@@ -497,7 +499,11 @@ pub fn infer<'src, 'core>(
                         *width,
                         Phase::Object,
                     ))));
-                    let core_term = ctx.alloc(core::Term::Splice(core_inner));
+                    let embedded = ctx.alloc(core::Term::App {
+                        head: core::Head::Prim(Prim::Embed(*width)),
+                        args: ctx.arena.alloc_slice_fill_iter([core_inner]),
+                    });
+                    let core_term = ctx.alloc(core::Term::Splice(embedded));
                     Ok((core_term, obj_ty))
                 }
                 _ => Err(anyhow!(
@@ -798,6 +804,46 @@ pub fn check<'src, 'core>(
             }
             _ => Err(anyhow!("quote `#(...)` must have a lifted type `[[T]]`")),
         },
+
+        // ------------------------------------------------------------------ Splice (check mode)
+        // `$(e)` checked against `T` (object) — check `e` against `[[T]]` at meta phase.
+        // Mirror image of Quote: Quote unwraps `[[T]]` to check inner at object phase;
+        // Splice wraps `T` in `[[...]]` to check inner at meta phase.
+        //
+        // For object integer types `T = IntTy(w, Object)`, also accept `e : IntTy(w, Meta)`
+        // with an implicit `Embed(w)` insertion — the same coercion as the infer path.
+        ast::Term::Splice(inner) => {
+            if phase != Phase::Object {
+                return Err(anyhow!("`$(...)` is only valid in an object-phase context"));
+            }
+            // For object integer expected types, first try the standard [[T]] path; if
+            // that fails, try the meta-integer embed path (inner has type IntTy(w, Meta)).
+            // Trying [[T]] first means a variable `x : [[u64]]` is always handled
+            // correctly and the embed path only activates when [[T]] genuinely fails.
+            if let core::Term::Prim(Prim::IntTy(IntType {
+                width,
+                phase: Phase::Object,
+            })) = expected
+            {
+                let lift_ty = ctx.alloc(core::Term::Lift(expected));
+                if let Ok(core_inner) = check(ctx, Phase::Meta, inner, lift_ty) {
+                    return Ok(ctx.alloc(core::Term::Splice(core_inner)));
+                }
+                let meta_int_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
+                    *width,
+                    Phase::Meta,
+                ))));
+                let core_inner = check(ctx, Phase::Meta, inner, meta_int_ty)?;
+                let embedded = ctx.alloc(core::Term::App {
+                    head: core::Head::Prim(Prim::Embed(*width)),
+                    args: ctx.arena.alloc_slice_fill_iter([core_inner]),
+                });
+                return Ok(ctx.alloc(core::Term::Splice(embedded)));
+            }
+            let lift_ty = ctx.alloc(core::Term::Lift(expected));
+            let core_inner = check(ctx, Phase::Meta, inner, lift_ty)?;
+            Ok(ctx.alloc(core::Term::Splice(core_inner)))
+        }
 
         // ------------------------------------------------------------------ Match (check mode)
         // Check each arm body against the expected type; the scrutinee is always inferred.

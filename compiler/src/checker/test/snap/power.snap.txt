@@ -53,25 +53,9 @@ Program {
                             0,
                         ),
                         body: Quote(
-                            Let {
-                                name: "one",
-                                ty: Prim(
-                                    IntTy(
-                                        IntType {
-                                            width: U64,
-                                            phase: Object,
-                                        },
-                                    ),
-                                ),
-                                expr: Lit(
-                                    1,
-                                ),
-                                body: Var(
-                                    Lvl(
-                                        2,
-                                    ),
-                                ),
-                            },
+                            Lit(
+                                1,
+                            ),
                         ),
                     },
                     Arm {

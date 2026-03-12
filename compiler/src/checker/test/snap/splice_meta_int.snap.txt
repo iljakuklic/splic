@@ -34,10 +34,19 @@ Program {
             },
             body: Splice(
                 App {
-                    head: Global(
-                        "val",
+                    head: Prim(
+                        Embed(
+                            U32,
+                        ),
                     ),
-                    args: [],
+                    args: [
+                        App {
+                            head: Global(
+                                "val",
+                            ),
+                            args: [],
+                        },
+                    ],
                 },
             ),
         },
