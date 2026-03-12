@@ -9,3 +9,4 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 - [comparison_operators.md](comparison_operators.md) — Boolean vs propositional comparisons
 - [tuples_and_inference.md](tuples_and_inference.md) — Tuple syntax and type inference
 - [prototype_next.md](prototype_next.md) — Next steps after basic prototype
+- [self-typed-ir.md](self-typed-ir.md) — Self-typed core IR and a future `type_of` method
