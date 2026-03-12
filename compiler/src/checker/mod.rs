@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
@@ -642,6 +642,52 @@ fn elaborate_pat<'src, 'core>(
     }
 }
 
+/// Elaborate a single `let` binding: resolve the binding type, elaborate the
+/// initialiser, push the local into the context, call `cont`, then pop and
+/// assemble `core::Term::Let`.
+///
+/// `cont` receives the extended context and returns any result `T`.  A
+/// `body_of` accessor is used to extract the body term (needed to build the
+/// `Let` node) from `T`, and a `wrap` function replaces the body in `T` with
+/// the finished `Let` node — letting the caller thread arbitrary extra data
+/// (e.g. the inferred type) through without any dummy pairs.
+fn elaborate_let<'src, 'core, T, F, G, W>(
+    ctx: &mut Ctx<'core, '_>,
+    phase: Phase,
+    stmt: &'src ast::Let<'src>,
+    cont: F,
+    body_of: G,
+    wrap: W,
+) -> Result<T>
+where
+    F: FnOnce(&mut Ctx<'core, '_>) -> Result<T>,
+    G: FnOnce(&T) -> &'core core::Term<'core>,
+    W: FnOnce(&'core core::Term<'core>, T) -> T,
+{
+    // Determine the binding type: use annotation if present, otherwise infer.
+    let (core_expr, bind_ty) = if let Some(ann) = stmt.ty {
+        let ty = elaborate_ty(ctx.arena, phase, ann)?;
+        let core_e = check(ctx, phase, stmt.expr, ty)?;
+        (core_e, ty)
+    } else {
+        infer(ctx, phase, stmt.expr)?
+    };
+
+    let bind_name: &'core str = ctx.arena.alloc_str(stmt.name.as_str());
+    ctx.push_local(bind_name, bind_ty);
+    let cont_result = cont(ctx)?;
+    ctx.pop_local();
+
+    let core_body = body_of(&cont_result);
+    let let_term = ctx.alloc(core::Term::Let {
+        name: bind_name,
+        ty: bind_ty,
+        expr: core_expr,
+        body: core_body,
+    });
+    Ok(wrap(let_term, cont_result))
+}
+
 /// Elaborate a sequence of `let` bindings followed by a trailing expression (infer mode).
 fn infer_block<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
@@ -651,9 +697,14 @@ fn infer_block<'src, 'core>(
 ) -> Result<(&'core core::Term<'core>, &'core core::Term<'core>)> {
     match stmts {
         [] => infer(ctx, phase, expr),
-        [first, rest @ ..] => {
-            elaborate_let(ctx, phase, first, |ctx| infer_block(ctx, phase, rest, expr))
-        }
+        [first, rest @ ..] => elaborate_let(
+            ctx,
+            phase,
+            first,
+            |ctx| infer_block(ctx, phase, rest, expr),
+            |(body, _ty)| body,
+            |let_term, (_body, ty)| (let_term, ty),
+        ),
     }
 }
 
@@ -667,50 +718,15 @@ fn check_block<'src, 'core>(
 ) -> Result<&'core core::Term<'core>> {
     match stmts {
         [] => check(ctx, phase, expr, expected),
-        [first, rest @ ..] => {
-            let (let_term, _) = elaborate_let(ctx, phase, first, |ctx| {
-                let core_body = check_block(ctx, phase, rest, expr, expected)?;
-                // Wrap the body in a dummy type so elaborate_let can return a pair;
-                // the type is unused by check_block's caller.
-                Ok((core_body, expected))
-            })?;
-            Ok(let_term)
-        }
+        [first, rest @ ..] => elaborate_let(
+            ctx,
+            phase,
+            first,
+            |ctx| check_block(ctx, phase, rest, expr, expected),
+            |body| body,
+            |let_term, _body| let_term,
+        ),
     }
-}
-
-/// Elaborate a single `let` binding, then call `cont` with the extended context.
-/// Returns `(Let { .. }, body_ty)` where `body_ty` is whatever `cont` returns.
-fn elaborate_let<'src, 'core, F>(
-    ctx: &mut Ctx<'core, '_>,
-    phase: Phase,
-    stmt: &'src ast::Let<'src>,
-    cont: F,
-) -> Result<(&'core core::Term<'core>, &'core core::Term<'core>)>
-where
-    F: FnOnce(&mut Ctx<'core, '_>) -> Result<(&'core core::Term<'core>, &'core core::Term<'core>)>,
-{
-    // Determine the binding type: use annotation if present, otherwise infer.
-    let (core_expr, bind_ty) = if let Some(ann) = stmt.ty {
-        let ty = elaborate_ty(ctx.arena, phase, ann)?;
-        let core_e = check(ctx, phase, stmt.expr, ty)?;
-        (core_e, ty)
-    } else {
-        infer(ctx, phase, stmt.expr)?
-    };
-
-    let bind_name: &'core str = ctx.arena.alloc_str(stmt.name.as_str());
-    ctx.push_local(bind_name, bind_ty);
-    let (core_body, body_ty) = cont(ctx)?;
-    ctx.pop_local();
-
-    let let_term = ctx.alloc(core::Term::Let {
-        name: bind_name,
-        ty: bind_ty,
-        expr: core_expr,
-        body: core_body,
-    });
-    Ok((let_term, body_ty))
 }
 
 /// Check `term` against `expected`, returning the elaborated core term.
