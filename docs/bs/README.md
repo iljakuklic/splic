@@ -13,8 +13,8 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 
 ## Compiler Internals
 
-- [prototype-core.md](prototype-core.md) — Prototype core IR design decisions
-- [self-typed-ir.md](self-typed-ir.md) — Self-typed core IR and a future `type_of` method
+- [prototype_core.md](prototype_core.md) — Prototype core IR design decisions
+- [self_typed_ir.md](self_typed_ir.md) — Self-typed core IR and a future `type_of` method
 
 ## Roadmap & Strategy
 
