@@ -1,0 +1,338 @@
+Program {
+    functions: [
+        Function {
+            name: "power",
+            sig: FunSig {
+                params: [
+                    (
+                        "x",
+                        Lift(
+                            Prim(
+                                IntTy(
+                                    IntType {
+                                        width: U64,
+                                        phase: Object,
+                                    },
+                                ),
+                            ),
+                        ),
+                    ),
+                    (
+                        "exp",
+                        Prim(
+                            IntTy(
+                                IntType {
+                                    width: U64,
+                                    phase: Meta,
+                                },
+                            ),
+                        ),
+                    ),
+                ],
+                ret_ty: Lift(
+                    Prim(
+                        IntTy(
+                            IntType {
+                                width: U64,
+                                phase: Object,
+                            },
+                        ),
+                    ),
+                ),
+                phase: Meta,
+            },
+            body: Match {
+                scrutinee: Var(
+                    Lvl(
+                        1,
+                    ),
+                ),
+                arms: [
+                    Arm {
+                        pat: Lit(
+                            0,
+                        ),
+                        body: Quote(
+                            Let {
+                                name: "one",
+                                ty: Prim(
+                                    IntTy(
+                                        IntType {
+                                            width: U64,
+                                            phase: Object,
+                                        },
+                                    ),
+                                ),
+                                expr: Lit(
+                                    1,
+                                ),
+                                body: Var(
+                                    Lvl(
+                                        2,
+                                    ),
+                                ),
+                            },
+                        ),
+                    },
+                    Arm {
+                        pat: Lit(
+                            1,
+                        ),
+                        body: Var(
+                            Lvl(
+                                0,
+                            ),
+                        ),
+                    },
+                    Arm {
+                        pat: Bind(
+                            "exp",
+                        ),
+                        body: Let {
+                            name: "exp2",
+                            ty: Lift(
+                                Prim(
+                                    IntTy(
+                                        IntType {
+                                            width: U64,
+                                            phase: Object,
+                                        },
+                                    ),
+                                ),
+                            ),
+                            expr: Quote(
+                                Let {
+                                    name: "x2",
+                                    ty: Prim(
+                                        IntTy(
+                                            IntType {
+                                                width: U64,
+                                                phase: Object,
+                                            },
+                                        ),
+                                    ),
+                                    expr: Splice(
+                                        App {
+                                            head: Global(
+                                                "power",
+                                            ),
+                                            args: [
+                                                Var(
+                                                    Lvl(
+                                                        0,
+                                                    ),
+                                                ),
+                                                App {
+                                                    head: Prim(
+                                                        Div(
+                                                            IntType {
+                                                                width: U64,
+                                                                phase: Meta,
+                                                            },
+                                                        ),
+                                                    ),
+                                                    args: [
+                                                        Var(
+                                                            Lvl(
+                                                                2,
+                                                            ),
+                                                        ),
+                                                        Lit(
+                                                            2,
+                                                        ),
+                                                    ],
+                                                },
+                                            ],
+                                        },
+                                    ),
+                                    body: App {
+                                        head: Prim(
+                                            Mul(
+                                                IntType {
+                                                    width: U64,
+                                                    phase: Object,
+                                                },
+                                            ),
+                                        ),
+                                        args: [
+                                            Var(
+                                                Lvl(
+                                                    3,
+                                                ),
+                                            ),
+                                            Var(
+                                                Lvl(
+                                                    3,
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                },
+                            ),
+                            body: Let {
+                                name: "odd",
+                                ty: Prim(
+                                    IntTy(
+                                        IntType {
+                                            width: U64,
+                                            phase: Meta,
+                                        },
+                                    ),
+                                ),
+                                expr: App {
+                                    head: Prim(
+                                        BitAnd(
+                                            IntType {
+                                                width: U64,
+                                                phase: Meta,
+                                            },
+                                        ),
+                                    ),
+                                    args: [
+                                        Var(
+                                            Lvl(
+                                                2,
+                                            ),
+                                        ),
+                                        Lit(
+                                            1,
+                                        ),
+                                    ],
+                                },
+                                body: Match {
+                                    scrutinee: App {
+                                        head: Prim(
+                                            Eq(
+                                                IntType {
+                                                    width: U64,
+                                                    phase: Meta,
+                                                },
+                                            ),
+                                        ),
+                                        args: [
+                                            Var(
+                                                Lvl(
+                                                    4,
+                                                ),
+                                            ),
+                                            Lit(
+                                                1,
+                                            ),
+                                        ],
+                                    },
+                                    arms: [
+                                        Arm {
+                                            pat: Lit(
+                                                0,
+                                            ),
+                                            body: Var(
+                                                Lvl(
+                                                    3,
+                                                ),
+                                            ),
+                                        },
+                                        Arm {
+                                            pat: Lit(
+                                                1,
+                                            ),
+                                            body: Quote(
+                                                Let {
+                                                    name: "r",
+                                                    ty: Prim(
+                                                        IntTy(
+                                                            IntType {
+                                                                width: U64,
+                                                                phase: Object,
+                                                            },
+                                                        ),
+                                                    ),
+                                                    expr: App {
+                                                        head: Prim(
+                                                            Mul(
+                                                                IntType {
+                                                                    width: U64,
+                                                                    phase: Object,
+                                                                },
+                                                            ),
+                                                        ),
+                                                        args: [
+                                                            Splice(
+                                                                Var(
+                                                                    Lvl(
+                                                                        3,
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                            Splice(
+                                                                Var(
+                                                                    Lvl(
+                                                                        0,
+                                                                    ),
+                                                                ),
+                                                            ),
+                                                        ],
+                                                    },
+                                                    body: Var(
+                                                        Lvl(
+                                                            5,
+                                                        ),
+                                                    ),
+                                                },
+                                            ),
+                                        },
+                                    ],
+                                },
+                            },
+                        },
+                    },
+                ],
+            },
+        },
+        Function {
+            name: "pow5",
+            sig: FunSig {
+                params: [
+                    (
+                        "x",
+                        Prim(
+                            IntTy(
+                                IntType {
+                                    width: U64,
+                                    phase: Object,
+                                },
+                            ),
+                        ),
+                    ),
+                ],
+                ret_ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U64,
+                            phase: Object,
+                        },
+                    ),
+                ),
+                phase: Object,
+            },
+            body: Splice(
+                App {
+                    head: Global(
+                        "power",
+                    ),
+                    args: [
+                        Quote(
+                            Var(
+                                Lvl(
+                                    0,
+                                ),
+                            ),
+                        ),
+                        Lit(
+                            5,
+                        ),
+                    ],
+                },
+            ),
+        },
+    ],
+}
