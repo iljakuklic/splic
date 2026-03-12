@@ -2,11 +2,60 @@
 
 This document outlines logical next steps after the basic prototype is complete.
 
-## 1. Meta-level Functions
+See [prototype_eval.md](prototype_eval.md) for the detailed evaluator design and
+implementation sequence (substitution → spines → dependent types).
+
+## Phase 1: Staging (Meta-level Evaluator)
+
+Before adding new syntax or types, implement the meta-level evaluator to eliminate
+splices from mixed-stage programs. This is the core of Splic's metaprogramming capability.
+
+### What this enables
+
+Running metaprograms at compile time to generate object-level code. Example:
+
+```splic
+fn repeat(f: [[u64]] -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
+    match n {
+        0 => x,
+        n => repeat(f, n - 1, #(f(x))),
+    }
+}
+
+code fn square_twice(x: u64) -> u64 {
+    $(repeat(|y| #($(y) * $(y)), 2, #(x)))
+}
+```
+
+After staging, `square_twice` is splice-free:
+```splic
+code fn square_twice(x: u64) -> u64 {
+    (x * x) * (x * x)
+}
+```
+
+### Implementation
+
+- **Substitution-based evaluator** (simple, fast to prototype)
+  - Implement `eval_meta`, `eval_obj` with unified environment
+  - Implement `unstage` entry point
+  - Test corpus: snapshot-based staging tests
+  
+- **Refactor to spine-based evaluation** (before dependent types)
+  - Lazy application; pending operations tracked without rebuilding
+  - Prepares for dependent elimination (fold, recursor)
+
+See [prototype_eval.md](prototype_eval.md) for full design rationale.
+
+---
+
+## Phase 2: Meta-level Functions
+
+### 2.1 First-Class Meta-level Functions
 
 Add support for first-class meta-level functions (functions that operate on code at compile time).
 
-### Repeated Application Example
+#### Repeated Application Example
 
 ```splic
 fn repeat(f: [[u64]] -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
@@ -33,7 +82,7 @@ This requires:
 - Meta-level function types: `[[A]] -> [[B]]`
 - Function application at meta level
 
-## 2. Product Types
+### 2.2 Product Types
 
 Add tuples or user-defined structs.
 
@@ -55,11 +104,19 @@ let x = p.x;
 
 Decision deferred—see [tuples_and_inference.md](tuples_and_inference.md).
 
-## 3. Dependent Function Types at Meta Level
+---
+
+## Phase 3: Dependent Types at Meta Level
+
+### 3.1 Dependent Function Types
 
 The Vec3 example from Kovács 2022 demonstrates staged type generation:
 
-### Vec3 Type (Compile-time Sized Vector)
+**Note**: This phase requires refactoring the evaluator from substitution-based to
+spine-based (see [prototype_eval.md](prototype_eval.md)). Dependent elimination
+(fold, recursor) is more efficient with lazy evaluation.
+
+#### Vec3 Type (Compile-time Sized Vector)
 
 ```splic
 fn Vec(n: u64, A: [[VmType]]) -> [[VmType]] {
@@ -75,7 +132,7 @@ fn Tuple3(A: [[VmType]]) -> [[VmType]] { Vec(3, A) }
 
 After staging, `Tuple3(#(u64))` normalizes to a concrete product type.
 
-### Staged Map (Following Vec Definition)
+#### Staged Map (Following Vec Definition)
 
 A `map` function that is defined in terms of Vec—the recursion happens at compile time, unrolling the map for the given size:
 
@@ -115,7 +172,7 @@ code fn example(xs: (u64, (u64, (u64, u0)))) -> (u64, (u64, (u64, u0))) {
 
 The key point: the `map` function recursively generates code at compile time based on the size `n`.
 
-### Benefits
+#### Benefits
 
 - Compile-time code generation via meta-level recursion
 - Staged types that depend on compile-time values (Nat1 in original 2LTT)
