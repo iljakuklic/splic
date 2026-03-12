@@ -590,11 +590,13 @@ pub fn infer<'src, 'core>(
                             ctx.push_local(bname, scrut_ty);
                         }
 
-                        let (core_body, body_ty) = infer(ctx, phase, arm.body)?;
+                        let arm_result = infer(ctx, phase, arm.body);
 
                         if core_pat.bound_name().is_some() {
                             ctx.pop_local();
                         }
+
+                        let (core_body, body_ty) = arm_result?;
 
                         // All arms must agree on type.
                         match common_ty {
@@ -675,8 +677,9 @@ where
 
     let bind_name: &'core str = ctx.arena.alloc_str(stmt.name.as_str());
     ctx.push_local(bind_name, bind_ty);
-    let cont_result = cont(ctx)?;
+    let cont_result = cont(ctx);
     ctx.pop_local();
+    let cont_result = cont_result?;
 
     let core_body = body_of(&cont_result);
     let let_term = ctx.alloc(core::Term::Let {
