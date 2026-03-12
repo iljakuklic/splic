@@ -14,10 +14,7 @@ fn power(x: [[u64]], exp: u64) -> [[u64]] {
             let odd: u64 = exp & 1;
             match odd == 1 {
                 0 => exp2,
-                1 => #{
-                    let r: u64 = $(exp2) * $(x);
-                    r
-                },
+                1 => #($(exp2) * $(x)),
             }
         }
     }

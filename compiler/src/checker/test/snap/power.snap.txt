@@ -236,47 +236,31 @@ Program {
                                                 1,
                                             ),
                                             body: Quote(
-                                                Let {
-                                                    name: "r",
-                                                    ty: Prim(
-                                                        IntTy(
+                                                App {
+                                                    head: Prim(
+                                                        Mul(
                                                             IntType {
                                                                 width: U64,
                                                                 phase: Object,
                                                             },
                                                         ),
                                                     ),
-                                                    expr: App {
-                                                        head: Prim(
-                                                            Mul(
-                                                                IntType {
-                                                                    width: U64,
-                                                                    phase: Object,
-                                                                },
-                                                            ),
-                                                        ),
-                                                        args: [
-                                                            Splice(
-                                                                Var(
-                                                                    Lvl(
-                                                                        3,
-                                                                    ),
+                                                    args: [
+                                                        Splice(
+                                                            Var(
+                                                                Lvl(
+                                                                    3,
                                                                 ),
                                                             ),
-                                                            Splice(
-                                                                Var(
-                                                                    Lvl(
-                                                                        0,
-                                                                    ),
+                                                        ),
+                                                        Splice(
+                                                            Var(
+                                                                Lvl(
+                                                                    0,
                                                                 ),
                                                             ),
-                                                        ],
-                                                    },
-                                                    body: Var(
-                                                        Lvl(
-                                                            5,
                                                         ),
-                                                    ),
+                                                    ],
                                                 },
                                             ),
                                         },

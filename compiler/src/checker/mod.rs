@@ -518,110 +518,69 @@ pub fn infer<'src, 'core>(
         }
 
         // ------------------------------------------------------------------ Match
-        // Infer iff all arms are inferable and agree on a common type.
-        ast::Term::Match { scrutinee, arms } => {
-            let (core_scrutinee, scrut_ty) = infer(ctx, phase, scrutinee)?;
+        // Without an expected type, match is not inferable — require an annotation.
+        ast::Term::Match { .. } => Err(anyhow!(
+            "cannot infer type of match expression; add a type annotation or use in a \
+             checked position"
+        )),
+    }
+}
 
-            if arms.is_empty() {
-                return Err(anyhow!("match expression has no arms"));
+/// Check exhaustiveness of `arms` given the scrutinee type `scrut_ty`.
+///
+/// Returns `Err` if coverage cannot be established.
+fn check_exhaustiveness<'src>(
+    scrut_ty: &core::Term<'_>,
+    arms: &[ast::MatchArm<'src>],
+) -> Result<()> {
+    // For u0/u1/u8 scrutinees we track which literal values have been covered
+    // using a Vec<bool> of length 1/2/256 respectively.  If all entries become
+    // true the match is exhaustive even without a wildcard.  For any other type
+    // (u16/u32/u64) we only accept a wildcard or bind-all arm as evidence of
+    // exhaustiveness, since enumerating every value is impractical.
+    let mut covered_lits: Option<Vec<bool>> = match scrut_ty {
+        core::Term::Prim(Prim::IntTy(IntType {
+            width: IntWidth::U0,
+            ..
+        })) => Some(vec![false; 1]),
+        core::Term::Prim(Prim::IntTy(IntType {
+            width: IntWidth::U1,
+            ..
+        })) => Some(vec![false; 2]),
+        core::Term::Prim(Prim::IntTy(IntType {
+            width: IntWidth::U8,
+            ..
+        })) => Some(vec![false; 256]),
+        _ => None,
+    };
+    let mut has_catch_all = false;
+
+    for arm in arms.iter() {
+        match &arm.pat {
+            ast::Pat::Name(_) => {
+                has_catch_all = true;
             }
-
-            // Exhaustiveness check.
-            //
-            // For u0/u1/u8 scrutinees we track which literal values have been covered
-            // using a Vec<bool> of length 1/2/256 respectively.  If all entries become
-            // true the match is exhaustive even without a wildcard.  For any other type
-            // (u16/u32/u64) we only accept a wildcard or bind-all arm as evidence of
-            // exhaustiveness, since enumerating every value is impractical.
-            let covered_lits: Option<Vec<bool>> = match scrut_ty {
-                core::Term::Prim(Prim::IntTy(IntType {
-                    width: IntWidth::U0,
-                    ..
-                })) => Some(vec![false; 1]),
-                core::Term::Prim(Prim::IntTy(IntType {
-                    width: IntWidth::U1,
-                    ..
-                })) => Some(vec![false; 2]),
-                core::Term::Prim(Prim::IntTy(IntType {
-                    width: IntWidth::U8,
-                    ..
-                })) => Some(vec![false; 256]),
-                _ => None,
-            };
-            let mut covered_lits = covered_lits;
-            let mut has_catch_all = false;
-
-            for arm in arms.iter() {
-                match &arm.pat {
-                    ast::Pat::Name(_) => {
-                        has_catch_all = true;
+            ast::Pat::Lit(n) => {
+                if let Some(ref mut bits) = covered_lits {
+                    let idx = *n as usize;
+                    if idx < bits.len() {
+                        bits[idx] = true;
                     }
-                    ast::Pat::Lit(n) => {
-                        if let Some(ref mut bits) = covered_lits {
-                            let idx = *n as usize;
-                            if idx < bits.len() {
-                                bits[idx] = true;
-                            }
-                            // Out-of-range literal for the type — the pattern can never
-                            // match, but we don't hard-error here; the body is still
-                            // elaborated and will catch type errors if any.
-                        }
-                    }
+                    // Out-of-range literal for the type — the pattern can never
+                    // match, but we don't hard-error here; the body is still
+                    // elaborated and will catch type errors if any.
                 }
             }
-
-            let fully_covered = covered_lits.is_some_and(|bits| bits.iter().all(|&b| b));
-            if !has_catch_all && !fully_covered {
-                return Err(anyhow!(
-                    "match expression is not exhaustive: no wildcard or bind-all arm"
-                ));
-            }
-
-            let mut common_ty: Option<&'core core::Term<'core>> = None;
-            let core_arms: &'core [core::Arm<'core>] =
-                ctx.arena
-                    .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
-                        let core_pat = elaborate_pat(ctx, &arm.pat)?;
-                        // If the pattern binds a name, push it into locals for the arm body.
-                        // We use a placeholder type (scrutinee type) — sufficient for the prototype.
-                        if let Some(bname) = core_pat.bound_name() {
-                            // For now push with the scrutinee type as a placeholder; full
-                            // dependent pattern matching is out of prototype scope.
-                            ctx.push_local(bname, scrut_ty);
-                        }
-
-                        let arm_result = infer(ctx, phase, arm.body);
-
-                        if core_pat.bound_name().is_some() {
-                            ctx.pop_local();
-                        }
-
-                        let (core_body, body_ty) = arm_result?;
-
-                        // All arms must agree on type.
-                        match common_ty {
-                            None => common_ty = Some(body_ty),
-                            Some(ty) => {
-                                if !types_equal(ty, body_ty) {
-                                    return Err(anyhow!("match arms have different types"));
-                                }
-                            }
-                        }
-
-                        Ok(core::Arm {
-                            pat: core_pat,
-                            body: core_body,
-                        })
-                    }))?;
-
-            let ty = common_ty.unwrap(); // arms is non-empty
-            let core_term = ctx.alloc(core::Term::Match {
-                scrutinee: core_scrutinee,
-                arms: core_arms,
-            });
-            Ok((core_term, ty))
         }
     }
+
+    let fully_covered = covered_lits.is_some_and(|bits| bits.iter().all(|&b| b));
+    if !has_catch_all && !fully_covered {
+        return Err(anyhow!(
+            "match expression is not exhaustive: no wildcard or bind-all arm"
+        ));
+    }
+    Ok(())
 }
 
 /// Elaborate a match pattern into a core pattern.
@@ -839,6 +798,42 @@ pub fn check<'src, 'core>(
             }
             _ => Err(anyhow!("quote `#(...)` must have a lifted type `[[T]]`")),
         },
+
+        // ------------------------------------------------------------------ Match (check mode)
+        // Check each arm body against the expected type; the scrutinee is always inferred.
+        ast::Term::Match { scrutinee, arms } => {
+            let (core_scrutinee, scrut_ty) = infer(ctx, phase, scrutinee)?;
+
+            check_exhaustiveness(scrut_ty, arms)?;
+
+            let core_arms: &'core [core::Arm<'core>] =
+                ctx.arena
+                    .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
+                        let core_pat = elaborate_pat(ctx, &arm.pat)?;
+                        // If the pattern binds a name, push it into locals for the arm body.
+                        // We use a placeholder type (scrutinee type) — sufficient for the prototype.
+                        if let Some(bname) = core_pat.bound_name() {
+                            ctx.push_local(bname, scrut_ty);
+                        }
+
+                        let arm_result = check(ctx, phase, arm.body, expected);
+
+                        if core_pat.bound_name().is_some() {
+                            ctx.pop_local();
+                        }
+
+                        let core_body = arm_result?;
+                        Ok(core::Arm {
+                            pat: core_pat,
+                            body: core_body,
+                        })
+                    }))?;
+
+            Ok(ctx.alloc(core::Term::Match {
+                scrutinee: core_scrutinee,
+                arms: core_arms,
+            }))
+        }
 
         // ------------------------------------------------------------------ Block (check mode)
         // Thread the expected type down through let-bindings to the final expression.
