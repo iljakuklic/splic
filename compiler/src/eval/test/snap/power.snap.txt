@@ -1,0 +1,119 @@
+Program {
+    functions: [
+        Function {
+            name: "pow5",
+            sig: FunSig {
+                params: [
+                    (
+                        "x",
+                        Prim(
+                            IntTy(
+                                IntType {
+                                    width: U64,
+                                    phase: Object,
+                                },
+                            ),
+                        ),
+                    ),
+                ],
+                ret_ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U64,
+                            phase: Object,
+                        },
+                    ),
+                ),
+                phase: Object,
+            },
+            body: App {
+                head: Prim(
+                    Mul(
+                        IntType {
+                            width: U64,
+                            phase: Object,
+                        },
+                    ),
+                ),
+                args: [
+                    Let {
+                        name: "x2",
+                        ty: Prim(
+                            IntTy(
+                                IntType {
+                                    width: U64,
+                                    phase: Object,
+                                },
+                            ),
+                        ),
+                        expr: Let {
+                            name: "x2",
+                            ty: Prim(
+                                IntTy(
+                                    IntType {
+                                        width: U64,
+                                        phase: Object,
+                                    },
+                                ),
+                            ),
+                            expr: Var(
+                                Lvl(
+                                    0,
+                                ),
+                            ),
+                            body: App {
+                                head: Prim(
+                                    Mul(
+                                        IntType {
+                                            width: U64,
+                                            phase: Object,
+                                        },
+                                    ),
+                                ),
+                                args: [
+                                    Var(
+                                        Lvl(
+                                            3,
+                                        ),
+                                    ),
+                                    Var(
+                                        Lvl(
+                                            3,
+                                        ),
+                                    ),
+                                ],
+                            },
+                        },
+                        body: App {
+                            head: Prim(
+                                Mul(
+                                    IntType {
+                                        width: U64,
+                                        phase: Object,
+                                    },
+                                ),
+                            ),
+                            args: [
+                                Var(
+                                    Lvl(
+                                        3,
+                                    ),
+                                ),
+                                Var(
+                                    Lvl(
+                                        3,
+                                    ),
+                                ),
+                            ],
+                        },
+                    },
+                    Var(
+                        Lvl(
+                            0,
+                        ),
+                    ),
+                ],
+            },
+        },
+    ],
+}

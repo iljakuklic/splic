@@ -1,0 +1,22 @@
+Program {
+    functions: [
+        Function {
+            name: "sum_to_five",
+            sig: FunSig {
+                params: [],
+                ret_ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U64,
+                            phase: Object,
+                        },
+                    ),
+                ),
+                phase: Object,
+            },
+            body: Lit(
+                15,
+            ),
+        },
+    ],
+}

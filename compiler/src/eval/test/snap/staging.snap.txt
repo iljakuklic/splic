@@ -1,0 +1,22 @@
+Program {
+    functions: [
+        Function {
+            name: "zero",
+            sig: FunSig {
+                params: [],
+                ret_ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U64,
+                            phase: Object,
+                        },
+                    ),
+                ),
+                phase: Object,
+            },
+            body: Lit(
+                0,
+            ),
+        },
+    ],
+}

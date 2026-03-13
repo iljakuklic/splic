@@ -1,0 +1,22 @@
+Program {
+    functions: [
+        Function {
+            name: "use_val",
+            sig: FunSig {
+                params: [],
+                ret_ty: Prim(
+                    IntTy(
+                        IntType {
+                            width: U32,
+                            phase: Object,
+                        },
+                    ),
+                ),
+                phase: Object,
+            },
+            body: Lit(
+                42,
+            ),
+        },
+    ],
+}

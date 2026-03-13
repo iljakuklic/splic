@@ -1,0 +1,8 @@
+fn sum_n(n: u64) -> u64 {
+    match n {
+        0 => 0,
+        n => sum_n(n - 1) + n,
+    }
+}
+
+code fn sum_to_five() -> u64 { $(sum_n(5)) }
