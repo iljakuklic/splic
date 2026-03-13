@@ -22,13 +22,14 @@ fn power(x: [[u64]], exp: u64) -> [[u64]] {
         0 => #(1),
         1 => x,
         exp => {
-            let exp2 = #{
+            let exp2: [[u64]] = #{
                 let x2 = $(power(x, exp / 2));
                 x2 * x2
             };
-            match exp & 1 {
+            let odd: u64 = exp & 1;
+            match odd == 1 {
                 0 => exp2,
-                1 => #{exp2 * $x},
+                1 => #($(exp2) * $(x)),
             }
         }
     }
