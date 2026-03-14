@@ -33,22 +33,27 @@ enum Binding<'a> {
     Meta(MetaVal<'a>),
     /// An object-level variable.  Object variables are opaque during
     /// meta-level evaluation and remain as `Var(lvl)` in the output.
-    Obj,
+    /// The Lvl inside signifies the level in the generated output
+    /// rather than in the original program where bindings for the
+    /// object level and meta level may be interwoven.
+    Obj(Lvl),
 }
 
 /// Evaluation environment: a stack of bindings indexed by De Bruijn level.
 ///
 /// Level 0 is the outermost binding (first function parameter); new bindings
 /// are pushed onto the end and accessed by their index.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 struct Env<'a> {
     bindings: Vec<Binding<'a>>,
+    obj_next: Lvl,
 }
 
 impl<'a> Env<'a> {
-    fn new() -> Self {
+    fn new(obj_next: Lvl) -> Self {
         Env {
             bindings: Vec::new(),
+            obj_next,
         }
     }
 
@@ -57,14 +62,32 @@ impl<'a> Env<'a> {
         &self.bindings[lvl.0]
     }
 
-    /// Push a new binding.
-    fn push(&mut self, binding: Binding<'a>) {
-        self.bindings.push(binding);
+    /// Push an object-level binding.  Assigns the next consecutive object-level
+    /// De Bruijn level and advances `obj_next`.
+    fn push_obj(&mut self) {
+        let lvl = self.obj_next;
+        self.obj_next = lvl.succ();
+        self.bindings.push(Binding::Obj(lvl));
+    }
+
+    /// Push a meta-level binding bound to the given value.
+    fn push_meta(&mut self, val: MetaVal<'a>) {
+        self.bindings.push(Binding::Meta(val));
     }
 
     /// Pop the last binding (used to restore the environment after a let / arm).
     fn pop(&mut self) {
-        self.bindings.pop();
+        match self.bindings.pop().expect("pop on empty environment") {
+            Binding::Obj(_) => {
+                self.obj_next = Lvl::new(
+                    self.obj_next
+                        .0
+                        .checked_sub(1)
+                        .expect("obj_next underflow on pop"),
+                );
+            }
+            Binding::Meta(_) => {}
+        }
     }
 }
 
@@ -100,7 +123,7 @@ fn eval_meta<'a>(
         // ── Variable ─────────────────────────────────────────────────────────
         Term::Var(lvl) => match env.get(*lvl) {
             Binding::Meta(v) => Ok(v.clone()),
-            Binding::Obj => unreachable!(
+            Binding::Obj(_) => unreachable!(
                 "object variable at level {} referenced in meta context (typechecker invariant)",
                 lvl.0
             ),
@@ -123,7 +146,7 @@ fn eval_meta<'a>(
         // ── Let binding ───────────────────────────────────────────────────────
         Term::Let { expr, body, .. } => {
             let val = eval_meta(arena, globals, env, expr)?;
-            env.push(Binding::Meta(val));
+            env.push_meta(val);
             let result = eval_meta(arena, globals, env, body);
             env.pop();
             result
@@ -177,9 +200,9 @@ fn eval_meta_app<'a>(
             }
 
             // Build a fresh environment for the callee: one binding per parameter.
-            let mut callee_env = Env::new();
+            let mut callee_env = Env::new(env.obj_next);
             for val in arg_vals {
-                callee_env.push(Binding::Meta(val));
+                callee_env.push_meta(val);
             }
 
             eval_meta(arena, globals, &mut callee_env, def.body)
@@ -332,7 +355,7 @@ fn eval_meta_match<'a>(
             }
             Pat::Bind(_) | Pat::Wildcard => {
                 // Catch-all: bind the scrutinee value and evaluate the body.
-                env.push(Binding::Meta(MetaVal::VLit(n)));
+                env.push_meta(MetaVal::VLit(n));
                 let result = eval_meta(arena, globals, env, arm.body);
                 env.pop();
                 return result;
@@ -369,7 +392,7 @@ fn unstage_obj<'a>(
         Term::Var(lvl) => match env.get(*lvl) {
             // A plain object variable (e.g. a `code fn` parameter) passes
             // through as-is — it will be a free variable in the output.
-            Binding::Obj => Ok(arena.alloc(Term::Var(*lvl))),
+            Binding::Obj(out_lvl) => Ok(arena.alloc(Term::Var(*out_lvl))),
             // A meta variable of type `[[T]]` is referenced inside a quoted
             // object term.  Its value is object code.  `VCode` is always
             // fully staged (produced by `unstage_obj` at quote time), so we
@@ -427,7 +450,7 @@ fn unstage_obj<'a>(
             let staged_expr = unstage_obj(arena, globals, env, expr)?;
             // Push an object binding so that subsequent Var references by
             // De Bruijn level resolve to the correct slot.
-            env.push(Binding::Obj);
+            env.push_obj();
             let staged_body = unstage_obj(arena, globals, env, body);
             env.pop();
             Ok(arena.alloc(Term::Let {
@@ -445,7 +468,7 @@ fn unstage_obj<'a>(
                 arena.alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
                     let has_binding = arm.pat.bound_name().is_some();
                     if has_binding {
-                        env.push(Binding::Obj);
+                        env.push_obj();
                     }
                     let staged_body = unstage_obj(arena, globals, env, arm.body);
                     if has_binding {
@@ -506,9 +529,9 @@ pub fn unstage_program<'a>(arena: &'a Bump, program: &'a Program<'a>) -> Result<
         .map(|f| -> Result<_> {
             // Build an initial environment: one Obj binding per parameter,
             // so that parameter De Bruijn levels are correct.
-            let mut env = Env::new();
+            let mut env = Env::new(Lvl::new(0));
             for _ in f.sig.params {
-                env.push(Binding::Obj);
+                env.push_obj();
             }
 
             let staged_body = unstage_obj(arena, &globals, &mut env, f.body)?;

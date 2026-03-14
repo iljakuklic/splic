@@ -16,7 +16,7 @@ fn stage(input: &str) -> String {
     let program = parser.parse_program().expect("parse error");
     let core_program = elaborate_program(&core_arena, &program).expect("elaboration error");
     let staged = unstage_program(&core_arena, &core_program).expect("staging error");
-    format!("{staged:#?}\n")
+    format!("{staged}")
 }
 
 #[rstest]
