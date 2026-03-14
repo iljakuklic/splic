@@ -14,7 +14,7 @@ fn elaborate(input: &str) -> String {
     let mut parser = Parser::new(lexer, &src_arena);
     let program = parser.parse_program().expect("parse error");
     let core_program = elaborate_program(&core_arena, &program).expect("elaboration error");
-    format!("{core_program:#?}\n")
+    format!("{core_program}\n")
 }
 
 fn elaborate_err(input: &str) -> String {

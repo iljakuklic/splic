@@ -1,3 +1,5 @@
+pub mod pretty;
+
 use crate::parser::ast::Phase;
 
 /// Integer widths for primitive types and operations

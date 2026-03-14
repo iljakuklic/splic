@@ -1,49 +1,8 @@
-Program {
-    functions: [
-        Function {
-            name: "k",
-            sig: FunSig {
-                params: [],
-                ret_ty: Lift(
-                    Prim(
-                        IntTy(
-                            IntType {
-                                width: U64,
-                                phase: Object,
-                            },
-                        ),
-                    ),
-                ),
-                phase: Meta,
-            },
-            body: Quote(
-                Lit(
-                    0,
-                ),
-            ),
-        },
-        Function {
-            name: "zero",
-            sig: FunSig {
-                params: [],
-                ret_ty: Prim(
-                    IntTy(
-                        IntType {
-                            width: U64,
-                            phase: Object,
-                        },
-                    ),
-                ),
-                phase: Object,
-            },
-            body: Splice(
-                App {
-                    head: Global(
-                        "k",
-                    ),
-                    args: [],
-                },
-            ),
-        },
-    ],
+fn k() -> [[u64]] {
+    #(0)
 }
+
+code fn zero() -> u64 {
+    $(k())
+}
+
