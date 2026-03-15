@@ -17,7 +17,7 @@ Splic uses **two-level type theory (2LTT)**: a principled approach that cleanly 
 
 - **Meta-level**: A purely functional, dependently-typed language where you write programs and express invariants as types. The typechecker verifies these invariants at compile time.
 - **Object-level**: A low-level language exposing zkVM primitives. You see exactly what bytecode will be generated.
-- **Quotations and Splices**: Bridge the two levels safely. `#(expr)` quotes meta-level code into object code; `$(expr)` splices object code back into the meta-level. This enables **type-safe metaprogramming**—manipulation and composition of bytecode with full static guarantees.
+- **Quotations and Splices**: Quotations (`#(expr)`) treat object-level code as a first-class meta-level value. Splices (`$(expr)`) compose object-level code fragments at the meta-level. Together, they enable **type-safe metaprogramming**—manipulation and composition of bytecode with full static guarantees.
 
 This approach lets you write efficient, optimized code generators that produce proven-correct object code.
 
