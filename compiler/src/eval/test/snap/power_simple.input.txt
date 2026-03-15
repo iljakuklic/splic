@@ -1,0 +1,13 @@
+fn power(x: [[u64]], exp: u64) -> [[u64]] {
+    match exp {
+        0 => #(1),
+        1 => x,
+        exp => {
+            #($(power(x, exp - 1)) * $(x))
+        }
+    }
+}
+
+code fn pow5(x: u64) -> u64 {
+    $(power(#(x), 5))
+}
