@@ -84,6 +84,8 @@ code fn pow5(x: u64) -> u64 {
 }
 ```
 
+For more examples of staged code, see the [snapshot test inputs and outputs](../compiler/src/eval/test/snap/) in the compiler test suite.
+
 ## Language Features
 
 The current prototype supports just enough features to stage minimal examples. Staging refers to evaluating metaprograms — running meta-level code at compile time — to produce pure object-level programs free of 2LTT constructs (quotes and splices).
