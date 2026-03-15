@@ -17,4 +17,12 @@ cargo build -p splic-compiler
 cargo test -p splic-compiler
 ```
 
+## CLI
+
+```bash
+cargo run -p splic-cli -- stage <FILE>
+```
+
+Stages a Splic source file, printing the object-level code with all meta-level computation resolved.
+
 See `AGENTS.md` for detailed development commands and project structure.

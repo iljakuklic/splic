@@ -1,0 +1,15 @@
+[package]
+name = "splic-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "splic"
+path = "src/main.rs"
+
+[dependencies]
+splic-compiler = { path = "../compiler" }
+anyhow.workspace = true
+clap.workspace = true
+bumpalo.workspace = true

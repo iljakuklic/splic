@@ -1,5 +1,5 @@
 [workspace]
-members = ["compiler"]
+members = ["compiler", "cli"]
 resolver = "3"
 
 [workspace.package]
@@ -11,6 +11,7 @@ license = "MIT"
 anyhow = { version = "1", default-features = false }
 bumpalo = { version = "3", default-features = false }
 bolero = "0.13"
+clap = { version = "4", features = ["derive"] }
 
 [profile.fuzz]
 inherits = "dev"
