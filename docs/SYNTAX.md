@@ -2,6 +2,13 @@
 
 Splic is a two-level language built on two-level type theory (2LTT). There is no syntactic distinction between type-level and term-level expressions.
 
+## Design Principles
+
+The high-level syntax takes inspiration from Rust: familiar, readable, with good ergonomics. The main differences from Rust are:
+
+- **Added quotations and splices** for two-level types: `#(expr)` produces object-level code as a first-class meta-level value, while `$(expr)` embeds object-level code into meta-level context.
+- **No syntactic separation** between type-level and term-level expressions to support dependent types, where the same expression syntax appears in both positions.
+
 ## Comments
 
 Line comments start with `//` and extend to the end of the line:

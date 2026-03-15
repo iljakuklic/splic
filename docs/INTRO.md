@@ -6,8 +6,8 @@ Welcome to **Splic**, an experimental programming language for writing zero-know
 
 Writing zkVM bytecode directly is tedious and error-prone. Existing approaches face a dilemma:
 
-- **Low-level languages** (assembly-like bytecode) give you complete control but demand manual bookkeeping of every operation, making code hard to maintain and verify.
-- **High-level languages** (Python, Rust, etc.) abstract away the details beautifully, but you lose fine-grained control over the generated proof—often a critical requirement in cryptographic systems where every instruction matters.
+- **Low-level languages** (C, assembly-like bytecode) give you complete control but demand manual bookkeeping of every operation, making code hard to maintain and verify.
+- **High-level languages** (Python, Haskell, etc.) abstract away the details beautifully, but you lose fine-grained control over the generated proof—often a critical requirement in cryptographic systems where every instruction matters.
 
 Splic sits at the sweet spot: **high-level abstractions for productivity, with direct control over generated zkvm bytecode**.
 
@@ -131,7 +131,6 @@ If you are drawn to cutting-edge language design and don't mind the research-lev
 ## Getting Started
 
 For detailed language specifications, see:
-- **[CONCEPT.md](CONCEPT.md)** – High-level vision and design rationale
 - **[SYNTAX.md](SYNTAX.md)** – Complete syntax reference
 - **[PROTOTYPE.md](prototype.md)** – Specification of the current prototype
 

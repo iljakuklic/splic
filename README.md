@@ -7,8 +7,7 @@ The language is built on research in staged compilation and dependent types, ena
 ## Documentation
 
 - **[INTRO.md](docs/INTRO.md)** – User-facing introduction to Splic with motivation, features, and examples
-- **[CONCEPT.md](docs/CONCEPT.md)** – High-level vision and design rationale
-- **[SYNTAX.md](docs/SYNTAX.md)** – Complete language syntax reference
+- **[SYNTAX.md](docs/SYNTAX.md)** – Complete language syntax reference and design principles
 - **[PROTOTYPE.md](docs/prototype.md)** – Specification of the current prototype implementation
 
 ## Building and Testing
