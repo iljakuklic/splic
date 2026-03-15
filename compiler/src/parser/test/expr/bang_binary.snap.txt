@@ -1,0 +1,16 @@
+App {
+    func: Add,
+    args: [
+        App {
+            func: Not,
+            args: [
+                Var(
+                    "x",
+                ),
+            ],
+        },
+        Lit(
+            1,
+        ),
+    ],
+}

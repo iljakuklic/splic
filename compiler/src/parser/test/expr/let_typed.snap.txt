@@ -1,0 +1,18 @@
+Block {
+    stmts: [
+        Let {
+            name: "x",
+            ty: Some(
+                Var(
+                    "u32",
+                ),
+            ),
+            expr: Lit(
+                1,
+            ),
+        },
+    ],
+    expr: Var(
+        "x",
+    ),
+}

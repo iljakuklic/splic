@@ -1,0 +1,397 @@
+use std::iter::Peekable;
+
+use anyhow::{Context, Result};
+
+use crate::lexer::Token;
+use crate::parser::ast::{
+    Assoc, BinOp, FunName, Function, Let, MatchArm, Name, Param, Pat, Phase, Program, Term, UnOp,
+};
+
+pub mod ast;
+
+pub struct Parser<'a, I>
+where
+    I: Iterator<Item = Result<Token<'a>>>,
+{
+    tokens: Peekable<I>,
+    arena: &'a bumpalo::Bump,
+}
+
+impl<'a, I> Parser<'a, I>
+where
+    I: Iterator<Item = Result<Token<'a>>>,
+{
+    pub fn new(tokens: I, arena: &'a bumpalo::Bump) -> Self {
+        let tokens = tokens.peekable();
+        Self { tokens, arena }
+    }
+
+    fn peek(&mut self) -> Option<Token<'a>> {
+        self.tokens.peek().and_then(|r| r.as_ref().ok().copied())
+    }
+
+    fn next(&mut self) -> Option<Result<Token<'a>>> {
+        self.tokens.next()
+    }
+
+    /// Helper for extracting a token with a custom validation closure
+    fn expect_token<T, F>(&mut self, description: &str, f: F) -> Result<T>
+    where
+        F: FnOnce(Token<'a>) -> Option<T>,
+    {
+        match self.next() {
+            Some(Ok(token)) => {
+                f(token).ok_or_else(|| anyhow::anyhow!("expected {description}, got {token:?}"))
+            }
+            Some(Err(e)) => Err(e),
+            None => Err(anyhow::anyhow!("expected {description}, got end of input")),
+        }
+    }
+
+    fn take(&mut self, expected: Token<'a>) -> Result<Token<'a>> {
+        self.expect_token(&format!("{expected:?}"), |token| {
+            (token == expected).then_some(token)
+        })
+    }
+
+    fn take_ident(&mut self) -> Result<Name<'a>> {
+        self.expect_token("identifier", |token| {
+            if let Token::Ident(name) = token {
+                Some(name)
+            } else {
+                None
+            }
+        })
+    }
+
+    /// Consume a token if it matches the expected token
+    fn consume_if(&mut self, token: Token<'a>) -> bool {
+        if matches!(self.peek(), Some(t) if t == token) {
+            self.next();
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Allocate a term and return a reference to it
+    fn alloc(&self, term: Term<'a>) -> &'a Term<'a> {
+        &*self.arena.alloc(term)
+    }
+
+    /// Parse a quoted expression: #(...)
+    fn parse_quoted_expr(&mut self) -> Result<Term<'a>> {
+        let expr = self.parse_expr().context("parsing quoted expression")?;
+        self.take(Token::RParen)
+            .context("expected ')' after quotation")?;
+        Ok(Term::Quote(expr))
+    }
+
+    /// Parse a quoted block: #{...}
+    fn parse_quoted_block(&mut self) -> Result<Term<'a>> {
+        let (stmts, expr) = self.parse_block_inner()?;
+        Ok(Term::Quote(self.alloc(Term::Block { stmts, expr })))
+    }
+
+    /// Parse a spliced expression: $(...)
+    fn parse_spliced_expr(&mut self) -> Result<Term<'a>> {
+        let expr = self.parse_expr().context("parsing spliced expression")?;
+        self.take(Token::RParen)
+            .context("expected ')' after splice")?;
+        Ok(Term::Splice(expr))
+    }
+
+    /// Parse a spliced block: ${...}
+    fn parse_spliced_block(&mut self) -> Result<Term<'a>> {
+        let (stmts, expr) = self.parse_block_inner()?;
+        Ok(Term::Splice(self.alloc(Term::Block { stmts, expr })))
+    }
+
+    /// Parse a lifted expression: [[...]]
+    fn parse_lifted_expr(&mut self) -> Result<Term<'a>> {
+        let expr = self.parse_expr().context("parsing lifted expression")?;
+        self.take(Token::DoubleRBracket)
+            .context("expected ']]' after lifted expression")?;
+        Ok(Term::Lift(expr))
+    }
+
+    /// Parse a comma-separated list of items bounded by a terminator token
+    fn parse_separated_list<T, F>(&mut self, terminator: Token<'a>, mut parser: F) -> Result<Vec<T>>
+    where
+        F: FnMut(&mut Self) -> Result<T>,
+    {
+        let mut items = Vec::new();
+        if matches!(self.peek(), Some(t) if t == terminator) {
+            return Ok(items);
+        }
+        loop {
+            items.push(parser(self)?);
+            if !self.consume_if(Token::Comma) {
+                break;
+            }
+        }
+        Ok(items)
+    }
+
+    pub fn parse_program(&mut self) -> Result<Program<'a>> {
+        let mut functions = Vec::new();
+        while self.peek().is_some() {
+            let fun = self.parse_fn_def().context("parsing function definition")?;
+            functions.push(fun);
+        }
+        let functions = self.arena.alloc_slice_fill_iter(functions);
+        Ok(Program { functions })
+    }
+
+    fn parse_fn_def(&mut self) -> Result<Function<'a>> {
+        let phase = if self.consume_if(Token::Code) {
+            Phase::Object
+        } else {
+            Phase::Meta
+        };
+
+        self.take(Token::Fn).context("expected 'fn'")?;
+        let name = self.take_ident().context("expected function name")?;
+
+        self.take(Token::LParen).context("expected '('")?;
+        let params = self.parse_params()?;
+        self.take(Token::RParen).context("expected ')'")?;
+
+        self.take(Token::Arrow).context("expected '->'")?;
+
+        let ret_ty = self
+            .parse_expr()
+            .context("expected return type expression")?;
+
+        let body = self.parse_block().context("expected function body")?;
+
+        Ok(Function {
+            phase,
+            name,
+            params,
+            ret_ty,
+            body,
+        })
+    }
+
+    fn parse_params(&mut self) -> Result<&'a [Param<'a>]> {
+        let params = self.parse_separated_list(Token::RParen, |parser| {
+            let name = parser.take_ident().context("expected parameter name")?;
+            parser
+                .take(Token::Colon)
+                .context("expected ':' in parameter")?;
+            let ty = parser.parse_expr().context("expected parameter type")?;
+            let ty = parser.arena.alloc(ty);
+            Ok(Param { name, ty })
+        })?;
+        Ok(self.arena.alloc_slice_fill_iter(params))
+    }
+
+    fn parse_block(&mut self) -> Result<&'a Term<'a>> {
+        self.take(Token::LBrace).context("expected '{'")?;
+        let (stmts, expr) = self.parse_block_inner()?;
+        Ok(self.alloc(Term::Block { stmts, expr }))
+    }
+
+    fn parse_block_inner(&mut self) -> Result<(&'a [Let<'a>], &'a Term<'a>)> {
+        let mut stmts = Vec::new();
+
+        while self.peek() == Some(Token::Let) {
+            let let_stmt = self.parse_let_stmt().context("parsing let statement")?;
+            stmts.push(let_stmt);
+        }
+
+        let expr = self.parse_expr().context("parsing expression in block")?;
+        self.take(Token::RBrace).context("expected '}'")?;
+
+        let stmts = self.arena.alloc_slice_fill_iter(stmts);
+        Ok((stmts, expr))
+    }
+
+    fn parse_let_stmt(&mut self) -> Result<Let<'a>> {
+        self.take(Token::Let).context("expected 'let'")?;
+        let name = self.take_ident().context("expected variable name")?;
+        let ty = if self.consume_if(Token::Colon) {
+            Some(self.parse_expr().context("expected type in let binding")?)
+        } else {
+            None
+        };
+        self.take(Token::Eq)
+            .context("expected '=' in let binding")?;
+        let expr = self
+            .parse_expr()
+            .context("expected expression in let binding")?;
+        self.take(Token::Semi)
+            .context("expected ';' after let binding")?;
+        Ok(Let { name, ty, expr })
+    }
+
+    fn parse_expr(&mut self) -> Result<&'a Term<'a>> {
+        Ok(self.arena.alloc(self.parse_expr_owned()?))
+    }
+
+    fn parse_expr_owned(&mut self) -> Result<Term<'a>> {
+        self.parse_expr_prec(1)
+    }
+
+    fn parse_expr_prec(&mut self, min_prec: u8) -> Result<Term<'a>> {
+        let mut lhs = if let Some(op) = self.match_unop() {
+            self.next();
+            let expr = self
+                .parse_expr_prec(op.precedence())
+                .context("parsing operand of '!'")?;
+            let expr = self.alloc(expr);
+            Term::App {
+                func: FunName::UnOp(op),
+                args: self.arena.alloc_slice_fill_iter([expr]),
+            }
+        } else {
+            self.parse_atom_owned()?
+        };
+
+        loop {
+            let Some(op) = self.match_binop() else {
+                break;
+            };
+            let prec = op.precedence();
+            if prec < min_prec {
+                break;
+            }
+            let next_min_prec = match op.assoc() {
+                Assoc::Left => prec + 1,
+                Assoc::Right => prec,
+            };
+            self.next();
+
+            let rhs = self
+                .parse_expr_prec(next_min_prec)
+                .context("parsing right-hand side of binary expression")?;
+            let rhs = self.alloc(rhs);
+
+            let func = FunName::BinOp(op);
+            let lhs_ref = self.alloc(lhs);
+            let args = self.arena.alloc_slice_fill_iter([lhs_ref, rhs]);
+            lhs = Term::App { func, args };
+        }
+
+        Ok(lhs)
+    }
+
+    fn match_unop(&mut self) -> Option<UnOp> {
+        match self.peek()? {
+            Token::Bang => Some(UnOp::Not),
+            _ => None,
+        }
+    }
+
+    fn match_binop(&mut self) -> Option<BinOp> {
+        match self.peek()? {
+            Token::Bar => Some(BinOp::BitOr),
+            Token::Ampersand => Some(BinOp::BitAnd),
+            Token::EqEq => Some(BinOp::Eq),
+            Token::Ne => Some(BinOp::Ne),
+            Token::Lt => Some(BinOp::Lt),
+            Token::Gt => Some(BinOp::Gt),
+            Token::Le => Some(BinOp::Le),
+            Token::Ge => Some(BinOp::Ge),
+            Token::Plus => Some(BinOp::Add),
+            Token::Minus => Some(BinOp::Sub),
+            Token::Star => Some(BinOp::Mul),
+            Token::Slash => Some(BinOp::Div),
+            _ => None,
+        }
+    }
+
+    /// Parse a function call with arguments
+    fn parse_function_call(&mut self, name: Name<'a>) -> Result<Term<'a>> {
+        let args = self.parse_separated_list(Token::RParen, |parser| {
+            parser.parse_expr().context("parsing function argument")
+        })?;
+        self.take(Token::RParen)
+            .context("expected ')' after function arguments")?;
+        let args = self.arena.alloc_slice_fill_iter(args);
+        Ok(Term::App {
+            func: FunName::Name(name),
+            args,
+        })
+    }
+
+    /// Parse a parenthesized expression
+    fn parse_paren_expr(&mut self) -> Result<Term<'a>> {
+        let expr = self
+            .parse_expr_owned()
+            .context("parsing expression in parentheses")?;
+        self.take(Token::RParen)
+            .context("expected ')' after parenthesized expression")?;
+        Ok(expr)
+    }
+
+    /// Parse a match expression
+    fn parse_match_expr(&mut self) -> Result<Term<'a>> {
+        let scrutinee = self.parse_expr().context("parsing match scrutinee")?;
+        self.take(Token::LBrace)
+            .context("expected '{' after match expression")?;
+        let arms = self.parse_match_arms()?;
+        self.take(Token::RBrace)
+            .context("expected '}' after match arms")?;
+        let arms = self.arena.alloc_slice_fill_iter(arms);
+        Ok(Term::Match { scrutinee, arms })
+    }
+
+    fn parse_atom_owned(&mut self) -> Result<Term<'a>> {
+        let token = self.next().context("expected expression")??;
+        match token {
+            Token::Num(n) => Ok(Term::Lit(n)),
+            Token::Ident(name) => {
+                if self.consume_if(Token::LParen) {
+                    self.parse_function_call(name)
+                } else {
+                    Ok(Term::Var(name))
+                }
+            }
+            Token::LParen => self.parse_paren_expr(),
+            Token::HashLParen => self.parse_quoted_expr(),
+            Token::HashLBrace => self.parse_quoted_block(),
+            Token::DollarLParen => self.parse_spliced_expr(),
+            Token::DollarLBrace => self.parse_spliced_block(),
+            Token::DoubleLBracket => self.parse_lifted_expr(),
+            Token::Match => self.parse_match_expr(),
+            Token::LBrace => {
+                let (stmts, expr) = self.parse_block_inner()?;
+                Ok(Term::Block { stmts, expr })
+            }
+            _ => Err(anyhow::anyhow!(
+                "unexpected token in expression: {:?}",
+                token
+            )),
+        }
+    }
+
+    fn parse_match_arms(&mut self) -> Result<Vec<MatchArm<'a>>> {
+        let mut arms = Vec::new();
+        while self.peek().is_some() && !matches!(self.peek(), Some(Token::RBrace)) {
+            let pat = self.parse_pattern().context("parsing match pattern")?;
+            self.take(Token::DArrow)
+                .context("expected '=>' in match arm")?;
+            let body = self.parse_expr().context("parsing match arm body")?;
+            arms.push(MatchArm { pat, body });
+            // Comma is optional after the last arm
+            if !self.consume_if(Token::Comma) {
+                break;
+            }
+        }
+        Ok(arms)
+    }
+
+    fn parse_pattern(&mut self) -> Result<Pat<'a>> {
+        let token = self.next().context("expected pattern")??;
+        match token {
+            Token::Num(n) => Ok(Pat::Lit(n)),
+            Token::Ident(name) => Ok(Pat::Name(name)),
+            _ => Err(anyhow::anyhow!("unexpected token in pattern: {:?}", token)),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test;

@@ -1,0 +1,4 @@
+code fn double(x@0: u64) -> u64 {
+    x@0 + x@0
+}
+

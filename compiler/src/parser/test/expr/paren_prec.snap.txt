@@ -1,0 +1,19 @@
+App {
+    func: Mul,
+    args: [
+        Lit(
+            1,
+        ),
+        App {
+            func: Add,
+            args: [
+                Lit(
+                    2,
+                ),
+                Lit(
+                    3,
+                ),
+            ],
+        },
+    ],
+}

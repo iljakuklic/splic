@@ -1,0 +1,22 @@
+fn power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
+    match exp@1 {
+        0 => #(1),
+        1 => x@0,
+        exp@2 => {
+            let exp2@3: [[u64]] = #({
+                let x2@3: u64 = $(power(x@0, exp@2 / 2));
+                x2@3 * x2@3
+            });
+            let odd@4: u64 = exp@2 & 1;
+            match (odd@4 == 1) {
+                0 => exp2@3,
+                1 => #(($(exp2@3) * $(x@0))),
+            }
+        },
+    }
+}
+
+code fn pow5(x@0: u64) -> u64 {
+    $(power(#(x@0), 5))
+}
+

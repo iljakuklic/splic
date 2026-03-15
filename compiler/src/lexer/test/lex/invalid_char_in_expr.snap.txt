@@ -1,0 +1,4 @@
+Ok(Num(1))
+Ok(Plus)
+Ok(Num(2))
+Err(unexpected character: @)

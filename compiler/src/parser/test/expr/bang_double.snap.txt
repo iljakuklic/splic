@@ -1,0 +1,13 @@
+App {
+    func: Not,
+    args: [
+        App {
+            func: Not,
+            args: [
+                Var(
+                    "x",
+                ),
+            ],
+        },
+    ],
+}

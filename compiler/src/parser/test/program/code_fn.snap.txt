@@ -1,0 +1,25 @@
+Program {
+    functions: [
+        Function {
+            phase: Object,
+            name: "pow5",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Lit(
+                    15,
+                ),
+            },
+        },
+    ],
+}

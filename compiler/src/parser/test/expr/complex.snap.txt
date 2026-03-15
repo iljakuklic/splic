@@ -1,0 +1,50 @@
+App {
+    func: BitAnd,
+    args: [
+        App {
+            func: BitOr,
+            args: [
+                App {
+                    func: Not,
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+                Var(
+                    "y",
+                ),
+            ],
+        },
+        App {
+            func: Not,
+            args: [
+                App {
+                    func: "foo",
+                    args: [
+                        Var(
+                            "z",
+                        ),
+                        App {
+                            func: Not,
+                            args: [
+                                App {
+                                    func: Add,
+                                    args: [
+                                        Lit(
+                                            1,
+                                        ),
+                                        Var(
+                                            "w",
+                                        ),
+                                    ],
+                                },
+                            ],
+                        },
+                    ],
+                },
+            ],
+        },
+    ],
+}

@@ -1,0 +1,20 @@
+[workspace]
+members = ["compiler", "cli"]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+anyhow = { version = "1", default-features = false }
+bumpalo = { version = "3", default-features = false }
+bolero = "0.13"
+clap = { version = "4", features = ["derive"] }
+
+[profile.fuzz]
+inherits = "dev"
+opt-level = 3
+incremental = false
+codegen-units = 1

@@ -33,6 +33,9 @@ I focus on implementation details: syntax, typing, definitional equality choices
    - Rewrites the parts of *Kinds Are Calling Conventions* (Downen et al. 2020) that are useful when you want the staged object language to control **representation**, **arity**, and **evaluation order** via kind/index information.
    - Treat this as an optional extension for "layout control" / low-level compilation friendliness.
 
+6. **`kovacs-2022-icfp22-slides.md`**
+   - Deduplicated implementation notes extracted from the ICFP’22 presentation slides (rules, examples: Vec3, and the inference/isomorphism trick for reducing quote/splice annotations).
+
 ## When to use me
 
 Use me when you are:

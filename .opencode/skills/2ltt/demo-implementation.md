@@ -175,7 +175,167 @@ stage t = quote0 0 $ eval0 Nil t
 
 The key staging invariant: `stage` takes a mixed-stage term and produces a splice-free object term.
 
-## 6. Key design notes
+## 6. Typechecking / Elaboration (Elaboration.hs)
+
+The demo uses bidirectional typechecking with separate checking and inference modes.
+
+### Implicit argument insertion:
+
+```hs
+insert' :: Cxt -> IO (Tm, VTy, Stage) -> IO (Tm, VTy, Stage)
+insert' cxt act = go =<< act where
+  go (!t, !va, !st) = case force va of
+    VPi x Impl a b -> do
+      m <- freshMeta cxt a st
+      let mv = eval (env cxt) m
+      go (App t m Impl V1, b $ mv, st)
+    va -> pure (t, va, st)
+```
+
+### Subtyping / stage coercion:
+
+```hs
+adjustStage :: Cxt -> Tm -> VTy -> Stage -> Stage -> IO (Tm, VTy)
+adjustStage cxt t a s s' = case compare s s' of
+  EQ -> pure (t, a)
+  LT -> pure (tQuote t, VLift a)
+  GT -> case force a of
+    VLift a -> pure (tSplice t, a)
+    a       -> do
+      m <- freshMeta cxt (VU S0) S0
+      unifyCatch cxt a (VLift m)
+      pure (tSplice t, m)
+```
+
+### Checking (mode where expected type is known):
+
+```hs
+check :: Cxt -> P.Tm -> VTy -> Stage -> IO Tm
+check cxt t a st = case (t, force a) of
+
+  (P.Lam x a i t, VPi x' i' a' b) | either (\x -> x == x' && i' == Impl) (==i') i -> do
+    (a, va) <- case a of
+      Just a -> do
+        a <- checkU cxt a st
+        let va = eval (env cxt) a
+        unifyCatch cxt va a'
+        pure (a, va)
+      Nothing -> pure (quote (lvl cxt) a', a')
+    Lam x i' a <$!> check (bind cxt x va st) t (b $ VVar (lvl cxt)) st
+
+  (P.Quote t, VLift a) ->
+    tQuote <$!> check cxt t a S0
+
+  (P.Let st' x a t u, a') | st == st' -> do
+    (!a, !va, !t, !vt, !verbosity) <- case a of
+      Nothing -> do
+        (t, a) <- inferS cxt t st
+        pure (quote (lvl cxt) a, a, t, eval (env cxt) t, V1)
+      Just a -> do
+        a <- checkU cxt a st
+        let ~va = eval (env cxt) a
+        t <- check cxt t va st
+        pure (a, va, t, eval (env cxt) t, V0)
+    u <- check (define cxt x t vt a va st) u a' st
+    pure (Let st' x a t u verbosity)
+
+  (P.Hole, a) ->
+    freshMeta cxt a st
+```
+
+### Inference (mode where type is synthesized):
+
+```hs
+infer :: Cxt -> P.Tm -> IO (Tm, VTy, Stage)
+infer cxt = \case
+  P.Var x -> case M.lookup x (srcNames cxt) of
+    Just (x', a, st) -> pure (Var (lvl2Ix (lvl cxt) x'), a, st)
+    Nothing          -> throwIO $ Error cxt $ NameNotInScope x
+
+  P.App t u i -> do
+    (i, t, tty, st) <- case i of
+      Left name -> do
+        (!t, !tty, !ts) <- insertUntilName cxt name $ infer cxt t
+        pure (Impl, t, tty, ts)
+      Right Impl -> do
+        (!t, !tty, !ts) <- infer cxt t
+        pure (Impl, t, tty, ts)
+      Right Expl -> do
+        (!t, !tty, !ts) <- insert' cxt $ infer cxt t
+        pure (Expl, t, tty, ts)
+
+    (!t, !a, !b) <- case force tty of
+      VPi x i' a b -> do
+        unless (i == i') $ throwIO $ Error cxt $ IcitMismatch i i'
+        pure (t, a, b)
+      tty -> do
+        a <- freshMeta cxt (VU st) st
+        b <- freshMeta (bind cxt "x" a st) (VU st) st
+        t <- coe cxt t tty st (VPi "x" i a b) st
+        pure (t, a, b)
+
+    u <- check cxt u a st
+    pure (App t u i V0, b $ eval (env cxt) u, st)
+
+  P.Quote t -> do
+    (!t, !a) <- inferS cxt t S0
+    pure (tQuote t, VLift a, S1)
+
+  P.Splice t -> do
+    (!t, !a) <- inferS cxt t S1
+    (!t, !a) <- adjustStage cxt t a S1 S0
+    pure (t, a, S0)
+```
+
+## 7. Unification (Unification.hs)
+
+Higher-order unification with pruning for implicit arguments.
+
+### Meta variable solving:
+
+```hs
+solve :: Lvl -> MetaVar -> Spine -> Val -> IO ()
+solve l m topSp topRhs = do
+  (!sp, !outer) <- pure $! splitSpine topSp
+  (!m, !sp)     <- expandVFlex m sp
+  psub          <- invert l sp
+  if isSId outer then do
+    solveWithPSub m psub topRhs
+  else case force topRhs of
+    VRigid x rhsSp -> do
+      let go SId                   sp' = solveWithPSub m psub (VRigid x sp')
+          go (SApp sp u _ _)       (SApp sp' u' _ _) = go sp sp' >> unify l u u'
+          go (SSplice sp)          (SSplice sp')     = go sp sp'
+          go (SNatElim _ p s z sp) (SNatElim _ p' s' z' sp') = unify l p p' >> unify l s s' >> unify l z z' >> go sp sp'
+          go _ _ = throwIO UnifyError
+      go outer rhsSp
+    _ -> throwIO UnifyError
+```
+
+### Main unify function:
+
+```hs
+unify :: Lvl -> Val -> Val -> IO ()
+unify l t u = case (force t, force u) of
+  (VU s        , VU s'          ) | s == s' -> pure ()
+  (VPi x i a b , VPi x' i' a' b') | i == i' -> unify l a a' >> unify (l + 1) (b $ VVar l) (b' $ VVar l)
+  (VLift t     , VLift t'       )           -> unify l t t'
+  (VQuote t    , VQuote t'      )           -> unify l t t'
+  (VRigid x sp , VRigid x' sp'  ) | x == x' -> unifySp l sp sp'
+  (VFlex m sp  , VFlex m' sp'   ) | m == m' -> intersect l m sp sp'
+                                  | True    -> flexFlex l m sp m' sp'
+  (VFlex m sp  , t'             )           -> solve l m sp t'
+  (t           , VFlex m' sp'   )           -> solve l m' sp' t
+  _                                         -> throwIO UnifyError
+```
+
+Key features:
+- **Partial substitution**: Used for inverting spines during meta solving
+- **Pruning**: Removes arguments from meta solutions to handle nonlinearity
+- **Eta-expansion**: Expands splices in spines to enable solving
+- **Occurs check**: Prevents infinite types
+
+## 8. Key design notes
 
 - **Two separate value types**: `Val1` for meta-level computation, `Val0` for object-level code. They never mix.
 - **Quote/Splice as primitives**: Quote converts object → meta (as value), splice runs meta and embeds object.
