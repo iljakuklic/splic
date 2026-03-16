@@ -1,4 +1,7 @@
 fmt:
+    cargo fmt --all
+
+check-fmt:
     cargo fmt --all --check
 
 clippy:
@@ -8,4 +11,4 @@ test:
     cargo test --workspace
     git diff --exit-code
 
-ci: fmt clippy test
+ci: check-fmt clippy test
