@@ -15,6 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
       - name: Check formatting
         run: just fmt
 
@@ -23,6 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
         run: just clippy
@@ -32,6 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
         run: just test
