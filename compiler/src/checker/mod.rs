@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
@@ -424,7 +424,7 @@ pub fn infer<'src, 'core>(
                 BinOp::Ge => Prim::Ge(op_int_ty),
                 _ => unreachable!(),
             };
-            let core_args = ctx.arena.alloc_slice_fill_iter([core_arg0, core_arg1]);
+            let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
             let core_term = ctx.alloc(core::Term::App {
                 head: core::Head::Prim(prim),
                 args: core_args,
@@ -501,7 +501,7 @@ pub fn infer<'src, 'core>(
                     ))));
                     let embedded = ctx.alloc(core::Term::App {
                         head: core::Head::Prim(Prim::Embed(*width)),
-                        args: ctx.arena.alloc_slice_fill_iter([core_inner]),
+                        args: ctx.alloc_slice([core_inner]),
                     });
                     let core_term = ctx.alloc(core::Term::Splice(embedded));
                     Ok((core_term, obj_ty))
@@ -763,7 +763,7 @@ pub fn check<'src, 'core>(
             let core_arg0 = check(ctx, phase, args[0], expected)?;
             let core_arg1 = check(ctx, phase, args[1], expected)?;
 
-            let core_args = ctx.arena.alloc_slice_fill_iter([core_arg0, core_arg1]);
+            let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
             Ok(ctx.alloc(core::Term::App {
                 head: core::Head::Prim(prim),
                 args: core_args,

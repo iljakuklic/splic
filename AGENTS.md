@@ -60,6 +60,7 @@ cargo bolero test           # Run bolero fuzz tests
 
 ### Formatting
 - Use inline style formatters in error messages: `format!("expected {expected}, got {token:?}")` instead of `format!("expected {}, got {:?}", expected, token)`
+- Do not reorder existing `use` items; rely on `cargo fmt` to handle import ordering
 
 ### Error Handling
 - Use `anyhow` for error handling
