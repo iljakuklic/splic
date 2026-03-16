@@ -1,4 +1,4 @@
 target/
-__fuzz__/
+__fuzz__/**/crashes/
 scratch/
 posts/
