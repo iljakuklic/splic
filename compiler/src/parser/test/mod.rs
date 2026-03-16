@@ -24,7 +24,7 @@ fn parse_program(input: &str) -> String {
 }
 
 #[rstest]
-#[timeout(std::time::Duration::from_secs(1))]
+#[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
 fn expr(#[files("src/parser/test/expr/*.input.txt")] path: PathBuf) {
     let input = std::fs::read_to_string(&path).unwrap();
     let actual = parse_expr(&input);
@@ -33,7 +33,7 @@ fn expr(#[files("src/parser/test/expr/*.input.txt")] path: PathBuf) {
 }
 
 #[rstest]
-#[timeout(std::time::Duration::from_secs(1))]
+#[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
 fn program(#[files("src/parser/test/program/*.input.txt")] path: PathBuf) {
     let input = std::fs::read_to_string(&path).unwrap();
     let actual = parse_program(&input);

@@ -20,7 +20,7 @@ fn stage(input: &str) -> String {
 }
 
 #[rstest]
-#[timeout(std::time::Duration::from_secs(5))]
+#[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
 fn stage_snap(#[files("src/eval/test/snap/*.input.txt")] path: PathBuf) {
     let input = std::fs::read_to_string(&path).unwrap();
     let actual = stage(&input);
