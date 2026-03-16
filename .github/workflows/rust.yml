@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check formatting
-        run: cargo fmt --all --check
+        run: just fmt
 
   clippy:
     name: Clippy
@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: just clippy
 
   test:
     name: Test
@@ -34,6 +34,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --workspace
-      - name: Check for snapshot drift
-        run: git diff --exit-code
+        run: just test
