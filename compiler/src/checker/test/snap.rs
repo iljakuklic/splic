@@ -28,7 +28,7 @@ fn elaborate_err(input: &str) -> String {
 }
 
 #[rstest]
-#[timeout(std::time::Duration::from_secs(1))]
+#[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
 fn elaborate_snap(#[files("src/checker/test/snap/*.input.txt")] path: PathBuf) {
     let input = std::fs::read_to_string(&path).unwrap();
     let actual = elaborate(&input);
@@ -37,7 +37,7 @@ fn elaborate_snap(#[files("src/checker/test/snap/*.input.txt")] path: PathBuf) {
 }
 
 #[rstest]
-#[timeout(std::time::Duration::from_secs(1))]
+#[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
 fn elaborate_err_snap(#[files("src/checker/test/snap/error/*.input.txt")] path: PathBuf) {
     let input = std::fs::read_to_string(&path).unwrap();
     let actual = elaborate_err(&input);
