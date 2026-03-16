@@ -15,25 +15,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
       - name: Check formatting
-        run: cargo fmt --all --check
+        run: just check-fmt
 
   clippy:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: just clippy
 
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
-        run: cargo test --workspace
-      - name: Check for snapshot drift
-        run: git diff --exit-code
+        run: just test
