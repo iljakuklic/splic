@@ -1,4 +1,3 @@
-OK
 Ident("a")
 Plus
 Ident("b")

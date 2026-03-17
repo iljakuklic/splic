@@ -1,4 +1,3 @@
-OK
 HashLParen
 Num(1)
 Plus
