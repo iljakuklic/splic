@@ -37,6 +37,13 @@ cargo test -p splic-compiler   # Run tests for specific crate
 cargo test --workspace   # Run tests for all crates crate
 ```
 
+### Staging a metaprogram
+```bash
+cargo run -- stage <FILE>
+```
+
+Stages a Splic source file, printing the object-level code with all meta-level computation resolved.
+
 ### Fuzzing
 ```bash
 cargo bolero test           # Run bolero fuzz tests
