@@ -21,7 +21,7 @@ cargo test -p splic-compiler
 ## CLI
 
 ```bash
-cargo run -p splic-cli -- stage <FILE>
+cargo run -- stage <FILE>
 ```
 
 Stages a Splic source file, printing the object-level code with all meta-level computation resolved.

@@ -37,6 +37,13 @@ cargo test -p splic-compiler   # Run tests for specific crate
 cargo test --workspace   # Run tests for all crates crate
 ```
 
+### Staging a metaprogram
+```bash
+cargo run -- stage <FILE>
+```
+
+Stages a Splic source file, printing the object-level code with all meta-level computation resolved.
+
 ### Fuzzing
 ```bash
 cargo bolero test           # Run bolero fuzz tests
@@ -57,6 +64,10 @@ cargo bolero test           # Run bolero fuzz tests
 - Minimal dependencies with `default-features = false`
 
 ## Coding Guidelines
+
+### Commit Messages
+- Use [Conventional Commits](https://www.conventionalcommits.org/) prefixes: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, etc.
+- Use `ai:` for changes to AI agent scaffolding: `AGENTS.md`, skills, opencode config, etc.
 
 ### Formatting
 - Use inline style formatters in error messages: `format!("expected {expected}, got {token:?}")` instead of `format!("expected {}, got {:?}", expected, token)`
