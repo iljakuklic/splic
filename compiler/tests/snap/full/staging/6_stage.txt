@@ -1,0 +1,5 @@
+OK
+code fn zero() -> u64 {
+    0
+}
+

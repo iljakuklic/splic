@@ -1,0 +1,34 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Object,
+            name: "double",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+            },
+        },
+    ],
+}

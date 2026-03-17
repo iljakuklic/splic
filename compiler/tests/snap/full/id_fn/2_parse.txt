@@ -1,0 +1,26 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "id",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u32",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Var(
+                    "x",
+                ),
+            },
+        },
+    ],
+}

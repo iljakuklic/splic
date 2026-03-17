@@ -1,0 +1,16 @@
+OK
+Code
+Fn
+Ident("bad")
+LParen
+Ident("x")
+Colon
+Ident("u64")
+RParen
+Arrow
+Ident("u64")
+LBrace
+DollarLParen
+Ident("x")
+RParen
+RBrace

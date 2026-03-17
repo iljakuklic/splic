@@ -1,0 +1,53 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Object,
+            name: "foo",
+            params: [],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    Block {
+                        stmts: [
+                            Let {
+                                name: "y",
+                                ty: Some(
+                                    Var(
+                                        "u32",
+                                    ),
+                                ),
+                                expr: Lit(
+                                    1337,
+                                ),
+                            },
+                        ],
+                        expr: Quote(
+                            Block {
+                                stmts: [
+                                    Let {
+                                        name: "z",
+                                        ty: Some(
+                                            Var(
+                                                "u32",
+                                            ),
+                                        ),
+                                        expr: Lit(
+                                            42,
+                                        ),
+                                    },
+                                ],
+                                expr: Var(
+                                    "z",
+                                ),
+                            },
+                        ),
+                    },
+                ),
+            },
+        },
+    ],
+}

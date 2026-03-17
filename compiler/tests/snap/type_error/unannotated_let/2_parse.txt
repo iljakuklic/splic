@@ -1,0 +1,27 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "bad",
+            params: [],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "x",
+                        ty: None,
+                        expr: Lit(
+                            42,
+                        ),
+                    },
+                ],
+                expr: Var(
+                    "x",
+                ),
+            },
+        },
+    ],
+}

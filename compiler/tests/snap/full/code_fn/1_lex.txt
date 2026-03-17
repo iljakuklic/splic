@@ -1,0 +1,16 @@
+OK
+Code
+Fn
+Ident("double")
+LParen
+Ident("x")
+Colon
+Ident("u64")
+RParen
+Arrow
+Ident("u64")
+LBrace
+Ident("x")
+Plus
+Ident("x")
+RBrace

@@ -1,0 +1,52 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "bad",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u32",
+                    ),
+                },
+                Param {
+                    name: "y",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: Var(
+                        "x",
+                    ),
+                    arms: [
+                        MatchArm {
+                            pat: Lit(
+                                0,
+                            ),
+                            body: Var(
+                                "x",
+                            ),
+                        },
+                        MatchArm {
+                            pat: Name(
+                                "n",
+                            ),
+                            body: Var(
+                                "y",
+                            ),
+                        },
+                    ],
+                },
+            },
+        },
+    ],
+}

@@ -1,0 +1,36 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "val",
+            params: [],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Lit(
+                    42,
+                ),
+            },
+        },
+        Function {
+            phase: Object,
+            name: "use_val",
+            params: [],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "val",
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

@@ -1,0 +1,40 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "k",
+            params: [],
+            ret_ty: Lift(
+                Var(
+                    "u64",
+                ),
+            ),
+            body: Block {
+                stmts: [],
+                expr: Quote(
+                    Lit(
+                        0,
+                    ),
+                ),
+            },
+        },
+        Function {
+            phase: Object,
+            name: "zero",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "k",
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

@@ -1,0 +1,2 @@
+ERROR
+cannot infer type of a literal; add a type annotation

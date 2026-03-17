@@ -9,7 +9,7 @@ The language is built on research in staged compilation and dependent types, ena
 - **[INTRO.md](docs/INTRO.md)** – User-facing introduction to Splic with motivation, features, and examples
 - **[SYNTAX.md](docs/SYNTAX.md)** – Complete language syntax reference and design principles
 - **[PROTOTYPE.md](docs/prototype.md)** – Specification of the current prototype implementation
-- **[Snapshot test examples](compiler/src/eval/test/snap/)** – Input/output examples of staged code
+- **[Snapshot test examples](compiler/tests/snap/full/)** – Input/output examples of staged code
 
 ## Building and Testing
 

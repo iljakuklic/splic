@@ -572,6 +572,3 @@ pub fn unstage_program<'out, 'core>(
     let functions = arena.alloc_slice_fill_iter(staged_fns);
     Ok(Program { functions })
 }
-
-#[cfg(test)]
-mod test;

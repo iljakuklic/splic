@@ -1,0 +1,52 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "sub",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u32",
+                    ),
+                },
+                Param {
+                    name: "y",
+                    ty: Var(
+                        "u32",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u32",
+            ),
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "d",
+                        ty: Some(
+                            Var(
+                                "u32",
+                            ),
+                        ),
+                        expr: App {
+                            func: Sub,
+                            args: [
+                                Var(
+                                    "x",
+                                ),
+                                Var(
+                                    "y",
+                                ),
+                            ],
+                        },
+                    },
+                ],
+                expr: Var(
+                    "d",
+                ),
+            },
+        },
+    ],
+}

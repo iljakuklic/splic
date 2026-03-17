@@ -1,0 +1,14 @@
+OK
+Code
+Fn
+Ident("pow5")
+LParen
+Ident("x")
+Colon
+Ident("u64")
+RParen
+Arrow
+Ident("u64")
+LBrace
+Num(15)
+RBrace

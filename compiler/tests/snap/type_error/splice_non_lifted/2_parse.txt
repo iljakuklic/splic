@@ -1,0 +1,28 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Object,
+            name: "bad",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    Var(
+                        "x",
+                    ),
+                ),
+            },
+        },
+    ],
+}
