@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
