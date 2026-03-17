@@ -1,4 +1,3 @@
-OK
 Fn
 Ident("val")
 LParen

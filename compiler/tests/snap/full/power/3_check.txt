@@ -1,4 +1,3 @@
-OK
 fn power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
     match exp@1 {
         0 => #(1),
