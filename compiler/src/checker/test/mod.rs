@@ -15,5 +15,4 @@ mod locals;
 mod matching;
 mod meta;
 mod signatures;
-mod snap;
 mod var;

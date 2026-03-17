@@ -1,0 +1,132 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "power",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Lift(
+                        Var(
+                            "u64",
+                        ),
+                    ),
+                },
+                Param {
+                    name: "exp",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Lift(
+                Var(
+                    "u64",
+                ),
+            ),
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: Var(
+                        "exp",
+                    ),
+                    arms: [
+                        MatchArm {
+                            pat: Lit(
+                                0,
+                            ),
+                            body: Quote(
+                                Lit(
+                                    1,
+                                ),
+                            ),
+                        },
+                        MatchArm {
+                            pat: Lit(
+                                1,
+                            ),
+                            body: Var(
+                                "x",
+                            ),
+                        },
+                        MatchArm {
+                            pat: Name(
+                                "exp",
+                            ),
+                            body: Block {
+                                stmts: [],
+                                expr: Quote(
+                                    App {
+                                        func: Mul,
+                                        args: [
+                                            Splice(
+                                                App {
+                                                    func: "power",
+                                                    args: [
+                                                        Var(
+                                                            "x",
+                                                        ),
+                                                        App {
+                                                            func: Sub,
+                                                            args: [
+                                                                Var(
+                                                                    "exp",
+                                                                ),
+                                                                Lit(
+                                                                    1,
+                                                                ),
+                                                            ],
+                                                        },
+                                                    ],
+                                                },
+                                            ),
+                                            Splice(
+                                                Var(
+                                                    "x",
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "pow5",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "power",
+                        args: [
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                            Lit(
+                                5,
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+    ],
+}

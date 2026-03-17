@@ -15,28 +15,11 @@ fn parse_expr(input: &str) -> String {
     format!("{expr:#?}\n")
 }
 
-fn parse_program(input: &str) -> String {
-    let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new(input);
-    let mut parser = Parser::new(lexer, &arena);
-    let program = parser.parse_program().unwrap();
-    format!("{program:#?}\n")
-}
-
 #[rstest]
 #[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
 fn expr(#[files("src/parser/test/expr/*.input.txt")] path: PathBuf) {
     let input = std::fs::read_to_string(&path).unwrap();
     let actual = parse_expr(&input);
-    let snap_path = path.with_extension("").with_extension("snap.txt");
-    expect_file![snap_path].assert_eq(&actual);
-}
-
-#[rstest]
-#[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
-fn program(#[files("src/parser/test/program/*.input.txt")] path: PathBuf) {
-    let input = std::fs::read_to_string(&path).unwrap();
-    let actual = parse_program(&input);
     let snap_path = path.with_extension("").with_extension("snap.txt");
     expect_file![snap_path].assert_eq(&actual);
 }

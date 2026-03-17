@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use bumpalo::Bump;
 
 use crate::core::{Arm, FunSig, Function, Head, IntType, IntWidth, Lvl, Pat, Prim, Program, Term};
@@ -572,6 +572,3 @@ pub fn unstage_program<'out, 'core>(
     let functions = arena.alloc_slice_fill_iter(staged_fns);
     Ok(Program { functions })
 }
-
-#[cfg(test)]
-mod test;

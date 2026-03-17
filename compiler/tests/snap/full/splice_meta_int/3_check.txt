@@ -1,0 +1,9 @@
+OK
+fn val() -> u32 {
+    42
+}
+
+code fn use_val() -> u32 {
+    $(val())
+}
+

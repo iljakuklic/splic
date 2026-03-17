@@ -1,3 +1,0 @@
-code fn use_val() -> u32 {
-    42
-}

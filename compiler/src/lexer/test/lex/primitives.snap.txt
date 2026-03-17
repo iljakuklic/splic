@@ -1,7 +1,0 @@
-Ok(Ident("u0"))
-Ok(Ident("u1"))
-Ok(Ident("u8"))
-Ok(Ident("u16"))
-Ok(Ident("u32"))
-Ok(Ident("u64"))
-Ok(Ident("Type"))

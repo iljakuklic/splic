@@ -1,0 +1,12 @@
+OK
+fn sum_n(n@0: u64) -> u64 {
+    match n@0 {
+        0 => 0,
+        n@1 => sum_n(n@1 - 1) + n@1,
+    }
+}
+
+code fn sum_to_five() -> u64 {
+    $(sum_n(5))
+}
+

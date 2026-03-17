@@ -1,0 +1,6 @@
+OK
+code fn foo() -> u32 {
+    let z@0: u32 = 42;
+    z@0
+}
+

@@ -1,0 +1,8 @@
+OK
+Ident("u0")
+Ident("u1")
+Ident("u8")
+Ident("u16")
+Ident("u32")
+Ident("u64")
+Ident("Type")

@@ -1,0 +1,88 @@
+OK
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "sum_n",
+            params: [
+                Param {
+                    name: "n",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: Var(
+                        "n",
+                    ),
+                    arms: [
+                        MatchArm {
+                            pat: Lit(
+                                0,
+                            ),
+                            body: Lit(
+                                0,
+                            ),
+                        },
+                        MatchArm {
+                            pat: Name(
+                                "n",
+                            ),
+                            body: App {
+                                func: Add,
+                                args: [
+                                    App {
+                                        func: "sum_n",
+                                        args: [
+                                            App {
+                                                func: Sub,
+                                                args: [
+                                                    Var(
+                                                        "n",
+                                                    ),
+                                                    Lit(
+                                                        1,
+                                                    ),
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                    Var(
+                                        "n",
+                                    ),
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "sum_to_five",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "sum_n",
+                        args: [
+                            Lit(
+                                5,
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+    ],
+}

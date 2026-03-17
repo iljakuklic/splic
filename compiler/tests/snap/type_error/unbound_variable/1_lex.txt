@@ -1,0 +1,10 @@
+OK
+Fn
+Ident("bad")
+LParen
+RParen
+Arrow
+Ident("u32")
+LBrace
+Ident("x")
+RBrace
