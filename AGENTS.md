@@ -65,6 +65,10 @@ cargo bolero test           # Run bolero fuzz tests
 
 ## Coding Guidelines
 
+### Commit Messages
+- Use [Conventional Commits](https://www.conventionalcommits.org/) prefixes: `feat`, `fix`, `refactor`, `docs`, `test`, `chore`, etc.
+- Use `ai:` for changes to AI agent scaffolding: `AGENTS.md`, skills, opencode config, etc.
+
 ### Formatting
 - Use inline style formatters in error messages: `format!("expected {expected}, got {token:?}")` instead of `format!("expected {}, got {:?}", expected, token)`
 - Do not reorder existing `use` items; rely on `cargo fmt` to handle import ordering
