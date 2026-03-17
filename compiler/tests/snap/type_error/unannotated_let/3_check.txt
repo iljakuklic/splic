@@ -1,2 +1,2 @@
 ERROR
-cannot infer type of a literal; add a type annotation
+in function `bad`: in let binding `x`: cannot infer type of a literal; add a type annotation

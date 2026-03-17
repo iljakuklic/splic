@@ -136,7 +136,7 @@ where
     pub fn parse_program(&mut self) -> Result<Program<'a>> {
         let mut functions = Vec::new();
         while self.peek().is_some() {
-            let fun = self.parse_fn_def().context("parsing function definition")?;
+            let fun = self.parse_fn_def()?;
             functions.push(fun);
         }
         let functions = self.arena.alloc_slice_fill_iter(functions);
@@ -153,6 +153,11 @@ where
         self.take(Token::Fn).context("expected 'fn'")?;
         let name = self.take_ident().context("expected function name")?;
 
+        self.parse_fn_def_after_name(phase, name)
+            .with_context(|| format!("in function `{name}`"))
+    }
+
+    fn parse_fn_def_after_name(&mut self, phase: Phase, name: Name<'a>) -> Result<Function<'a>> {
         self.take(Token::LParen).context("expected '('")?;
         let params = self.parse_params()?;
         self.take(Token::RParen).context("expected ')'")?;
@@ -220,7 +225,7 @@ where
             .context("expected '=' in let binding")?;
         let expr = self
             .parse_expr()
-            .context("expected expression in let binding")?;
+            .with_context(|| format!("in let binding `{name}`"))?;
         self.take(Token::Semi)
             .context("expected ';' after let binding")?;
         Ok(Let { name, ty, expr })

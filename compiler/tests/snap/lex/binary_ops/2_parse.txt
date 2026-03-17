@@ -1,2 +1,2 @@
 ERROR
-parsing function definition
+expected 'fn': expected Fn, got Ident("a")

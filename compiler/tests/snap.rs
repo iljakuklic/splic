@@ -11,7 +11,7 @@ use std::path::PathBuf;
 /// Snapshot files are named `1_lex.txt`, `2_parse.txt`, `3_check.txt`, `6_stage.txt`
 /// (slots 4–5 are reserved for future passes). On success the file contains the phase
 /// output directly. On failure it begins with `ERROR` on the first line followed by
-/// the error message.
+/// the error message (full context chain).
 ///
 /// Later phases are skipped if an earlier phase fails.
 #[rstest]
@@ -28,7 +28,7 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
             .iter()
             .map(|t| format!("{t:?}\n"))
             .collect::<String>(),
-        Err(e) => format!("ERROR\n{e}\n"),
+        Err(e) => format!("ERROR\n{e:#}\n"),
     };
     expect_file![dir.join("1_lex.txt")].assert_eq(&lex_snap);
     let Ok(tokens) = lex_result else { return };
@@ -37,7 +37,7 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
     let parse_result = Parser::new(tokens.into_iter().map(Ok), &arena).parse_program();
     let parse_snap = match &parse_result {
         Ok(program) => format!("{program:#?}\n"),
-        Err(e) => format!("ERROR\n{e}\n"),
+        Err(e) => format!("ERROR\n{e:#}\n"),
     };
     expect_file![dir.join("2_parse.txt")].assert_eq(&parse_snap);
     let Ok(program) = parse_result else { return };
@@ -46,7 +46,7 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
     let check_result = elaborate_program(&arena, &program);
     let check_snap = match &check_result {
         Ok(core) => format!("{core}\n"),
-        Err(e) => format!("ERROR\n{e}\n"),
+        Err(e) => format!("ERROR\n{e:#}\n"),
     };
     expect_file![dir.join("3_check.txt")].assert_eq(&check_snap);
     let Ok(core_program) = check_result else {
@@ -58,7 +58,7 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
     let stage_result = unstage_program(&arena, &core_program);
     let stage_snap = match &stage_result {
         Ok(staged) => format!("{staged}\n"),
-        Err(e) => format!("ERROR\n{e}\n"),
+        Err(e) => format!("ERROR\n{e:#}\n"),
     };
     expect_file![dir.join("6_stage.txt")].assert_eq(&stage_snap);
 }

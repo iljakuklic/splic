@@ -1,2 +1,2 @@
 ERROR
-type mismatch
+in function `bad`: type mismatch

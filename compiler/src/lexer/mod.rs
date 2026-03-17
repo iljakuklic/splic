@@ -1,4 +1,4 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 
 #[cfg(test)]
 pub mod testutils;
@@ -13,6 +13,12 @@ impl<'a> Name<'a> {
 
     pub fn as_str(self) -> &'a str {
         self.0
+    }
+}
+
+impl std::fmt::Display for Name<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
