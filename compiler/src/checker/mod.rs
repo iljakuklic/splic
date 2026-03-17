@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Context, Result, anyhow};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
@@ -185,6 +185,27 @@ fn elaborate_ty<'src, 'core>(
     }
 }
 
+/// Elaborate the signature (parameter types + return type) of a single function.
+fn elaborate_sig<'src, 'core>(
+    arena: &'core bumpalo::Bump,
+    func: &ast::Function<'src>,
+) -> Result<core::FunSig<'core>> {
+    let params: &'core [(&'core str, &'core core::Term<'core>)] =
+        arena.alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
+            let param_name: &'core str = arena.alloc_str(p.name.as_str());
+            let param_ty = elaborate_ty(arena, func.phase, p.ty)?;
+            Ok((param_name, param_ty))
+        }))?;
+
+    let ret_ty = elaborate_ty(arena, func.phase, func.ret_ty)?;
+
+    Ok(core::FunSig {
+        params,
+        ret_ty,
+        phase: func.phase,
+    })
+}
+
 /// Pass 1: collect all top-level function signatures into a globals table.
 ///
 /// Type annotations on parameters and return types are elaborated here so that
@@ -203,24 +224,9 @@ pub(crate) fn collect_signatures<'src, 'core>(
             return Err(anyhow!("duplicate function name `{name}`"));
         }
 
-        // Elaborate parameter types in the function's own phase
-        let params: &'core [(&'core str, &'core core::Term<'core>)] = arena
-            .alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
-                let param_name: &'core str = arena.alloc_str(p.name.as_str());
-                let param_ty = elaborate_ty(arena, func.phase, p.ty)?;
-                Ok((param_name, param_ty))
-            }))?;
+        let sig = elaborate_sig(arena, func).with_context(|| format!("in function `{name}`"))?;
 
-        let ret_ty = elaborate_ty(arena, func.phase, func.ret_ty)?;
-
-        globals.insert(
-            name,
-            core::FunSig {
-                params,
-                ret_ty,
-                phase: func.phase,
-            },
-        );
+        globals.insert(name, sig);
     }
 
     Ok(globals)
@@ -246,7 +252,8 @@ fn elaborate_bodies<'src, 'core>(
             }
 
             // Elaborate the body, checking it against the declared return type.
-            let core_body = check(&mut ctx, sig.phase, func.body, sig.ret_ty)?;
+            let core_body = check(&mut ctx, sig.phase, func.body, sig.ret_ty)
+                .with_context(|| format!("in function `{name}`"))?;
 
             // Re-borrow sig from globals (ctx was consumed in the check above).
             // We need the sig fields for the Function; collect them before moving ctx.
@@ -634,10 +641,12 @@ where
     // Determine the binding type: use annotation if present, otherwise infer.
     let (core_expr, bind_ty) = if let Some(ann) = stmt.ty {
         let ty = elaborate_ty(ctx.arena, phase, ann)?;
-        let core_e = check(ctx, phase, stmt.expr, ty)?;
+        let core_e = check(ctx, phase, stmt.expr, ty)
+            .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?;
         (core_e, ty)
     } else {
-        infer(ctx, phase, stmt.expr)?
+        infer(ctx, phase, stmt.expr)
+            .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?
     };
 
     let bind_name: &'core str = ctx.arena.alloc_str(stmt.name.as_str());
