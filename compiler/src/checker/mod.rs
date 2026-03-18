@@ -348,7 +348,7 @@ pub fn infer<'src, 'core>(
                 // U(Meta) : U(Meta)   — type-in-type for the meta universe
                 // U(Object) : U(Meta) — VmType is classified by the meta universe
                 // Both arms return U(Meta) for distinct semantic reasons; keep them separate.
-                #[allow(clippy::match_same_arms)]
+                #[expect(clippy::match_same_arms)]
                 let ty = match prim {
                     Prim::IntTy(_) => ctx.alloc(core::Term::Prim(Prim::U(phase))),
                     Prim::U(Phase::Meta) => ctx.alloc(core::Term::Prim(Prim::U(Phase::Meta))),
@@ -455,10 +455,10 @@ pub fn infer<'src, 'core>(
                 return Err(anyhow!("binary operation expects exactly 2 arguments"));
             }
             // Infer the operand type from the first argument.
-            #[allow(clippy::indexing_slicing)]
+            #[expect(clippy::indexing_slicing)]
             let (core_arg0, operand_ty) = infer(ctx, phase, args[0])?;
             // Check the second argument against the same operand type.
-            #[allow(clippy::indexing_slicing)]
+            #[expect(clippy::indexing_slicing)]
             let core_arg1 = check(ctx, phase, args[1], operand_ty)?;
             // Verify both operands are integers and build the prim carrying the operand type.
             let op_int_ty = match operand_ty {
@@ -860,9 +860,9 @@ pub fn check<'src, 'core>(
                 return Err(anyhow!("binary operation expects exactly 2 arguments"));
             }
 
-            #[allow(clippy::indexing_slicing)]
+            #[expect(clippy::indexing_slicing)]
             let core_arg0 = check(ctx, phase, args[0], expected)?;
-            #[allow(clippy::indexing_slicing)]
+            #[expect(clippy::indexing_slicing)]
             let core_arg1 = check(ctx, phase, args[1], expected)?;
 
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
@@ -899,7 +899,7 @@ pub fn check<'src, 'core>(
             if args.len() != 1 {
                 return Err(anyhow!("unary operation expects exactly 1 argument"));
             }
-            #[allow(clippy::indexing_slicing)]
+            #[expect(clippy::indexing_slicing)]
             let core_arg = check(ctx, phase, args[0], expected)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
             Ok(ctx.alloc(core::Term::App {

@@ -268,7 +268,7 @@ fn fmt_app<'a>(
 
         // ── Primitive operation ───────────────────────────────────────────────
         Head::Prim(prim) => {
-            #[allow(clippy::indexing_slicing)]
+            #[expect(clippy::indexing_slicing)]
             if let Some(sym) = binop_symbol(*prim) {
                 // Binary infix operator — exactly 2 args.
                 fmt_atom(args[0], env, indent, f)?;

@@ -30,7 +30,18 @@ clippy_flags := "-D warnings \
     -D clippy::cast_possible_truncation \
     -D clippy::explicit_iter_loop \
     -D clippy::wildcard_enum_match_arm \
-    -D clippy::indexing_slicing"
+    -D clippy::indexing_slicing \
+    -D clippy::self_named_module_files \
+    -D clippy::precedence_bits \
+    -D clippy::allow_attributes \
+    -D clippy::manual_assert \
+    -D clippy::cloned_instead_of_copied \
+    -D clippy::todo \
+    -D clippy::wildcard_imports \
+    -D clippy::enum_glob_use \
+    -D clippy::cargo \
+    -A clippy::cargo_common_metadata \
+    "
 
 # Run Clippy lints.
 clippy:

@@ -237,7 +237,7 @@ fn eval_meta_prim<'out, 'core>(
         })
     };
 
-    #[allow(clippy::indexing_slicing)]
+    #[expect(clippy::indexing_slicing)]
     match prim {
         // ── Arithmetic ────────────────────────────────────────────────────────
         Prim::Add(_) => {
