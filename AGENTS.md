@@ -64,7 +64,7 @@ cargo bolero test           # Run bolero fuzz tests
 - Note: When adding new `.input.txt` test files, run `cargo clean -p splic-compiler` first to ensure they're picked up by the test framework
 
 ### Clippy
-The project enforces a curated set of lints beyond Clippy defaults — see `just clippy` in the justfile for the full list. All lints are `-D` (hard errors). Use `#[expect(...)]` to suppress a lint at a specific site. For test modules it is acceptable to use a broad `#![expect(...)]` at the top of the file rather than per-site annotations.
+The project enforces a curated set of lints beyond Clippy defaults — see `[workspace.lints]` in `Cargo.toml` for the full list. All lints are `"deny"`. Use `#[expect(...)]` to suppress a lint at a specific site. For test modules it is acceptable to use a broad `#![expect(...)]` at the top of the file rather than per-site annotations.
 
 ## Coding Guidelines
 

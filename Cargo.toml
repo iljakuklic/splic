@@ -13,6 +13,40 @@ bumpalo = { version = "3", default-features = false }
 bolero = "0.13"
 clap = { version = "4", features = ["derive"] }
 
+[workspace.lints.rust]
+warnings = "deny"
+
+[workspace.lints.clippy]
+use_self = "deny"
+derive_partial_eq_without_eq = "deny"
+uninlined_format_args = "deny"
+elidable_lifetime_names = "deny"
+doc_markdown = "deny"
+match_same_arms = "deny"
+unnecessary_wraps = "deny"
+used_underscore_binding = "deny"
+map_unwrap_or = "deny"
+redundant_closure_for_method_calls = "deny"
+return_self_not_must_use = "deny"
+redundant_test_prefix = "deny"
+unused_trait_names = "deny"
+missing_const_for_fn = "deny"
+trivially_copy_pass_by_ref = "deny"
+cast_possible_truncation = "deny"
+explicit_iter_loop = "deny"
+wildcard_enum_match_arm = "deny"
+indexing_slicing = "deny"
+self_named_module_files = "deny"
+precedence_bits = "deny"
+allow_attributes = "deny"
+manual_assert = "deny"
+cloned_instead_of_copied = "deny"
+todo = "deny"
+wildcard_imports = "deny"
+enum_glob_use = "deny"
+cargo = { level = "deny", priority = -1 }
+cargo_common_metadata = "allow"
+
 [profile.fuzz]
 inherits = "dev"
 opt-level = 3
