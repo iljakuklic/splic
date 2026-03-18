@@ -27,7 +27,13 @@ clippy:
         -D clippy::redundant_closure_for_method_calls \
         -D clippy::return_self_not_must_use \
         -D clippy::redundant_test_prefix \
-        -D clippy::unused_trait_names
+        -D clippy::unused_trait_names \
+        -D clippy::missing_const_for_fn \
+        -D clippy::trivially_copy_pass_by_ref \
+        -D clippy::cast_possible_truncation \
+        -D clippy::explicit_iter_loop \
+        -D clippy::wildcard_enum_match_arm \
+        -D clippy::indexing_slicing
 
 # Run tests and check for snapshot drift.
 test:

@@ -34,7 +34,7 @@ pub enum BinOp {
 }
 
 impl BinOp {
-    pub fn precedence(self) -> u8 {
+    pub const fn precedence(self) -> u8 {
         match self {
             Self::BitOr => 1,
             Self::BitAnd => 2,
@@ -44,7 +44,7 @@ impl BinOp {
         }
     }
 
-    pub fn assoc(self) -> Assoc {
+    pub const fn assoc(self) -> Assoc {
         Assoc::Left
     }
 }
@@ -63,7 +63,7 @@ pub enum UnOp {
 }
 
 impl UnOp {
-    pub fn precedence(self) -> u8 {
+    pub const fn precedence(self) -> u8 {
         6
     }
 }

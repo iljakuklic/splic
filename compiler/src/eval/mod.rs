@@ -50,7 +50,7 @@ struct Env<'out> {
 }
 
 impl<'out> Env<'out> {
-    fn new(obj_next: Lvl) -> Self {
+    const fn new(obj_next: Lvl) -> Self {
         Env {
             bindings: Vec::new(),
             obj_next,
@@ -59,7 +59,9 @@ impl<'out> Env<'out> {
 
     /// Look up the binding at level `lvl`.
     fn get(&self, lvl: Lvl) -> &Binding<'out> {
-        &self.bindings[lvl.0]
+        self.bindings
+            .get(lvl.0)
+            .expect("De Bruijn level in env bounds")
     }
 
     /// Push an object-level binding.  Assigns the next consecutive object-level
@@ -209,7 +211,7 @@ fn eval_meta_app<'out, 'core>(
         }
 
         // ── Primitive operations ──────────────────────────────────────────────
-        Head::Prim(prim) => eval_meta_prim(arena, globals, env, prim, args),
+        Head::Prim(prim) => eval_meta_prim(arena, globals, env, *prim, args),
     }
 }
 
@@ -218,40 +220,44 @@ fn eval_meta_prim<'out, 'core>(
     arena: &'out Bump,
     globals: &Globals<'core>,
     env: &mut Env<'out>,
-    prim: &Prim,
+    prim: Prim,
     args: &'core [&'core Term<'core>],
 ) -> Result<MetaVal<'out>> {
     // Evaluate args[i] and extract its integer value.
     // Panics if the value is `VCode` — the typechecker guarantees integer operands.
-    let eval_lit = |arena: &'out Bump, globals: &Globals<'core>, env: &mut Env<'out>, i: usize| {
-        eval_meta(arena, globals, env, args[i]).map(|v| match v {
+    let eval_lit = |arena: &'out Bump,
+                    globals: &Globals<'core>,
+                    env: &mut Env<'out>,
+                    arg: &'core Term<'core>| {
+        eval_meta(arena, globals, env, arg).map(|v| match v {
             MetaVal::VLit(n) => n,
             MetaVal::VCode(_) => unreachable!(
-                "expected integer meta value for primitive operand {i}, got code (typechecker invariant)"
+                "expected integer meta value for primitive operand, got code (typechecker invariant)"
             ),
         })
     };
 
+    #[allow(clippy::indexing_slicing)]
     match prim {
         // ── Arithmetic ────────────────────────────────────────────────────────
         Prim::Add(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(a.wrapping_add(b)))
         }
         Prim::Sub(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(a.wrapping_sub(b)))
         }
         Prim::Mul(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(a.wrapping_mul(b)))
         }
         Prim::Div(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             if b == 0 {
                 return Err(anyhow!("division by zero during staging"));
             }
@@ -260,49 +266,49 @@ fn eval_meta_prim<'out, 'core>(
 
         // ── Bitwise ───────────────────────────────────────────────────────────
         Prim::BitAnd(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(a & b))
         }
         Prim::BitOr(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(a | b))
         }
         Prim::BitNot(IntType { width, .. }) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            Ok(MetaVal::VLit(mask_to_width(*width, !a)))
+            let a = eval_lit(arena, globals, env, args[0])?;
+            Ok(MetaVal::VLit(mask_to_width(width, !a)))
         }
 
         // ── Comparison ────────────────────────────────────────────────────────
         Prim::Eq(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(u64::from(a == b)))
         }
         Prim::Ne(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(u64::from(a != b)))
         }
         Prim::Lt(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(u64::from(a < b)))
         }
         Prim::Gt(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(u64::from(a > b)))
         }
         Prim::Le(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(u64::from(a <= b)))
         }
         Prim::Ge(_) => {
-            let a = eval_lit(arena, globals, env, 0)?;
-            let b = eval_lit(arena, globals, env, 1)?;
+            let a = eval_lit(arena, globals, env, args[0])?;
+            let b = eval_lit(arena, globals, env, args[1])?;
             Ok(MetaVal::VLit(u64::from(a >= b)))
         }
 
@@ -311,7 +317,7 @@ fn eval_meta_prim<'out, 'core>(
         // consisting of the literal `n`.  This is how a compile-time integer
         // constant is embedded into the generated object program.
         Prim::Embed(_) => {
-            let n = eval_lit(arena, globals, env, 0)?;
+            let n = eval_lit(arena, globals, env, args[0])?;
             let lit_term = arena.alloc(Term::Lit(n));
             Ok(MetaVal::VCode(lit_term))
         }
@@ -324,7 +330,7 @@ fn eval_meta_prim<'out, 'core>(
 }
 
 /// Mask `val` to the bit-width of `width`.
-fn mask_to_width(width: IntWidth, val: u64) -> u64 {
+const fn mask_to_width(width: IntWidth, val: u64) -> u64 {
     match width {
         IntWidth::U0 => 0,
         IntWidth::U1 => val & 0x1,

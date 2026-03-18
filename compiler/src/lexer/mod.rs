@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 #[cfg(test)]
 pub mod testutils;
@@ -7,11 +7,11 @@ pub mod testutils;
 pub struct Name<'a>(pub &'a str);
 
 impl<'a> Name<'a> {
-    pub fn new(s: &'a str) -> Self {
+    pub const fn new(s: &'a str) -> Self {
         Name(s)
     }
 
-    pub fn as_str(self) -> &'a str {
+    pub const fn as_str(self) -> &'a str {
         self.0
     }
 }
@@ -115,7 +115,7 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
+    pub const fn new(input: &'a str) -> Self {
         Self { input }
     }
 
@@ -143,7 +143,7 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    fn is_ident_char(c: char) -> bool {
+    const fn is_ident_char(c: char) -> bool {
         c.is_ascii_alphanumeric() || c == '_'
     }
 

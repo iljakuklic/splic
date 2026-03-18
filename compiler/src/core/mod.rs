@@ -21,7 +21,7 @@ pub struct IntType {
 }
 
 impl IntType {
-    pub fn new(width: IntWidth, phase: Phase) -> Self {
+    pub const fn new(width: IntWidth, phase: Phase) -> Self {
         Self { width, phase }
     }
 }
@@ -58,12 +58,12 @@ pub enum Prim {
 pub struct Lvl(pub usize);
 
 impl Lvl {
-    pub fn new(n: usize) -> Self {
+    pub const fn new(n: usize) -> Self {
         Self(n)
     }
 
     #[must_use]
-    pub fn succ(self) -> Self {
+    pub const fn succ(self) -> Self {
         Self(self.0 + 1)
     }
 }
@@ -85,7 +85,7 @@ pub enum Pat<'a> {
 
 impl<'a> Pat<'a> {
     /// Return the name bound by this pattern, if any.
-    pub fn bound_name(&self) -> Option<&'a str> {
+    pub const fn bound_name(&self) -> Option<&'a str> {
         match self {
             Pat::Bind(name) => Some(name),
             Pat::Lit(_) | Pat::Wildcard => None,
