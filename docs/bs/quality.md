@@ -20,7 +20,5 @@ improvements — are left off. The full `clippy::restriction` group is not
 bulk-enabled for this reason; many of its lints conflict with idiomatic Rust
 (e.g. `implicit_return`, `question_mark_used`).
 
-Test code is held to a lower standard — a broad `#![allow(...)]` at the top of a
-test module is preferred over per-site `#[expect(...)]` suppressions scattered
-throughout. (`#[allow]` rather than `#[expect]` is intentional here: the set of
-firing lints across all tests is not worth tracking precisely.)
+Test code is held to a lower standard — a broad `#![expect(...)]` at the top of a
+test module is preferred over per-site suppressions scattered throughout.
