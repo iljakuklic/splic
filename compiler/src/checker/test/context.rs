@@ -3,7 +3,7 @@
 use super::*;
 
 #[test]
-fn test_prim_types_are_well_kinded() {
+fn prim_types_are_well_kinded() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -17,21 +17,21 @@ fn test_prim_types_are_well_kinded() {
 }
 
 #[test]
-fn test_literal_checks_against_int_type() {
+fn literal_checks_against_int_type() {
     let arena = bumpalo::Bump::new();
     let lit = arena.alloc(core::Term::Lit(42));
     assert!(matches!(lit, core::Term::Lit(42)));
 }
 
 #[test]
-fn test_variable_lookup_in_empty_context() {
+fn variable_lookup_in_empty_context() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
     assert_eq!(ctx.lookup_local("x"), None);
 }
 
 #[test]
-fn test_variable_lookup_after_push() {
+fn variable_lookup_after_push() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -49,7 +49,7 @@ fn test_variable_lookup_after_push() {
 }
 
 #[test]
-fn test_variable_lookup_with_multiple_locals() {
+fn variable_lookup_with_multiple_locals() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -80,7 +80,7 @@ fn test_variable_lookup_with_multiple_locals() {
 }
 
 #[test]
-fn test_variable_shadowing() {
+fn variable_shadowing() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -101,7 +101,7 @@ fn test_variable_shadowing() {
 }
 
 #[test]
-fn test_context_depth() {
+fn context_depth() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -116,7 +116,7 @@ fn test_context_depth() {
 }
 
 #[test]
-fn test_meta_variable_in_quote_is_ok() {
+fn meta_variable_in_quote_is_ok() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -127,7 +127,7 @@ fn test_meta_variable_in_quote_is_ok() {
 }
 
 #[test]
-fn test_object_variable_outside_quote_is_invalid() {
+fn object_variable_outside_quote_is_invalid() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -136,14 +136,14 @@ fn test_object_variable_outside_quote_is_invalid() {
 }
 
 #[test]
-fn test_phase_is_argument_not_context() {
+fn phase_is_argument_not_context() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
     assert_eq!(ctx.depth(), 0);
 }
 
 #[test]
-fn test_type_universe_distinction() {
+fn type_universe_distinction() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
     let type_tm = ctx.type_ty();
@@ -157,7 +157,7 @@ fn test_type_universe_distinction() {
 }
 
 #[test]
-fn test_arithmetic_requires_expected_type() {
+fn arithmetic_requires_expected_type() {
     let add_u32 = Prim::Add(IntType::new(IntWidth::U32, Phase::Object));
     assert!(matches!(
         add_u32,
@@ -169,7 +169,7 @@ fn test_arithmetic_requires_expected_type() {
 }
 
 #[test]
-fn test_global_call_is_inferable() {
+fn global_call_is_inferable() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(1));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
@@ -187,7 +187,7 @@ fn test_global_call_is_inferable() {
 }
 
 #[test]
-fn test_comparison_operation_returns_u1() {
+fn comparison_operation_returns_u1() {
     let eq_u64 = Prim::Eq(IntType::new(IntWidth::U64, Phase::Object));
     assert!(matches!(
         eq_u64,
@@ -199,7 +199,7 @@ fn test_comparison_operation_returns_u1() {
 }
 
 #[test]
-fn test_lift_type_structure() {
+fn lift_type_structure() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -208,7 +208,7 @@ fn test_lift_type_structure() {
 }
 
 #[test]
-fn test_quote_inference_mirrors_inner() {
+fn quote_inference_mirrors_inner() {
     let arena = bumpalo::Bump::new();
     let inner = arena.alloc(core::Term::App {
         head: Head::Global("foo"),
@@ -219,7 +219,7 @@ fn test_quote_inference_mirrors_inner() {
 }
 
 #[test]
-fn test_splice_inference_mirrors_inner() {
+fn splice_inference_mirrors_inner() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -231,7 +231,7 @@ fn test_splice_inference_mirrors_inner() {
 }
 
 #[test]
-fn test_let_binding_structure() {
+fn let_binding_structure() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
     let u64_term = ctx.u64_ty();
@@ -247,7 +247,7 @@ fn test_let_binding_structure() {
 }
 
 #[test]
-fn test_match_with_literal_pattern() {
+fn match_with_literal_pattern() {
     let arena = bumpalo::Bump::new();
     let scrutinee = arena.alloc(core::Term::Var(Lvl(0)));
     let body0 = arena.alloc(core::Term::Lit(0));
@@ -269,7 +269,7 @@ fn test_match_with_literal_pattern() {
 }
 
 #[test]
-fn test_match_with_binding_pattern() {
+fn match_with_binding_pattern() {
     let arena = bumpalo::Bump::new();
     let scrutinee = arena.alloc(core::Term::Var(Lvl(0)));
     let body = arena.alloc(core::Term::Var(Lvl(0)));
@@ -286,7 +286,7 @@ fn test_match_with_binding_pattern() {
 }
 
 #[test]
-fn test_function_call_to_global() {
+fn function_call_to_global() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(42));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
@@ -305,7 +305,7 @@ fn test_function_call_to_global() {
 }
 
 #[test]
-fn test_builtin_operation_call() {
+fn builtin_operation_call() {
     let arena = bumpalo::Bump::new();
     let arg1 = arena.alloc(core::Term::Lit(1));
     let arg2 = arena.alloc(core::Term::Lit(2));

@@ -22,7 +22,7 @@ pub struct IntType {
 
 impl IntType {
     pub fn new(width: IntWidth, phase: Phase) -> Self {
-        IntType { width, phase }
+        Self { width, phase }
     }
 }
 
@@ -59,11 +59,12 @@ pub struct Lvl(pub usize);
 
 impl Lvl {
     pub fn new(n: usize) -> Self {
-        Lvl(n)
+        Self(n)
     }
 
+    #[must_use]
     pub fn succ(self) -> Self {
-        Lvl(self.0 + 1)
+        Self(self.0 + 1)
     }
 }
 
@@ -133,24 +134,24 @@ pub enum Term<'a> {
     /// Application of a global function or primitive operation to arguments
     App {
         head: Head<'a>,
-        args: &'a [&'a Term<'a>],
+        args: &'a [&'a Self],
     },
     /// Lift: [[T]] — meta type representing object-level code of type T
-    Lift(&'a Term<'a>),
+    Lift(&'a Self),
     /// Quotation: #(t) — produce object-level code from a meta expression
-    Quote(&'a Term<'a>),
+    Quote(&'a Self),
     /// Splice: $(t) — run meta code and insert result into object context
-    Splice(&'a Term<'a>),
+    Splice(&'a Self),
     /// Let binding with explicit type annotation and a body
     Let {
         name: &'a str,
-        ty: &'a Term<'a>,
-        expr: &'a Term<'a>,
-        body: &'a Term<'a>,
+        ty: &'a Self,
+        expr: &'a Self,
+        body: &'a Self,
     },
     /// Pattern match
     Match {
-        scrutinee: &'a Term<'a>,
+        scrutinee: &'a Self,
         arms: &'a [Arm<'a>],
     },
 }

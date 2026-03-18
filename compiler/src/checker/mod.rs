@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{anyhow, Context as _, Result};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
@@ -111,7 +111,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         self.arena.alloc(core::Term::Prim(Prim::U(Phase::Meta)))
     }
 
-    /// Helper to create a VmType (object universe) term
+    /// Helper to create a `VmType` (object universe) term
     pub fn vm_type_ty(&self) -> &'core core::Term<'core> {
         self.arena.alloc(core::Term::Prim(Prim::U(Phase::Object)))
     }
@@ -274,9 +274,9 @@ fn elaborate_bodies<'src, 'core>(
 }
 
 /// Elaborate the entire program in two passes
-pub fn elaborate_program<'src, 'core>(
+pub fn elaborate_program<'core>(
     arena: &'core bumpalo::Bump,
-    program: &ast::Program<'src>,
+    program: &ast::Program<'_>,
 ) -> Result<core::Program<'core>> {
     let globals = collect_signatures(arena, program)?;
     elaborate_bodies(arena, program, &globals)
@@ -287,13 +287,12 @@ pub fn elaborate_program<'src, 'core>(
 /// This is the core analogue of the 2LTT kinding judgement:
 ///   - `IntTy(_, p)` inhabits `U(p)`
 ///   - `U(Meta)` (Type) inhabits `U(Meta)`   (type-in-type for the meta universe)
-///   - `U(Object)` (VmType) inhabits `U(Meta)` (the meta universe classifies object types)
+///   - `U(Object)` (`VmType`) inhabits `U(Meta)` (the meta universe classifies object types)
 ///   - `Lift(_)` inhabits `U(Meta)`
 fn type_universe(ty: &core::Term<'_>) -> Option<Phase> {
     match ty {
         core::Term::Prim(Prim::IntTy(IntType { phase, .. })) => Some(*phase),
-        core::Term::Prim(Prim::U(_)) => Some(Phase::Meta),
-        core::Term::Lift(_) => Some(Phase::Meta),
+        core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) => Some(Phase::Meta),
         _ => None,
     }
 }
@@ -321,6 +320,10 @@ pub fn infer<'src, 'core>(
             if let Some(prim) = builtin {
                 let term = ctx.alloc(core::Term::Prim(prim));
                 // The type of a type is the relevant universe.
+                // U(Meta) : U(Meta)   — type-in-type for the meta universe
+                // U(Object) : U(Meta) — VmType is classified by the meta universe
+                // Both arms return U(Meta) for distinct semantic reasons; keep them separate.
+                #[allow(clippy::match_same_arms)]
                 let ty = match prim {
                     Prim::IntTy(_) => ctx.alloc(core::Term::Prim(Prim::U(phase))),
                     Prim::U(Phase::Meta) => ctx.alloc(core::Term::Prim(Prim::U(Phase::Meta))),
@@ -542,10 +545,7 @@ pub fn infer<'src, 'core>(
 /// Check exhaustiveness of `arms` given the scrutinee type `scrut_ty`.
 ///
 /// Returns `Err` if coverage cannot be established.
-fn check_exhaustiveness<'src>(
-    scrut_ty: &core::Term<'_>,
-    arms: &[ast::MatchArm<'src>],
-) -> Result<()> {
+fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -> Result<()> {
     // For u0/u1/u8 scrutinees we track which literal values have been covered
     // using a Vec<bool> of length 1/2/256 respectively.  If all entries become
     // true the match is exhaustive even without a wildcard.  For any other type
@@ -598,19 +598,16 @@ fn check_exhaustiveness<'src>(
 
 /// Elaborate a match pattern into a core pattern.
 /// Any bound name can be recovered via `core::Pat::bound_name()`.
-fn elaborate_pat<'src, 'core>(
-    ctx: &Ctx<'core, '_>,
-    pat: &'src ast::Pat<'src>,
-) -> Result<core::Pat<'core>> {
+fn elaborate_pat<'core>(ctx: &Ctx<'core, '_>, pat: &ast::Pat<'_>) -> core::Pat<'core> {
     match pat {
-        ast::Pat::Lit(n) => Ok(core::Pat::Lit(*n)),
+        ast::Pat::Lit(n) => core::Pat::Lit(*n),
         ast::Pat::Name(name) => {
             let s = name.as_str();
             if s == "_" {
-                Ok(core::Pat::Wildcard)
+                core::Pat::Wildcard
             } else {
                 let bound: &'core str = ctx.arena.alloc_str(s);
-                Ok(core::Pat::Bind(bound))
+                core::Pat::Bind(bound)
             }
         }
     }
@@ -864,7 +861,7 @@ pub fn check<'src, 'core>(
             let core_arms: &'core [core::Arm<'core>] =
                 ctx.arena
                     .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
-                        let core_pat = elaborate_pat(ctx, &arm.pat)?;
+                        let core_pat = elaborate_pat(ctx, &arm.pat);
                         // If the pattern binds a name, push it into locals for the arm body.
                         // We use a placeholder type (scrutinee type) — sufficient for the prototype.
                         if let Some(bname) = core_pat.bound_name() {

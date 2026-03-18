@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 
 use crate::lexer::Token;
 use crate::parser::ast::{
@@ -365,10 +365,7 @@ where
                 let (stmts, expr) = self.parse_block_inner()?;
                 Ok(Term::Block { stmts, expr })
             }
-            _ => Err(anyhow::anyhow!(
-                "unexpected token in expression: {:?}",
-                token
-            )),
+            _ => Err(anyhow::anyhow!("unexpected token in expression: {token:?}")),
         }
     }
 
@@ -393,7 +390,7 @@ where
         match token {
             Token::Num(n) => Ok(Pat::Lit(n)),
             Token::Ident(name) => Ok(Pat::Name(name)),
-            _ => Err(anyhow::anyhow!("unexpected token in pattern: {:?}", token)),
+            _ => Err(anyhow::anyhow!("unexpected token in pattern: {token:?}")),
         }
     }
 }

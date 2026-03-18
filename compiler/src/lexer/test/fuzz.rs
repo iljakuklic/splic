@@ -6,7 +6,7 @@ fn lexer() {
     check!().with_type::<String>().for_each(|input: &String| {
         let lexer = Lexer::new(input);
         let tokens = lexer.collect::<Vec<_>>();
-        if tokens.iter().any(|t| t.is_ok()) {
+        if tokens.iter().any(Result::is_ok) {
             eprintln!("[len={:3}] {input:?} {tokens:?}", input.len());
         }
     });

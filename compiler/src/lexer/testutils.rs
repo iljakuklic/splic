@@ -1,6 +1,6 @@
-use crate::lexer::{KEYWORDS, Name, SYMBOLS, Token};
+use crate::lexer::{Name, Token, KEYWORDS, SYMBOLS};
 
-use bolero::generator::{TypeGenerator, ValueGenerator, any, one_of, one_value_of};
+use bolero::generator::{any, one_of, one_value_of, TypeGenerator, ValueGenerator as _};
 
 const IDENTIFIERS: &[&str] = &[
     "x", "y", "z", "foo", "bar", "baz", "add", "mul", "id", "f", "g", "h", "a", "b", "c", "n", "m",

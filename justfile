@@ -13,11 +13,25 @@ check-fmt:
 
 # Run Clippy lints.
 clippy:
-    cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy --locked --workspace --all-targets -- \
+        -D warnings \
+        -D clippy::use_self \
+        -D clippy::derive_partial_eq_without_eq \
+        -D clippy::uninlined_format_args \
+        -D clippy::elidable_lifetime_names \
+        -D clippy::doc_markdown \
+        -D clippy::match_same_arms \
+        -D clippy::unnecessary_wraps \
+        -D clippy::used_underscore_binding \
+        -D clippy::map_unwrap_or \
+        -D clippy::redundant_closure_for_method_calls \
+        -D clippy::return_self_not_must_use \
+        -D clippy::redundant_test_prefix \
+        -D clippy::unused_trait_names
 
 # Run tests and check for snapshot drift.
 test:
-    cargo test --workspace
+    cargo test --locked --workspace
     git diff --exit-code
 
 # Run tests under Miri to detect undefined behavior and memory leaks.
