@@ -19,6 +19,7 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 - [self_typed_ir.md](self_typed_ir.md) — Self-typed core IR and a future `type_of` method
 - [prototype_eval.md](prototype_eval.md) — Evaluator design and implementation sequence (substitution → spines → dependent types)
 
-## Roadmap & Strategy
+## Roadmap, Strategy & Process
 
 - [prototype_next.md](prototype_next.md) — Next steps after basic prototype (phases: staging, meta functions, dependent types)
+- [quality.md](quality.md) — Clippy lint philosophy and workflow

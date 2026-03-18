@@ -16,25 +16,30 @@ splic/
 
 ## Development Commands
 
-### Verifying syntax and type correctness
-```bash
-cargo check -p splic-compiler --all-targets   # Check a specific crate
-cargo check --workspace --all-targets   # Check whole workspace
-```
+All common workflow tasks are available via `just`. Run `just` to list recipes.
 
-The `--all-targets` switch also includes the test code.
-
-### Building
+### CI checks (use these before committing)
 ```bash
-cargo build                     # Build all workspace members
-cargo build -p splic-compiler   # Build specific crate
+just ci          # Full CI: fmt check + clippy + tests (mirrors CI exactly)
+just check-fmt   # Check formatting without modifying files
+just clippy      # Run Clippy with the full lint set
+just clippy-fix  # Apply Clippy auto-fixes
+just fmt         # Format the codebase
 ```
 
 ### Testing
 ```bash
-cargo test                     # Run all tests
-cargo test -p splic-compiler   # Run tests for specific crate
-cargo test --workspace   # Run tests for all crates crate
+cargo test                          # Run all tests
+cargo test -p splic-compiler        # Run tests for the compiler crate only
+cargo test -p splic-compiler <FILTER>  # Run matching tests
+```
+
+Note: `just test` adds `--locked` and snapshot drift detection; prefer `cargo test` directly during development for flexibility.
+
+### Checking / building
+```bash
+cargo check --workspace --all-targets   # Fast syntax + type check (includes test code)
+cargo build                             # Build all workspace members
 ```
 
 ### Staging a metaprogram
@@ -58,10 +63,8 @@ cargo bolero test           # Run bolero fuzz tests
 - Fuzz tests in `fuzz.rs`
 - Note: When adding new `.input.txt` test files, run `cargo clean -p splic-compiler` first to ensure they're picked up by the test framework
 
-### Quality Tools
-- Uses clippy defaults (no explicit config)
-- Rust 2024 edition
-- Minimal dependencies with `default-features = false`
+### Clippy
+The project enforces a curated set of lints beyond Clippy defaults — see `just clippy` in the justfile for the full list. All lints are `-D` (hard errors). For test modules it is acceptable to suppress noisy lints with a broad `#![allow(...)]` at the top of the file rather than per-site annotations.
 
 ## Coding Guidelines
 
@@ -70,7 +73,6 @@ cargo bolero test           # Run bolero fuzz tests
 - Use `ai:` for changes to AI agent scaffolding: `AGENTS.md`, skills, opencode config, etc.
 
 ### Formatting
-- Use inline style formatters in error messages: `format!("expected {expected}, got {token:?}")` instead of `format!("expected {}, got {:?}", expected, token)`
 - Do not reorder existing `use` items; rely on `cargo fmt` to handle import ordering
 
 ### Error Handling
@@ -85,11 +87,6 @@ cargo bolero test           # Run bolero fuzz tests
 - No syntactic separation between type-level and term-level expressions
 - Quotations (`#(e)`, `#{...}`) and splices (`$(e)`, `${...}`) for metaprogramming
 - Lifting with `[[e]]`
-
-### Workspace Commands
-- Always use `-p splic-compiler` when targeting the compiler crate
-- Example: `cargo test -p splic-compiler`
-- Use `--workspace` when targeting all the crates
 
 ## Language Design
 
