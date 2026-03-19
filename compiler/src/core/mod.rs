@@ -26,9 +26,9 @@ pub enum Head<'a> {
     Prim(Prim),       // built-in operation with resolved width
 }
 
-impl<'a> Head<'a> {
+impl Head<'_> {
     /// Returns `true` if this head is a binary infix primitive operator.
-    pub fn is_binop(&self) -> bool {
+    pub const fn is_binop(&self) -> bool {
         matches!(self, Self::Prim(p) if p.is_binop())
     }
 }
@@ -87,9 +87,9 @@ pub struct App<'a> {
     pub args: &'a [&'a Term<'a>],
 }
 
-impl<'a> App<'a> {
+impl App<'_> {
     /// Returns the number of arguments.
-    pub fn arity(&self) -> usize {
+    pub const fn arity(&self) -> usize {
         self.args.len()
     }
 
@@ -146,11 +146,11 @@ pub enum Term<'a> {
 }
 
 impl<'a> Term<'a> {
-    pub fn new_app(head: Head<'a>, args: &'a [&'a Self]) -> Self {
+    pub const fn new_app(head: Head<'a>, args: &'a [&'a Self]) -> Self {
         Self::App(App { head, args })
     }
 
-    pub fn new_let(name: &'a str, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
+    pub const fn new_let(name: &'a str, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
         Self::Let(Let {
             name,
             ty,
@@ -159,7 +159,7 @@ impl<'a> Term<'a> {
         })
     }
 
-    pub fn new_match(scrutinee: &'a Self, arms: &'a [Arm<'a>]) -> Self {
+    pub const fn new_match(scrutinee: &'a Self, arms: &'a [Arm<'a>]) -> Self {
         Self::Match(Match { scrutinee, arms })
     }
 }
