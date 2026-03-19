@@ -69,7 +69,7 @@ pub struct FunSig<'a> {
 /// Elaborated top-level function definition
 #[derive(Debug)]
 pub struct Function<'a> {
-    pub name: &'a str,
+    pub name: Name<'a>,
     pub sig: FunSig<'a>,
     pub body: &'a Term<'a>,
 }

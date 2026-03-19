@@ -50,7 +50,9 @@ fn collect_signatures_two_functions() {
 
     assert_eq!(globals.len(), 2);
 
-    let id_sig = globals.get("id").expect("id should be in globals");
+    let id_sig = globals
+        .get(&Name::new("id"))
+        .expect("id should be in globals");
     assert_eq!(id_sig.phase, Phase::Meta);
     assert_eq!(id_sig.params.len(), 1);
     assert_eq!(id_sig.params[0].0, "x");
@@ -70,7 +72,7 @@ fn collect_signatures_two_functions() {
     ));
 
     let add_sig = globals
-        .get("add_one")
+        .get(&Name::new("add_one"))
         .expect("add_one should be in globals");
     assert_eq!(add_sig.phase, Phase::Object);
     assert_eq!(add_sig.params.len(), 1);

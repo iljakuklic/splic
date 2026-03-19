@@ -103,7 +103,7 @@ struct GlobalDef<'core> {
     body: &'core Term<'core>,
 }
 
-type Globals<'core> = HashMap<&'core str, GlobalDef<'core>>;
+type Globals<'core> = HashMap<Name<'core>, GlobalDef<'core>>;
 
 // ── Meta-level evaluator ──────────────────────────────────────────────────────
 
@@ -187,7 +187,7 @@ fn eval_meta_app<'out, 'core>(
         // ── Global function call ──────────────────────────────────────────────
         Head::Global(name) => {
             let def = globals
-                .get(name.as_str())
+                .get(name)
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
 
             assert_eq!(
@@ -556,7 +556,7 @@ pub fn unstage_program<'out, 'core>(
             let staged_body = unstage_obj(arena, &globals, &mut env, f.body)?;
 
             Ok(Function {
-                name: arena.alloc_str(f.name),
+                name: Name::new(arena.alloc_str(f.name.as_str())),
                 sig: FunSig {
                     params: staged_params,
                     ret_ty: staged_ret_ty,

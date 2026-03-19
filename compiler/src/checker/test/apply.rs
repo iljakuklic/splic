@@ -8,7 +8,7 @@ fn infer_global_call_no_args_returns_ret_ty() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut globals = HashMap::new();
-    globals.insert("f", sig_no_params_returns_u64(&core_arena));
+    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
@@ -47,7 +47,7 @@ fn infer_global_call_wrong_arity_fails() {
     let extra_arg = src_arena.alloc(ast::Term::Lit(99));
     let args = src_arena.alloc_slice_fill_iter([extra_arg as &ast::Term]);
     let mut globals = HashMap::new();
-    globals.insert("f", sig_no_params_returns_u64(&core_arena));
+    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
@@ -70,7 +70,7 @@ fn infer_global_call_phase_mismatch_fails() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "f",
+        Name::new("f"),
         FunSig {
             params: &[],
             ret_ty: u64_obj,
@@ -94,7 +94,7 @@ fn infer_global_call_with_arg_checks_arg_type() {
     let core_arena = bumpalo::Bump::new();
     // `f(x: u32) -> u64`; call `f(42u32)` — arg should be checked against u32
     let mut globals = HashMap::new();
-    globals.insert("f", sig_one_param_returns_u64(&core_arena));
+    globals.insert(Name::new("f"), sig_one_param_returns_u64(&core_arena));
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let arg = src_arena.alloc(ast::Term::Lit(42));

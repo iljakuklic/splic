@@ -66,7 +66,7 @@ fn infer_quote_of_global_call_returns_lifted_type() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "f",
+        Name::new("f"),
         FunSig {
             params: &[],
             ret_ty: u64_ty_core,
@@ -101,7 +101,7 @@ fn infer_quote_at_object_phase_fails() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "f",
+        Name::new("f"),
         FunSig {
             params: &[],
             ret_ty: u64_ty_core,

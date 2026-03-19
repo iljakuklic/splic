@@ -21,13 +21,13 @@ pub struct Ctx<'core, 'globals> {
     locals: Vec<(&'core str, &'core core::Term<'core>)>,
     /// Global function signatures: name -> signature.
     /// Borrowed independently of the arena so the map can live on the stack.
-    globals: &'globals HashMap<&'core str, core::FunSig<'core>>,
+    globals: &'globals HashMap<core::Name<'core>, core::FunSig<'core>>,
 }
 
 impl<'core, 'globals> Ctx<'core, 'globals> {
     pub const fn new(
         arena: &'core bumpalo::Bump,
-        globals: &'globals HashMap<&'core str, core::FunSig<'core>>,
+        globals: &'globals HashMap<core::Name<'core>, core::FunSig<'core>>,
     ) -> Self {
         Ctx {
             arena,
@@ -232,13 +232,13 @@ fn elaborate_sig<'src, 'core>(
 pub(crate) fn collect_signatures<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-) -> Result<HashMap<&'core str, core::FunSig<'core>>> {
-    let mut globals: HashMap<&'core str, core::FunSig<'core>> = HashMap::new();
+) -> Result<HashMap<core::Name<'core>, core::FunSig<'core>>> {
+    let mut globals: HashMap<core::Name<'core>, core::FunSig<'core>> = HashMap::new();
 
     for func in program.functions {
-        let name: &'core str = arena.alloc_str(func.name.as_str());
+        let name = core::Name::new(arena.alloc_str(func.name.as_str()));
 
-        if globals.contains_key(name) {
+        if globals.contains_key(&name) {
             return Err(anyhow!("duplicate function name `{name}`"));
         }
 
@@ -254,12 +254,12 @@ pub(crate) fn collect_signatures<'src, 'core>(
 fn elaborate_bodies<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-    globals: &HashMap<&'core str, core::FunSig<'core>>,
+    globals: &HashMap<core::Name<'core>, core::FunSig<'core>>,
 ) -> Result<core::Program<'core>> {
     let functions: &'core [core::Function<'core>] =
         arena.alloc_slice_try_fill_iter(program.functions.iter().map(|func| -> Result<_> {
-            let name: &'core str = arena.alloc_str(func.name.as_str());
-            let sig = globals.get(name).expect("signature missing from pass 1");
+            let name = core::Name::new(arena.alloc_str(func.name.as_str()));
+            let sig = globals.get(&name).expect("signature missing from pass 1");
 
             // Build a fresh context borrowing the stack-owned globals map.
             let mut ctx = Ctx::new(arena, globals);
@@ -390,16 +390,15 @@ pub fn infer<'src, 'core>(
             func: ast::FunName::Name(name),
             args,
         } => {
-            let name_str = name.as_str();
             let sig = ctx
                 .globals
-                .get(name_str)
-                .ok_or_else(|| anyhow!("unknown function `{name_str}`"))?;
+                .get(name)
+                .ok_or_else(|| anyhow!("unknown function `{name}`"))?;
 
             // The call phase must match the current elaboration phase.
             if sig.phase != phase {
                 return Err(anyhow!(
-                    "function `{name_str}` is a {}-phase function, but called in {}-phase context",
+                    "function `{name}` is a {}-phase function, but called in {}-phase context",
                     sig.phase,
                     phase,
                 ));
@@ -410,7 +409,7 @@ pub fn infer<'src, 'core>(
 
             if args.len() != params.len() {
                 return Err(anyhow!(
-                    "function `{name_str}` expects {} argument(s), got {}",
+                    "function `{name}` expects {} argument(s), got {}",
                     params.len(),
                     args.len()
                 ));
@@ -427,7 +426,7 @@ pub fn infer<'src, 'core>(
                 ))?;
 
             let core_term = ctx.alloc(core::Term::new_app(
-                core::Head::Global(core::Name::new(ctx.arena.alloc_str(name_str))),
+                core::Head::Global(core::Name::new(ctx.arena.alloc_str(name.as_str()))),
                 core_args,
             ));
             Ok((core_term, ret_ty))
