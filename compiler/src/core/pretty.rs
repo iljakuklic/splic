@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::parser::ast::Phase;
 
-use super::{Arm, Function, Head, Pat, Prim, Program, Term};
+use super::{App, Arm, Function, Head, Pat, Prim, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -12,24 +12,17 @@ fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
 
 /// Whether a term needs parentheses when used as an atomic sub-expression
 /// (i.e. as an argument to an application or operand to an operator).
-const fn needs_parens(term: &Term<'_>) -> bool {
+fn needs_parens(term: &Term<'_>) -> bool {
     match term {
-        Term::App {
-            head: Head::Prim(p),
-            args,
-        } => {
-            // Binary infix ops need parens; unary BitNot does not.
-            p.is_binop() && args.len() == 2
-        }
+        Term::App(app) => app.is_binop(),
         Term::Var(_)
         | Term::Prim(_)
         | Term::Lit(_)
-        | Term::App { .. }
         | Term::Lift(_)
         | Term::Quote(_)
         | Term::Splice(_)
-        | Term::Let { .. }
-        | Term::Match { .. } => false,
+        | Term::Let(_)
+        | Term::Match(_) => false,
     }
 }
 
@@ -46,12 +39,12 @@ fn fmt_term<'a>(
 ) -> fmt::Result {
     match term {
         // Let and Match manage their own indentation internally.
-        Term::Let { .. } | Term::Match { .. } => fmt_term_inline(term, env, indent, f),
+        Term::Let(_) | Term::Match(_) => fmt_term_inline(term, env, indent, f),
         // Everything else gets a leading indent.
         Term::Var(_)
         | Term::Prim(_)
         | Term::Lit(_)
-        | Term::App { .. }
+        | Term::App(_)
         | Term::Lift(_)
         | Term::Quote(_)
         | Term::Splice(_) => {
@@ -86,7 +79,7 @@ fn fmt_term_inline<'a>(
         Term::Prim(p) => fmt_prim_ty(*p, f),
 
         // ── Application ──────────────────────────────────────────────────────
-        Term::App { head, args } => fmt_app(head, args, env, indent, f),
+        Term::App(app) => fmt_app(app, env, indent, f),
 
         // ── Lift / Quote / Splice ─────────────────────────────────────────────
         Term::Lift(inner) => {
@@ -107,32 +100,27 @@ fn fmt_term_inline<'a>(
 
         // ── Let binding ───────────────────────────────────────────────────────
         // In statement position: print as a flat let-chain without extra braces.
-        Term::Let {
-            name,
-            ty,
-            expr,
-            body,
-        } => {
+        Term::Let(let_) => {
             let lvl = env.len();
             write_indent(f, indent)?;
-            write!(f, "let {name}@{lvl}: ")?;
-            fmt_atom(ty, env, indent, f)?;
+            write!(f, "let {}@{lvl}: ", let_.name)?;
+            fmt_atom(let_.ty, env, indent, f)?;
             write!(f, " = ")?;
-            fmt_expr(expr, env, indent, f)?;
+            fmt_expr(let_.expr, env, indent, f)?;
             writeln!(f, ";")?;
-            env.push(name);
-            fmt_term(body, env, indent, f)?;
+            env.push(let_.name);
+            fmt_term(let_.body, env, indent, f)?;
             env.pop();
             Ok(())
         }
 
         // ── Match ─────────────────────────────────────────────────────────────
-        Term::Match { scrutinee, arms } => {
+        Term::Match(match_) => {
             write_indent(f, indent)?;
             write!(f, "match ")?;
-            fmt_atom(scrutinee, env, indent, f)?;
+            fmt_atom(match_.scrutinee, env, indent, f)?;
             writeln!(f, " {{")?;
-            for arm in *arms {
+            for arm in match_.arms {
                 fmt_arm(arm, env, indent + 1, f)?;
             }
             write_indent(f, indent)?;
@@ -152,7 +140,7 @@ fn fmt_expr<'a>(
     f: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
     match term {
-        Term::Let { .. } | Term::Match { .. } => {
+        Term::Let(_) | Term::Match(_) => {
             writeln!(f, "{{")?;
             fmt_term(term, env, indent + 1, f)?;
             writeln!(f)?;
@@ -162,7 +150,7 @@ fn fmt_expr<'a>(
         Term::Var(_)
         | Term::Prim(_)
         | Term::Lit(_)
-        | Term::App { .. }
+        | Term::App(_)
         | Term::Lift(_)
         | Term::Quote(_)
         | Term::Splice(_) => fmt_term_inline(term, env, indent, f),
@@ -211,17 +199,16 @@ fn fmt_prim_ty(prim: Prim, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 
 /// Print an application.
 fn fmt_app<'a>(
-    head: &Head<'a>,
-    args: &[&'a Term<'a>],
+    app: &App<'a>,
     env: &mut Vec<&'a str>,
     indent: usize,
     f: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
-    match head {
+    match &app.head {
         // ── Global function call ──────────────────────────────────────────────
         Head::Global(name) => {
             write!(f, "{name}(")?;
-            for (i, arg) in args.iter().enumerate() {
+            for (i, arg) in app.args.iter().enumerate() {
                 if i > 0 {
                     write!(f, ", ")?;
                 }
@@ -233,20 +220,20 @@ fn fmt_app<'a>(
         // ── Primitive operation ───────────────────────────────────────────────
         Head::Prim(prim) => {
             #[expect(clippy::indexing_slicing)]
-            if prim.is_binop() {
+            if app.is_binop() {
                 // Binary infix operator — exactly 2 args.
-                fmt_atom(args[0], env, indent, f)?;
+                fmt_atom(app.args[0], env, indent, f)?;
                 write!(f, " {} ", prim.symbol_str())?;
-                fmt_atom(args[1], env, indent, f)
+                fmt_atom(app.args[1], env, indent, f)
             } else {
                 match prim {
                     Prim::BitNot(_) => {
                         write!(f, "!")?;
-                        fmt_atom(args[0], env, indent, f)
+                        fmt_atom(app.args[0], env, indent, f)
                     }
                     Prim::Embed(_) => {
                         // Transparent: just print the argument.
-                        fmt_atom(args[0], env, indent, f)
+                        fmt_atom(app.args[0], env, indent, f)
                     }
                     // Type-level prims should not appear as App heads.
                     p @ (Prim::IntTy(_)
@@ -353,11 +340,11 @@ fn fmt_prim_ty_or_term<'a>(
         Term::Prim(p) => fmt_prim_ty(*p, f),
         Term::Var(_)
         | Term::Lit(_)
-        | Term::App { .. }
+        | Term::App(_)
         | Term::Lift(_)
         | Term::Quote(_)
         | Term::Splice(_)
-        | Term::Let { .. }
-        | Term::Match { .. } => fmt_atom(term, env, 0, f),
+        | Term::Let(_)
+        | Term::Match(_) => fmt_atom(term, env, 0, f),
     }
 }

@@ -173,16 +173,13 @@ fn global_call_is_inferable() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(1));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
-    let app = arena.alloc(core::Term::App {
-        head: Head::Global("foo"),
-        args,
-    });
+    let app = arena.alloc(core::Term::new_app(Head::Global("foo"), args));
     assert!(matches!(
         app,
-        core::Term::App {
+        core::Term::App(core::App {
             head: Head::Global("foo"),
             ..
-        }
+        })
     ));
 }
 
@@ -210,10 +207,10 @@ fn lift_type_structure() {
 #[test]
 fn quote_inference_mirrors_inner() {
     let arena = bumpalo::Bump::new();
-    let inner = arena.alloc(core::Term::App {
-        head: Head::Global("foo"),
-        args: &*arena.alloc_slice_fill_iter([] as [&core::Term; 0]),
-    });
+    let inner = arena.alloc(core::Term::new_app(
+        Head::Global("foo"),
+        arena.alloc_slice_fill_iter([] as [&core::Term; 0]),
+    ));
     let quoted = arena.alloc(core::Term::Quote(inner));
     assert!(matches!(quoted, core::Term::Quote(_)));
 }
@@ -237,13 +234,8 @@ fn let_binding_structure() {
     let u64_term = ctx.u64_ty();
     let expr = arena.alloc(core::Term::Lit(42));
     let body = arena.alloc(core::Term::Var(Lvl(0)));
-    let let_term = arena.alloc(core::Term::Let {
-        name: "x",
-        ty: u64_term,
-        expr,
-        body,
-    });
-    assert!(matches!(let_term, core::Term::Let { .. }));
+    let let_term = arena.alloc(core::Term::new_let("x", u64_term, expr, body));
+    assert!(matches!(let_term, core::Term::Let(_)));
 }
 
 #[test]
@@ -263,9 +255,9 @@ fn match_with_literal_pattern() {
     };
 
     let arms = &*arena.alloc_slice_fill_iter([arm0, arm1]);
-    let match_term = arena.alloc(core::Term::Match { scrutinee, arms });
+    let match_term = arena.alloc(core::Term::new_match(scrutinee, arms));
 
-    assert!(matches!(match_term, core::Term::Match { .. }));
+    assert!(matches!(match_term, core::Term::Match(_)));
 }
 
 #[test]
@@ -280,9 +272,9 @@ fn match_with_binding_pattern() {
     };
 
     let arms = &*arena.alloc_slice_fill_iter([arm]);
-    let match_term = arena.alloc(core::Term::Match { scrutinee, arms });
+    let match_term = arena.alloc(core::Term::new_match(scrutinee, arms));
 
-    assert!(matches!(match_term, core::Term::Match { .. }));
+    assert!(matches!(match_term, core::Term::Match(_)));
 }
 
 #[test]
@@ -290,17 +282,14 @@ fn function_call_to_global() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(42));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
-    let app = arena.alloc(core::Term::App {
-        head: Head::Global("foo"),
-        args,
-    });
+    let app = arena.alloc(core::Term::new_app(Head::Global("foo"), args));
 
     assert!(matches!(
         app,
-        core::Term::App {
+        core::Term::App(core::App {
             head: Head::Global("foo"),
             ..
-        }
+        })
     ));
 }
 
@@ -310,19 +299,19 @@ fn builtin_operation_call() {
     let arg1 = arena.alloc(core::Term::Lit(1));
     let arg2 = arena.alloc(core::Term::Lit(2));
     let args = &*arena.alloc_slice_fill_iter([&*arg1, &*arg2]);
-    let app = arena.alloc(core::Term::App {
-        head: Head::Prim(Prim::Add(IntType::new(IntWidth::U64, Phase::Object))),
+    let app = arena.alloc(core::Term::new_app(
+        Head::Prim(Prim::Add(IntType::new(IntWidth::U64, Phase::Object))),
         args,
-    });
+    ));
 
     assert!(matches!(
         app,
-        core::Term::App {
+        core::Term::App(core::App {
             head: Head::Prim(Prim::Add(IntType {
                 width: IntWidth::U64,
                 ..
             })),
             ..
-        }
+        })
     ));
 }

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Context as _, Result, anyhow};
+use anyhow::{anyhow, Context as _, Result};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
@@ -426,10 +426,10 @@ pub fn infer<'src, 'core>(
                     },
                 ))?;
 
-            let core_term = ctx.alloc(core::Term::App {
-                head: core::Head::Global(ctx.arena.alloc_str(name_str)),
-                args: core_args,
-            });
+            let core_term = ctx.alloc(core::Term::new_app(
+                core::Head::Global(ctx.arena.alloc_str(name_str)),
+                core_args,
+            ));
             Ok((core_term, ret_ty))
         }
 
@@ -466,12 +466,12 @@ pub fn infer<'src, 'core>(
                 core::Term::Var(_)
                 | core::Term::Prim(_)
                 | core::Term::Lit(_)
-                | core::Term::App { .. }
+                | core::Term::App(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
-                | core::Term::Let { .. }
-                | core::Term::Match { .. } => {
+                | core::Term::Let(_)
+                | core::Term::Match(_) => {
                     return Err(anyhow!("comparison operands must be integers"));
                 }
             };
@@ -490,10 +490,7 @@ pub fn infer<'src, 'core>(
                 | BinOp::BitOr => unreachable!(),
             };
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
-            let core_term = ctx.alloc(core::Term::App {
-                head: core::Head::Prim(prim),
-                args: core_args,
-            });
+            let core_term = ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args));
             // Result type is always u1 at the current phase.
             let u1_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
                 IntWidth::U1,
@@ -564,21 +561,21 @@ pub fn infer<'src, 'core>(
                         *width,
                         Phase::Object,
                     ))));
-                    let embedded = ctx.alloc(core::Term::App {
-                        head: core::Head::Prim(Prim::Embed(*width)),
-                        args: ctx.alloc_slice([core_inner]),
-                    });
+                    let embedded = ctx.alloc(core::Term::new_app(
+                        core::Head::Prim(Prim::Embed(*width)),
+                        ctx.alloc_slice([core_inner]),
+                    ));
                     let core_term = ctx.alloc(core::Term::Splice(embedded));
                     Ok((core_term, obj_ty))
                 }
                 core::Term::Var(_)
                 | core::Term::Prim(_)
                 | core::Term::Lit(_)
-                | core::Term::App { .. }
+                | core::Term::App(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
-                | core::Term::Let { .. }
-                | core::Term::Match { .. } => Err(anyhow!(
+                | core::Term::Let(_)
+                | core::Term::Match(_) => Err(anyhow!(
                     "argument of `$(...)` must have a lifted type `[[T]]` or be a meta-level integer"
                 )),
             }
@@ -725,12 +722,9 @@ where
     let cont_result = cont_result?;
 
     let core_body = body_of(&cont_result);
-    let let_term = ctx.alloc(core::Term::Let {
-        name: bind_name,
-        ty: bind_ty,
-        expr: core_expr,
-        body: core_body,
-    });
+    let let_term = ctx.alloc(core::Term::new_let(
+        bind_name, bind_ty, core_expr, core_body,
+    ));
     Ok(wrap(let_term, cont_result))
 }
 
@@ -866,10 +860,7 @@ pub fn check<'src, 'core>(
             let core_arg1 = check(ctx, phase, args[1], expected)?;
 
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
-            Ok(ctx.alloc(core::Term::App {
-                head: core::Head::Prim(prim),
-                args: core_args,
-            }))
+            Ok(ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args)))
         }
 
         // ------------------------------------------------------------------ App { UnOp }
@@ -882,12 +873,12 @@ pub fn check<'src, 'core>(
                 core::Term::Var(_)
                 | core::Term::Prim(_)
                 | core::Term::Lit(_)
-                | core::Term::App { .. }
+                | core::Term::App(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
-                | core::Term::Let { .. }
-                | core::Term::Match { .. } => {
+                | core::Term::Let(_)
+                | core::Term::Match(_) => {
                     return Err(anyhow!("primitive operation requires an integer type"));
                 }
             };
@@ -902,10 +893,7 @@ pub fn check<'src, 'core>(
             #[expect(clippy::indexing_slicing)]
             let core_arg = check(ctx, phase, args[0], expected)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
-            Ok(ctx.alloc(core::Term::App {
-                head: core::Head::Prim(prim),
-                args: core_args,
-            }))
+            Ok(ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args)))
         }
 
         // ------------------------------------------------------------------ Quote (check mode)
@@ -918,11 +906,11 @@ pub fn check<'src, 'core>(
             core::Term::Var(_)
             | core::Term::Prim(_)
             | core::Term::Lit(_)
-            | core::Term::App { .. }
+            | core::Term::App(_)
             | core::Term::Quote(_)
             | core::Term::Splice(_)
-            | core::Term::Let { .. }
-            | core::Term::Match { .. } => {
+            | core::Term::Let(_)
+            | core::Term::Match(_) => {
                 Err(anyhow!("quote `#(...)` must have a lifted type `[[T]]`"))
             }
         },
@@ -956,10 +944,10 @@ pub fn check<'src, 'core>(
                     Phase::Meta,
                 ))));
                 let core_inner = check(ctx, Phase::Meta, inner, meta_int_ty)?;
-                let embedded = ctx.alloc(core::Term::App {
-                    head: core::Head::Prim(Prim::Embed(*width)),
-                    args: ctx.arena.alloc_slice_fill_iter([core_inner]),
-                });
+                let embedded = ctx.alloc(core::Term::new_app(
+                    core::Head::Prim(Prim::Embed(*width)),
+                    ctx.arena.alloc_slice_fill_iter([core_inner]),
+                ));
                 return Ok(ctx.alloc(core::Term::Splice(embedded)));
             }
             let lift_ty = ctx.alloc(core::Term::Lift(expected));
@@ -997,10 +985,7 @@ pub fn check<'src, 'core>(
                         })
                     }))?;
 
-            Ok(ctx.alloc(core::Term::Match {
-                scrutinee: core_scrutinee,
-                arms: core_arms,
-            }))
+            Ok(ctx.alloc(core::Term::new_match(core_scrutinee, core_arms)))
         }
 
         // ------------------------------------------------------------------ Block (check mode)
