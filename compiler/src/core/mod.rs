@@ -1,7 +1,7 @@
 pub mod pretty;
 mod prim;
 
-pub use crate::parser::ast::{Name, Phase};
+pub use crate::common::{Name, Phase};
 pub use prim::{IntType, IntWidth, Prim};
 
 /// De Bruijn level (counts from the outermost binder)
