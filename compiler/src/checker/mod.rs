@@ -427,7 +427,7 @@ pub fn infer<'src, 'core>(
                 ))?;
 
             let core_term = ctx.alloc(core::Term::new_app(
-                core::Head::Global(ctx.arena.alloc_str(name_str)),
+                core::Head::Global(core::Name::new(ctx.arena.alloc_str(name_str))),
                 core_args,
             ));
             Ok((core_term, ret_ty))

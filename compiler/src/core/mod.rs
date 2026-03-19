@@ -1,7 +1,7 @@
 pub mod pretty;
 mod prim;
 
-pub use crate::parser::ast::Phase;
+pub use crate::parser::ast::{Name, Phase};
 pub use prim::{IntType, IntWidth, Prim};
 
 /// De Bruijn level (counts from the outermost binder)
@@ -22,8 +22,8 @@ impl Lvl {
 /// Head of an application: either a top-level function or a primitive op
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Head<'a> {
-    Global(&'a str), // resolved top-level function name
-    Prim(Prim),      // built-in operation with resolved width
+    Global(Name<'a>), // resolved top-level function name
+    Prim(Prim),       // built-in operation with resolved width
 }
 
 impl<'a> Head<'a> {

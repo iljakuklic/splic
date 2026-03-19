@@ -173,11 +173,11 @@ fn global_call_is_inferable() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(1));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
-    let app = arena.alloc(core::Term::new_app(Head::Global("foo"), args));
+    let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
     assert!(matches!(
         app,
         core::Term::App(core::App {
-            head: Head::Global("foo"),
+            head: Head::Global(Name("foo")),
             ..
         })
     ));
@@ -208,7 +208,7 @@ fn lift_type_structure() {
 fn quote_inference_mirrors_inner() {
     let arena = bumpalo::Bump::new();
     let inner = arena.alloc(core::Term::new_app(
-        Head::Global("foo"),
+        Head::Global(Name::new("foo")),
         arena.alloc_slice_fill_iter([] as [&core::Term; 0]),
     ));
     let quoted = arena.alloc(core::Term::Quote(inner));
@@ -282,12 +282,12 @@ fn function_call_to_global() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(42));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
-    let app = arena.alloc(core::Term::new_app(Head::Global("foo"), args));
+    let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
 
     assert!(matches!(
         app,
         core::Term::App(core::App {
-            head: Head::Global("foo"),
+            head: Head::Global(Name("foo")),
             ..
         })
     ));

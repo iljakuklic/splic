@@ -4,7 +4,7 @@ use anyhow::{anyhow, Result};
 use bumpalo::Bump;
 
 use crate::core::{
-    App, Arm, FunSig, Function, Head, IntType, IntWidth, Lvl, Pat, Prim, Program, Term,
+    App, Arm, FunSig, Function, Head, IntType, IntWidth, Lvl, Name, Pat, Prim, Program, Term,
 };
 use crate::parser::ast::Phase;
 
@@ -187,7 +187,7 @@ fn eval_meta_app<'out, 'core>(
         // ── Global function call ──────────────────────────────────────────────
         Head::Global(name) => {
             let def = globals
-                .get(name)
+                .get(name.as_str())
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
 
             assert_eq!(
@@ -424,7 +424,7 @@ fn unstage_obj<'out, 'core>(
         // ── Application ──────────────────────────────────────────────────────
         Term::App(app) => {
             let staged_head = match &app.head {
-                Head::Global(name) => Head::Global(arena.alloc_str(name)),
+                Head::Global(name) => Head::Global(Name::new(arena.alloc_str(name.as_str()))),
                 Head::Prim(p) => Head::Prim(*p),
             };
             let staged_args: &'out [&'out Term<'out>] = arena.alloc_slice_try_fill_iter(
