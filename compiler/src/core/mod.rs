@@ -1,57 +1,8 @@
 pub mod pretty;
+mod prim;
 
-use crate::parser::ast::Phase;
-
-/// Integer widths for primitive types and operations
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum IntWidth {
-    U0,
-    U1,
-    U8,
-    U16,
-    U32,
-    U64,
-}
-
-/// Integer type: width + phase (meta vs. object)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct IntType {
-    pub width: IntWidth,
-    pub phase: Phase,
-}
-
-impl IntType {
-    pub const fn new(width: IntWidth, phase: Phase) -> Self {
-        Self { width, phase }
-    }
-}
-
-/// Built-in types and operations, fully resolved by the elaborator
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Prim {
-    // Integer type (inhabits VmType at object phase, Type at meta phase)
-    IntTy(IntType),
-    // Universe: U(Meta) = Type, U(Object) = VmType
-    U(Phase),
-    // Arithmetic (binary)
-    Add(IntType),
-    Sub(IntType),
-    Mul(IntType),
-    Div(IntType),
-    // Bitwise
-    BitAnd(IntType),
-    BitOr(IntType),
-    BitNot(IntType),
-    // Embed a meta-level integer into object-level code: IntTy(w, Meta) -> [[IntTy(w, Object)]]
-    Embed(IntWidth),
-    // Comparison (return U1 at the same phase)
-    Eq(IntType),
-    Ne(IntType),
-    Lt(IntType),
-    Gt(IntType),
-    Le(IntType),
-    Ge(IntType),
-}
+pub use crate::parser::ast::{Name, Phase};
+pub use prim::{IntType, IntWidth, Prim};
 
 /// De Bruijn level (counts from the outermost binder)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -71,8 +22,15 @@ impl Lvl {
 /// Head of an application: either a top-level function or a primitive op
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Head<'a> {
-    Global(&'a str), // resolved top-level function name
-    Prim(Prim),      // built-in operation with resolved width
+    Global(Name<'a>), // resolved top-level function name
+    Prim(Prim),       // built-in operation with resolved width
+}
+
+impl Head<'_> {
+    /// Returns `true` if this head is a binary infix primitive operator.
+    pub const fn is_binop(&self) -> bool {
+        matches!(self, Self::Prim(p) if p.is_binop())
+    }
 }
 
 /// Match pattern in the core IR
@@ -111,7 +69,7 @@ pub struct FunSig<'a> {
 /// Elaborated top-level function definition
 #[derive(Debug)]
 pub struct Function<'a> {
-    pub name: &'a str,
+    pub name: Name<'a>,
     pub sig: FunSig<'a>,
     pub body: &'a Term<'a>,
 }
@@ -120,6 +78,48 @@ pub struct Function<'a> {
 #[derive(Debug)]
 pub struct Program<'a> {
     pub functions: &'a [Function<'a>],
+}
+
+/// Application of a global function or primitive operation to arguments.
+#[derive(Debug, PartialEq, Eq)]
+pub struct App<'a> {
+    pub head: Head<'a>,
+    pub args: &'a [&'a Term<'a>],
+}
+
+impl App<'_> {
+    /// Returns the number of arguments.
+    pub const fn arity(&self) -> usize {
+        self.args.len()
+    }
+
+    /// Returns `true` if this application is a binary infix primitive operator.
+    ///
+    /// Asserts that the argument count is exactly 2, which is an invariant
+    /// enforced by the elaborator for all binop applications.
+    pub fn is_binop(&self) -> bool {
+        let result = self.head.is_binop();
+        if result {
+            assert_eq!(self.arity(), 2, "binop App must have exactly 2 arguments");
+        }
+        result
+    }
+}
+
+/// Let binding with explicit type annotation and a body.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Let<'a> {
+    pub name: &'a str,
+    pub ty: &'a Term<'a>,
+    pub expr: &'a Term<'a>,
+    pub body: &'a Term<'a>,
+}
+
+/// Pattern match.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Match<'a> {
+    pub scrutinee: &'a Term<'a>,
+    pub arms: &'a [Arm<'a>],
 }
 
 /// Core term / type (terms and types are unified)
@@ -132,10 +132,7 @@ pub enum Term<'a> {
     /// Numeric literal
     Lit(u64),
     /// Application of a global function or primitive operation to arguments
-    App {
-        head: Head<'a>,
-        args: &'a [&'a Self],
-    },
+    App(App<'a>),
     /// Lift: [[T]] — meta type representing object-level code of type T
     Lift(&'a Self),
     /// Quotation: #(t) — produce object-level code from a meta expression
@@ -143,15 +140,44 @@ pub enum Term<'a> {
     /// Splice: $(t) — run meta code and insert result into object context
     Splice(&'a Self),
     /// Let binding with explicit type annotation and a body
-    Let {
-        name: &'a str,
-        ty: &'a Self,
-        expr: &'a Self,
-        body: &'a Self,
-    },
+    Let(Let<'a>),
     /// Pattern match
-    Match {
-        scrutinee: &'a Self,
-        arms: &'a [Arm<'a>],
-    },
+    Match(Match<'a>),
+}
+
+impl<'a> Term<'a> {
+    pub const fn new_app(head: Head<'a>, args: &'a [&'a Self]) -> Self {
+        Self::App(App { head, args })
+    }
+
+    pub const fn new_let(name: &'a str, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
+        Self::Let(Let {
+            name,
+            ty,
+            expr,
+            body,
+        })
+    }
+
+    pub const fn new_match(scrutinee: &'a Self, arms: &'a [Arm<'a>]) -> Self {
+        Self::Match(Match { scrutinee, arms })
+    }
+}
+
+impl<'a> From<App<'a>> for Term<'a> {
+    fn from(app: App<'a>) -> Self {
+        Self::App(app)
+    }
+}
+
+impl<'a> From<Let<'a>> for Term<'a> {
+    fn from(let_: Let<'a>) -> Self {
+        Self::Let(let_)
+    }
+}
+
+impl<'a> From<Match<'a>> for Term<'a> {
+    fn from(match_: Match<'a>) -> Self {
+        Self::Match(match_)
+    }
 }

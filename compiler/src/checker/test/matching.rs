@@ -14,7 +14,7 @@ fn check_match_all_arms_same_type_succeeds() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "k32",
+        Name::new("k32"),
         FunSig {
             params: &[],
             ret_ty: u32_ty_core,
@@ -61,7 +61,7 @@ fn check_match_u1_fully_covered_succeeds() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "k1",
+        Name::new("k1"),
         FunSig {
             params: &[],
             ret_ty: u1_ty_core,
@@ -108,7 +108,7 @@ fn infer_match_u1_partially_covered_fails() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "k1",
+        Name::new("k1"),
         FunSig {
             params: &[],
             ret_ty: u1_ty_core,
@@ -145,7 +145,7 @@ fn infer_match_no_catch_all_fails() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "k32",
+        Name::new("k32"),
         FunSig {
             params: &[],
             ret_ty: u32_ty_core,
@@ -197,7 +197,7 @@ fn infer_match_arms_type_mismatch_fails() {
     ))));
     let mut globals = HashMap::new();
     globals.insert(
-        "k32",
+        Name::new("k32"),
         FunSig {
             params: &[],
             ret_ty: u32_ty_core,
@@ -205,7 +205,7 @@ fn infer_match_arms_type_mismatch_fails() {
         },
     );
     globals.insert(
-        "k64",
+        Name::new("k64"),
         FunSig {
             params: &[],
             ret_ty: u64_ty_core,

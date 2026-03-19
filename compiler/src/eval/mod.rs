@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use anyhow::{Result, anyhow};
 use bumpalo::Bump;
 
-use crate::core::{Arm, FunSig, Function, Head, IntType, IntWidth, Lvl, Pat, Prim, Program, Term};
+use crate::core::{
+    App, Arm, FunSig, Function, Head, IntType, IntWidth, Lvl, Name, Pat, Prim, Program, Term,
+};
 use crate::parser::ast::Phase;
 
 // ── Value types ───────────────────────────────────────────────────────────────
@@ -101,7 +103,7 @@ struct GlobalDef<'core> {
     body: &'core Term<'core>,
 }
 
-type Globals<'core> = HashMap<&'core str, GlobalDef<'core>>;
+type Globals<'core> = HashMap<Name<'core>, GlobalDef<'core>>;
 
 // ── Meta-level evaluator ──────────────────────────────────────────────────────
 
@@ -135,7 +137,7 @@ fn eval_meta<'out, 'core>(
         Term::Lit(n) => Ok(MetaVal::VLit(*n)),
 
         // ── Application ──────────────────────────────────────────────────────
-        Term::App { head, args } => eval_meta_app(arena, globals, env, head, args),
+        Term::App(app) => eval_meta_app(arena, globals, env, app),
 
         // ── Quote: #(t) ───────────────────────────────────────────────────────
         // Unstage the enclosed object term (eliminating any splices inside it)
@@ -146,24 +148,24 @@ fn eval_meta<'out, 'core>(
         }
 
         // ── Let binding ───────────────────────────────────────────────────────
-        Term::Let { expr, body, .. } => {
-            let val = eval_meta(arena, globals, env, expr)?;
+        Term::Let(let_) => {
+            let val = eval_meta(arena, globals, env, let_.expr)?;
             env.push_meta(val);
-            let result = eval_meta(arena, globals, env, body);
+            let result = eval_meta(arena, globals, env, let_.body);
             env.pop();
             result
         }
 
         // ── Match ─────────────────────────────────────────────────────────────
-        Term::Match { scrutinee, arms } => {
-            let scrut_val = eval_meta(arena, globals, env, scrutinee)?;
+        Term::Match(match_) => {
+            let scrut_val = eval_meta(arena, globals, env, match_.scrutinee)?;
             let n = match scrut_val {
                 MetaVal::VLit(n) => n,
                 MetaVal::VCode(_) => unreachable!(
                     "cannot match on object code at meta level (typechecker invariant)"
                 ),
             };
-            eval_meta_match(arena, globals, env, n, arms)
+            eval_meta_match(arena, globals, env, n, match_.arms)
         }
 
         // ── Unreachable in well-typed meta terms ──────────────────────────────
@@ -179,10 +181,9 @@ fn eval_meta_app<'out, 'core>(
     arena: &'out Bump,
     globals: &Globals<'core>,
     env: &mut Env<'out>,
-    head: &'core Head<'core>,
-    args: &'core [&'core Term<'core>],
+    app: &'core App<'core>,
 ) -> Result<MetaVal<'out>> {
-    match head {
+    match &app.head {
         // ── Global function call ──────────────────────────────────────────────
         Head::Global(name) => {
             let def = globals
@@ -196,8 +197,8 @@ fn eval_meta_app<'out, 'core>(
             );
 
             // Evaluate each argument in the *caller's* environment.
-            let mut arg_vals: Vec<MetaVal<'out>> = Vec::with_capacity(args.len());
-            for arg in args {
+            let mut arg_vals: Vec<MetaVal<'out>> = Vec::with_capacity(app.args.len());
+            for arg in app.args {
                 arg_vals.push(eval_meta(arena, globals, env, arg)?);
             }
 
@@ -211,7 +212,7 @@ fn eval_meta_app<'out, 'core>(
         }
 
         // ── Primitive operations ──────────────────────────────────────────────
-        Head::Prim(prim) => eval_meta_prim(arena, globals, env, *prim, args),
+        Head::Prim(prim) => eval_meta_prim(arena, globals, env, *prim, app.args),
     }
 }
 
@@ -421,18 +422,17 @@ fn unstage_obj<'out, 'core>(
         Term::Prim(p) => Ok(arena.alloc(Term::Prim(*p))),
 
         // ── Application ──────────────────────────────────────────────────────
-        Term::App { head, args } => {
-            let staged_head = match head {
-                Head::Global(name) => Head::Global(arena.alloc_str(name)),
+        Term::App(app) => {
+            let staged_head = match &app.head {
+                Head::Global(name) => Head::Global(Name::new(arena.alloc_str(name.as_str()))),
                 Head::Prim(p) => Head::Prim(*p),
             };
             let staged_args: &'out [&'out Term<'out>] = arena.alloc_slice_try_fill_iter(
-                args.iter().map(|arg| unstage_obj(arena, globals, env, arg)),
+                app.args
+                    .iter()
+                    .map(|arg| unstage_obj(arena, globals, env, arg)),
             )?;
-            Ok(arena.alloc(Term::App {
-                head: staged_head,
-                args: staged_args,
-            }))
+            Ok(arena.alloc(Term::new_app(staged_head, staged_args)))
         }
 
         // ── Splice: $(t) — the key staging step ───────────────────────────────
@@ -451,32 +451,27 @@ fn unstage_obj<'out, 'core>(
         }
 
         // ── Let binding ───────────────────────────────────────────────────────
-        Term::Let {
-            name,
-            ty,
-            expr,
-            body,
-        } => {
-            let staged_ty = unstage_obj(arena, globals, env, ty)?;
-            let staged_expr = unstage_obj(arena, globals, env, expr)?;
+        Term::Let(let_) => {
+            let staged_ty = unstage_obj(arena, globals, env, let_.ty)?;
+            let staged_expr = unstage_obj(arena, globals, env, let_.expr)?;
             // Push an object binding so that subsequent Var references by
             // De Bruijn level resolve to the correct slot.
             env.push_obj();
-            let staged_body = unstage_obj(arena, globals, env, body);
+            let staged_body = unstage_obj(arena, globals, env, let_.body);
             env.pop();
-            Ok(arena.alloc(Term::Let {
-                name: arena.alloc_str(name),
-                ty: staged_ty,
-                expr: staged_expr,
-                body: staged_body?,
-            }))
+            Ok(arena.alloc(Term::new_let(
+                arena.alloc_str(let_.name),
+                staged_ty,
+                staged_expr,
+                staged_body?,
+            )))
         }
 
         // ── Match ─────────────────────────────────────────────────────────────
-        Term::Match { scrutinee, arms } => {
-            let staged_scrutinee = unstage_obj(arena, globals, env, scrutinee)?;
+        Term::Match(match_) => {
+            let staged_scrutinee = unstage_obj(arena, globals, env, match_.scrutinee)?;
             let staged_arms: &'out [Arm<'out>] =
-                arena.alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
+                arena.alloc_slice_try_fill_iter(match_.arms.iter().map(|arm| -> Result<_> {
                     let staged_pat = match &arm.pat {
                         Pat::Lit(n) => Pat::Lit(*n),
                         Pat::Bind(name) => Pat::Bind(arena.alloc_str(name)),
@@ -495,10 +490,7 @@ fn unstage_obj<'out, 'core>(
                         body: staged_body?,
                     })
                 }))?;
-            Ok(arena.alloc(Term::Match {
-                scrutinee: staged_scrutinee,
-                arms: staged_arms,
-            }))
+            Ok(arena.alloc(Term::new_match(staged_scrutinee, staged_arms)))
         }
 
         // ── Unreachable in well-typed object terms ────────────────────────────
@@ -564,7 +556,7 @@ pub fn unstage_program<'out, 'core>(
             let staged_body = unstage_obj(arena, &globals, &mut env, f.body)?;
 
             Ok(Function {
-                name: arena.alloc_str(f.name),
+                name: Name::new(arena.alloc_str(f.name.as_str())),
                 sig: FunSig {
                     params: staged_params,
                     ret_ty: staged_ret_ty,

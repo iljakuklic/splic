@@ -4,7 +4,7 @@ use super::*;
 
 /// Helper to create a test context with empty globals
 pub fn test_ctx(arena: &bumpalo::Bump) -> Ctx<'_, '_> {
-    static EMPTY: std::sync::OnceLock<HashMap<&'static str, core::FunSig<'static>>> =
+    static EMPTY: std::sync::OnceLock<HashMap<Name<'static>, core::FunSig<'static>>> =
         std::sync::OnceLock::new();
     let globals = EMPTY.get_or_init(HashMap::new);
     Ctx::new(arena, globals)
@@ -15,7 +15,7 @@ pub fn test_ctx(arena: &bumpalo::Bump) -> Ctx<'_, '_> {
 /// The caller must ensure `globals` outlives the returned `Ctx`.
 pub fn test_ctx_with_globals<'core, 'globals>(
     arena: &'core bumpalo::Bump,
-    globals: &'globals HashMap<&'core str, core::FunSig<'core>>,
+    globals: &'globals HashMap<Name<'core>, core::FunSig<'core>>,
 ) -> Ctx<'core, 'globals> {
     Ctx::new(arena, globals)
 }

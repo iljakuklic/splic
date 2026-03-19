@@ -1,0 +1,44 @@
+Program {
+    functions: [
+        Function {
+            phase: Object,
+            name: "nand",
+            params: [
+                Param {
+                    name: "a",
+                    ty: Var(
+                        "u1",
+                    ),
+                },
+                Param {
+                    name: "b",
+                    ty: Var(
+                        "u1",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u1",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Not,
+                    args: [
+                        App {
+                            func: BitAnd,
+                            args: [
+                                Var(
+                                    "a",
+                                ),
+                                Var(
+                                    "b",
+                                ),
+                            ],
+                        },
+                    ],
+                },
+            },
+        },
+    ],
+}

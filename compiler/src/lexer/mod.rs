@@ -3,7 +3,7 @@ use anyhow::{Result, anyhow};
 #[cfg(test)]
 pub mod testutils;
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Name<'a>(pub &'a str);
 
 impl<'a> Name<'a> {
