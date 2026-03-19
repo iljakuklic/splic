@@ -1,57 +1,8 @@
 pub mod pretty;
+mod prim;
 
-use crate::parser::ast::Phase;
-
-/// Integer widths for primitive types and operations
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum IntWidth {
-    U0,
-    U1,
-    U8,
-    U16,
-    U32,
-    U64,
-}
-
-/// Integer type: width + phase (meta vs. object)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct IntType {
-    pub width: IntWidth,
-    pub phase: Phase,
-}
-
-impl IntType {
-    pub const fn new(width: IntWidth, phase: Phase) -> Self {
-        Self { width, phase }
-    }
-}
-
-/// Built-in types and operations, fully resolved by the elaborator
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Prim {
-    // Integer type (inhabits VmType at object phase, Type at meta phase)
-    IntTy(IntType),
-    // Universe: U(Meta) = Type, U(Object) = VmType
-    U(Phase),
-    // Arithmetic (binary)
-    Add(IntType),
-    Sub(IntType),
-    Mul(IntType),
-    Div(IntType),
-    // Bitwise
-    BitAnd(IntType),
-    BitOr(IntType),
-    BitNot(IntType),
-    // Embed a meta-level integer into object-level code: IntTy(w, Meta) -> [[IntTy(w, Object)]]
-    Embed(IntWidth),
-    // Comparison (return U1 at the same phase)
-    Eq(IntType),
-    Ne(IntType),
-    Lt(IntType),
-    Gt(IntType),
-    Le(IntType),
-    Ge(IntType),
-}
+pub use prim::{IntType, IntWidth, Prim};
+pub use crate::parser::ast::Phase;
 
 /// De Bruijn level (counts from the outermost binder)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

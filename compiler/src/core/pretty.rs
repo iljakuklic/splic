@@ -2,46 +2,12 @@ use std::fmt;
 
 use crate::parser::ast::Phase;
 
-use super::{Arm, Function, Head, IntWidth, Pat, Prim, Program, Term};
+use super::{Arm, Function, Head, Pat, Prim, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
-    for _ in 0..depth {
-        write!(f, "    ")?;
-    }
-    Ok(())
-}
-
-const fn prim_int_width(width: IntWidth) -> &'static str {
-    match width {
-        IntWidth::U0 => "u0",
-        IntWidth::U1 => "u1",
-        IntWidth::U8 => "u8",
-        IntWidth::U16 => "u16",
-        IntWidth::U32 => "u32",
-        IntWidth::U64 => "u64",
-    }
-}
-
-/// Returns the infix operator symbol for a binary primitive, or `None` if the
-/// primitive is not a binary infix operator.
-const fn binop_symbol(prim: Prim) -> Option<&'static str> {
-    match prim {
-        Prim::Add(_) => Some("+"),
-        Prim::Sub(_) => Some("-"),
-        Prim::Mul(_) => Some("*"),
-        Prim::Div(_) => Some("/"),
-        Prim::BitAnd(_) => Some("&"),
-        Prim::BitOr(_) => Some("|"),
-        Prim::Eq(_) => Some("=="),
-        Prim::Ne(_) => Some("!="),
-        Prim::Lt(_) => Some("<"),
-        Prim::Gt(_) => Some(">"),
-        Prim::Le(_) => Some("<="),
-        Prim::Ge(_) => Some(">="),
-        Prim::IntTy(_) | Prim::U(_) | Prim::BitNot(_) | Prim::Embed(_) => None,
-    }
+    write!(f, "{:width$}", "", width = depth * 4)
 }
 
 /// Whether a term needs parentheses when used as an atomic sub-expression
@@ -53,7 +19,7 @@ const fn needs_parens(term: &Term<'_>) -> bool {
             args,
         } => {
             // Binary infix ops need parens; unary BitNot does not.
-            binop_symbol(*p).is_some() && args.len() == 2
+            p.is_binop() && args.len() == 2
         }
         Term::Var(_)
         | Term::Prim(_)
@@ -223,9 +189,7 @@ fn fmt_atom<'a>(
 /// Print a `Prim` that appears in type/universe position (as `Term::Prim`).
 fn fmt_prim_ty(prim: Prim, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match prim {
-        Prim::IntTy(it) => write!(f, "{}", prim_int_width(it.width)),
-        Prim::U(Phase::Meta) => write!(f, "Type"),
-        Prim::U(Phase::Object) => write!(f, "VmType"),
+        Prim::IntTy(_) | Prim::U(_) => write!(f, "{}", prim.symbol_str()),
         // Arithmetic/comparison prims should only appear as Head::Prim inside
         // App, never as standalone Term::Prim.
         p @ (Prim::Add(_)
@@ -269,10 +233,10 @@ fn fmt_app<'a>(
         // ── Primitive operation ───────────────────────────────────────────────
         Head::Prim(prim) => {
             #[expect(clippy::indexing_slicing)]
-            if let Some(sym) = binop_symbol(*prim) {
+            if prim.is_binop() {
                 // Binary infix operator — exactly 2 args.
                 fmt_atom(args[0], env, indent, f)?;
-                write!(f, " {sym} ")?;
+                write!(f, " {} ", prim.symbol_str())?;
                 fmt_atom(args[1], env, indent, f)
             } else {
                 match prim {
@@ -314,22 +278,18 @@ fn fmt_arm<'a>(
 ) -> fmt::Result {
     write_indent(f, indent)?;
     match &arm.pat {
-        Pat::Lit(n) => {
-            write!(f, "{n} => ")?;
-            fmt_expr(arm.body, env, indent, f)?;
-        }
-        Pat::Wildcard => {
-            write!(f, "_ => ")?;
-            fmt_expr(arm.body, env, indent, f)?;
-        }
+        Pat::Lit(n) => write!(f, "{n} => ")?,
+        Pat::Wildcard => write!(f, "_ => ")?,
         Pat::Bind(name) => {
             let lvl = env.len();
             write!(f, "{name}@{lvl} => ")?;
             env.push(name);
             fmt_expr(arm.body, env, indent, f)?;
             env.pop();
+            return writeln!(f, ",");
         }
     }
+    fmt_expr(arm.body, env, indent, f)?;
     writeln!(f, ",")
 }
 
