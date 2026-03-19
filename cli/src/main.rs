@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
 use splic_compiler::{checker, eval, lexer, parser};
 use std::path::PathBuf;

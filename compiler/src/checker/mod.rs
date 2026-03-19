@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Context, Result, anyhow};
+use anyhow::{Context as _, Result, anyhow};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
@@ -25,7 +25,7 @@ pub struct Ctx<'core, 'globals> {
 }
 
 impl<'core, 'globals> Ctx<'core, 'globals> {
-    pub fn new(
+    pub const fn new(
         arena: &'core bumpalo::Bump,
         globals: &'globals HashMap<&'core str, core::FunSig<'core>>,
     ) -> Self {
@@ -72,7 +72,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     }
 
     /// Get the current depth of the locals stack
-    fn depth(&self) -> usize {
+    const fn depth(&self) -> usize {
         self.locals.len()
     }
 
@@ -111,7 +111,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         self.arena.alloc(core::Term::Prim(Prim::U(Phase::Meta)))
     }
 
-    /// Helper to create a VmType (object universe) term
+    /// Helper to create a `VmType` (object universe) term
     pub fn vm_type_ty(&self) -> &'core core::Term<'core> {
         self.arena.alloc(core::Term::Prim(Prim::U(Phase::Object)))
     }
@@ -160,7 +160,20 @@ fn elaborate_ty<'src, 'core>(
                 Prim::IntTy(IntType { phase: p, .. }) => p,
                 Prim::U(Phase::Meta) => Phase::Meta, // "Type"
                 Prim::U(Phase::Object) => Phase::Object, // "VmType"
-                _ => unreachable!("builtin_prim only returns IntTy or U"),
+                Prim::Add(_)
+                | Prim::Sub(_)
+                | Prim::Mul(_)
+                | Prim::Div(_)
+                | Prim::BitAnd(_)
+                | Prim::BitOr(_)
+                | Prim::BitNot(_)
+                | Prim::Embed(_)
+                | Prim::Eq(_)
+                | Prim::Ne(_)
+                | Prim::Lt(_)
+                | Prim::Gt(_)
+                | Prim::Le(_)
+                | Prim::Ge(_) => unreachable!("builtin_prim only returns IntTy or U"),
             };
             if ty_phase != phase {
                 return Err(anyhow!(
@@ -181,7 +194,12 @@ fn elaborate_ty<'src, 'core>(
             let inner_ty = elaborate_ty(arena, Phase::Object, inner)?;
             Ok(arena.alloc(core::Term::Lift(inner_ty)))
         }
-        _ => Err(anyhow!("expected a type expression")),
+        ast::Term::Lit(_)
+        | ast::Term::App { .. }
+        | ast::Term::Quote(_)
+        | ast::Term::Splice(_)
+        | ast::Term::Match { .. }
+        | ast::Term::Block { .. } => Err(anyhow!("expected a type expression")),
     }
 }
 
@@ -274,9 +292,9 @@ fn elaborate_bodies<'src, 'core>(
 }
 
 /// Elaborate the entire program in two passes
-pub fn elaborate_program<'src, 'core>(
+pub fn elaborate_program<'core>(
     arena: &'core bumpalo::Bump,
-    program: &ast::Program<'src>,
+    program: &ast::Program<'_>,
 ) -> Result<core::Program<'core>> {
     let globals = collect_signatures(arena, program)?;
     elaborate_bodies(arena, program, &globals)
@@ -287,14 +305,20 @@ pub fn elaborate_program<'src, 'core>(
 /// This is the core analogue of the 2LTT kinding judgement:
 ///   - `IntTy(_, p)` inhabits `U(p)`
 ///   - `U(Meta)` (Type) inhabits `U(Meta)`   (type-in-type for the meta universe)
-///   - `U(Object)` (VmType) inhabits `U(Meta)` (the meta universe classifies object types)
+///   - `U(Object)` (`VmType`) inhabits `U(Meta)` (the meta universe classifies object types)
 ///   - `Lift(_)` inhabits `U(Meta)`
-fn type_universe(ty: &core::Term<'_>) -> Option<Phase> {
+const fn type_universe(ty: &core::Term<'_>) -> Option<Phase> {
     match ty {
         core::Term::Prim(Prim::IntTy(IntType { phase, .. })) => Some(*phase),
-        core::Term::Prim(Prim::U(_)) => Some(Phase::Meta),
-        core::Term::Lift(_) => Some(Phase::Meta),
-        _ => None,
+        core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) => Some(Phase::Meta),
+        core::Term::Var(_)
+        | core::Term::Prim(_)
+        | core::Term::Lit(_)
+        | core::Term::App { .. }
+        | core::Term::Quote(_)
+        | core::Term::Splice(_)
+        | core::Term::Let { .. }
+        | core::Term::Match { .. } => None,
     }
 }
 
@@ -321,11 +345,28 @@ pub fn infer<'src, 'core>(
             if let Some(prim) = builtin {
                 let term = ctx.alloc(core::Term::Prim(prim));
                 // The type of a type is the relevant universe.
+                // U(Meta) : U(Meta)   — type-in-type for the meta universe
+                // U(Object) : U(Meta) — VmType is classified by the meta universe
+                // Both arms return U(Meta) for distinct semantic reasons; keep them separate.
+                #[expect(clippy::match_same_arms)]
                 let ty = match prim {
                     Prim::IntTy(_) => ctx.alloc(core::Term::Prim(Prim::U(phase))),
                     Prim::U(Phase::Meta) => ctx.alloc(core::Term::Prim(Prim::U(Phase::Meta))),
                     Prim::U(Phase::Object) => ctx.alloc(core::Term::Prim(Prim::U(Phase::Meta))),
-                    _ => unreachable!(),
+                    Prim::Add(_)
+                    | Prim::Sub(_)
+                    | Prim::Mul(_)
+                    | Prim::Div(_)
+                    | Prim::BitAnd(_)
+                    | Prim::BitOr(_)
+                    | Prim::BitNot(_)
+                    | Prim::Embed(_)
+                    | Prim::Eq(_)
+                    | Prim::Ne(_)
+                    | Prim::Lt(_)
+                    | Prim::Gt(_)
+                    | Prim::Le(_)
+                    | Prim::Ge(_) => unreachable!(),
                 };
                 return Ok((term, ty));
             }
@@ -414,13 +455,25 @@ pub fn infer<'src, 'core>(
                 return Err(anyhow!("binary operation expects exactly 2 arguments"));
             }
             // Infer the operand type from the first argument.
+            #[expect(clippy::indexing_slicing)]
             let (core_arg0, operand_ty) = infer(ctx, phase, args[0])?;
             // Check the second argument against the same operand type.
+            #[expect(clippy::indexing_slicing)]
             let core_arg1 = check(ctx, phase, args[1], operand_ty)?;
             // Verify both operands are integers and build the prim carrying the operand type.
             let op_int_ty = match operand_ty {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
-                _ => return Err(anyhow!("comparison operands must be integers")),
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(_)
+                | core::Term::App { .. }
+                | core::Term::Lift(_)
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let { .. }
+                | core::Term::Match { .. } => {
+                    return Err(anyhow!("comparison operands must be integers"));
+                }
             };
             let prim = match op {
                 BinOp::Eq => Prim::Eq(op_int_ty),
@@ -429,7 +482,12 @@ pub fn infer<'src, 'core>(
                 BinOp::Gt => Prim::Gt(op_int_ty),
                 BinOp::Le => Prim::Le(op_int_ty),
                 BinOp::Ge => Prim::Ge(op_int_ty),
-                _ => unreachable!(),
+                BinOp::Add
+                | BinOp::Sub
+                | BinOp::Mul
+                | BinOp::Div
+                | BinOp::BitAnd
+                | BinOp::BitOr => unreachable!(),
             };
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
             let core_term = ctx.alloc(core::Term::App {
@@ -513,7 +571,14 @@ pub fn infer<'src, 'core>(
                     let core_term = ctx.alloc(core::Term::Splice(embedded));
                     Ok((core_term, obj_ty))
                 }
-                _ => Err(anyhow!(
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(_)
+                | core::Term::App { .. }
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let { .. }
+                | core::Term::Match { .. } => Err(anyhow!(
                     "argument of `$(...)` must have a lifted type `[[T]]` or be a meta-level integer"
                 )),
             }
@@ -542,10 +607,7 @@ pub fn infer<'src, 'core>(
 /// Check exhaustiveness of `arms` given the scrutinee type `scrut_ty`.
 ///
 /// Returns `Err` if coverage cannot be established.
-fn check_exhaustiveness<'src>(
-    scrut_ty: &core::Term<'_>,
-    arms: &[ast::MatchArm<'src>],
-) -> Result<()> {
+fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -> Result<()> {
     // For u0/u1/u8 scrutinees we track which literal values have been covered
     // using a Vec<bool> of length 1/2/256 respectively.  If all entries become
     // true the match is exhaustive even without a wildcard.  For any other type
@@ -564,24 +626,34 @@ fn check_exhaustiveness<'src>(
             width: IntWidth::U8,
             ..
         })) => Some(vec![false; 256]),
-        _ => None,
+        core::Term::Var(_)
+        | core::Term::Prim(_)
+        | core::Term::Lit(_)
+        | core::Term::App { .. }
+        | core::Term::Lift(_)
+        | core::Term::Quote(_)
+        | core::Term::Splice(_)
+        | core::Term::Let { .. }
+        | core::Term::Match { .. } => None,
     };
     let mut has_catch_all = false;
 
-    for arm in arms.iter() {
+    for arm in arms {
         match &arm.pat {
             ast::Pat::Name(_) => {
                 has_catch_all = true;
             }
             ast::Pat::Lit(n) => {
                 if let Some(ref mut bits) = covered_lits {
-                    let idx = *n as usize;
-                    if idx < bits.len() {
-                        bits[idx] = true;
-                    }
                     // Out-of-range literal for the type — the pattern can never
                     // match, but we don't hard-error here; the body is still
                     // elaborated and will catch type errors if any.
+                    let Ok(idx) = usize::try_from(*n) else {
+                        continue;
+                    };
+                    if let Some(bit) = bits.get_mut(idx) {
+                        *bit = true;
+                    }
                 }
             }
         }
@@ -598,19 +670,16 @@ fn check_exhaustiveness<'src>(
 
 /// Elaborate a match pattern into a core pattern.
 /// Any bound name can be recovered via `core::Pat::bound_name()`.
-fn elaborate_pat<'src, 'core>(
-    ctx: &Ctx<'core, '_>,
-    pat: &'src ast::Pat<'src>,
-) -> Result<core::Pat<'core>> {
+fn elaborate_pat<'core>(ctx: &Ctx<'core, '_>, pat: &ast::Pat<'_>) -> core::Pat<'core> {
     match pat {
-        ast::Pat::Lit(n) => Ok(core::Pat::Lit(*n)),
+        ast::Pat::Lit(n) => core::Pat::Lit(*n),
         ast::Pat::Name(name) => {
             let s = name.as_str();
             if s == "_" {
-                Ok(core::Pat::Wildcard)
+                core::Pat::Wildcard
             } else {
                 let bound: &'core str = ctx.arena.alloc_str(s);
-                Ok(core::Pat::Bind(bound))
+                core::Pat::Bind(bound)
             }
         }
     }
@@ -729,7 +798,17 @@ pub fn check<'src, 'core>(
         // Literals check against any integer type.
         ast::Term::Lit(n) => match expected {
             core::Term::Prim(Prim::IntTy(_)) => Ok(ctx.alloc(core::Term::Lit(*n))),
-            _ => Err(anyhow!("literal `{n}` cannot have a non-integer type")),
+            core::Term::Var(_)
+            | core::Term::Prim(_)
+            | core::Term::Lit(_)
+            | core::Term::App { .. }
+            | core::Term::Lift(_)
+            | core::Term::Quote(_)
+            | core::Term::Splice(_)
+            | core::Term::Let { .. }
+            | core::Term::Match { .. } => {
+                Err(anyhow!("literal `{n}` cannot have a non-integer type"))
+            }
         },
 
         // ------------------------------------------------------------------ App { Prim (BinOp) }
@@ -751,7 +830,17 @@ pub fn check<'src, 'core>(
         {
             let int_ty = match expected {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
-                _ => return Err(anyhow!("primitive operation requires an integer type")),
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(_)
+                | core::Term::App { .. }
+                | core::Term::Lift(_)
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let { .. }
+                | core::Term::Match { .. } => {
+                    return Err(anyhow!("primitive operation requires an integer type"));
+                }
             };
 
             use ast::BinOp;
@@ -762,14 +851,18 @@ pub fn check<'src, 'core>(
                 BinOp::Div => Prim::Div(int_ty),
                 BinOp::BitAnd => Prim::BitAnd(int_ty),
                 BinOp::BitOr => Prim::BitOr(int_ty),
-                _ => unreachable!("comparisons are excluded by guard"),
+                BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => {
+                    unreachable!("comparisons are excluded by guard")
+                }
             };
 
             if args.len() != 2 {
                 return Err(anyhow!("binary operation expects exactly 2 arguments"));
             }
 
+            #[expect(clippy::indexing_slicing)]
             let core_arg0 = check(ctx, phase, args[0], expected)?;
+            #[expect(clippy::indexing_slicing)]
             let core_arg1 = check(ctx, phase, args[1], expected)?;
 
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
@@ -786,7 +879,17 @@ pub fn check<'src, 'core>(
         } => {
             let int_ty = match expected {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
-                _ => return Err(anyhow!("primitive operation requires an integer type")),
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(_)
+                | core::Term::App { .. }
+                | core::Term::Lift(_)
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let { .. }
+                | core::Term::Match { .. } => {
+                    return Err(anyhow!("primitive operation requires an integer type"));
+                }
             };
 
             let prim = match op {
@@ -796,6 +899,7 @@ pub fn check<'src, 'core>(
             if args.len() != 1 {
                 return Err(anyhow!("unary operation expects exactly 1 argument"));
             }
+            #[expect(clippy::indexing_slicing)]
             let core_arg = check(ctx, phase, args[0], expected)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
             Ok(ctx.alloc(core::Term::App {
@@ -811,7 +915,16 @@ pub fn check<'src, 'core>(
                 let core_inner = check(ctx, Phase::Object, inner, obj_ty)?;
                 Ok(ctx.alloc(core::Term::Quote(core_inner)))
             }
-            _ => Err(anyhow!("quote `#(...)` must have a lifted type `[[T]]`")),
+            core::Term::Var(_)
+            | core::Term::Prim(_)
+            | core::Term::Lit(_)
+            | core::Term::App { .. }
+            | core::Term::Quote(_)
+            | core::Term::Splice(_)
+            | core::Term::Let { .. }
+            | core::Term::Match { .. } => {
+                Err(anyhow!("quote `#(...)` must have a lifted type `[[T]]`"))
+            }
         },
 
         // ------------------------------------------------------------------ Splice (check mode)
@@ -864,7 +977,7 @@ pub fn check<'src, 'core>(
             let core_arms: &'core [core::Arm<'core>] =
                 ctx.arena
                     .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
-                        let core_pat = elaborate_pat(ctx, &arm.pat)?;
+                        let core_pat = elaborate_pat(ctx, &arm.pat);
                         // If the pattern binds a name, push it into locals for the arm body.
                         // We use a placeholder type (scrutinee type) — sufficient for the prototype.
                         if let Some(bname) = core_pat.bound_name() {
@@ -903,7 +1016,7 @@ pub fn check<'src, 'core>(
 
         // ------------------------------------------------------------------ fallthrough: infer then unify
         // For all other forms, infer the type and check it matches expected.
-        _ => {
+        ast::Term::Var(_) | ast::Term::App { .. } | ast::Term::Lift(_) => {
             let (core_term, inferred_ty) = infer(ctx, phase, term)?;
             if !types_equal(inferred_ty, expected) {
                 return Err(anyhow!("type mismatch"));

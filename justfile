@@ -13,11 +13,15 @@ check-fmt:
 
 # Run Clippy lints.
 clippy:
-    cargo clippy --workspace --all-targets -- -D warnings
+    cargo clippy --locked --workspace --all-targets
+
+# Apply Clippy auto-fixes.
+clippy-fix:
+    cargo clippy --locked --workspace --all-targets --fix --allow-dirty
 
 # Run tests and check for snapshot drift.
 test:
-    cargo test --workspace
+    cargo test --locked --workspace
     git diff --exit-code
 
 # Run tests under Miri to detect undefined behavior and memory leaks.

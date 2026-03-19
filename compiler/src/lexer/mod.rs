@@ -3,15 +3,15 @@ use anyhow::{Result, anyhow};
 #[cfg(test)]
 pub mod testutils;
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Name<'a>(pub &'a str);
 
 impl<'a> Name<'a> {
-    pub fn new(s: &'a str) -> Self {
+    pub const fn new(s: &'a str) -> Self {
         Name(s)
     }
 
-    pub fn as_str(self) -> &'a str {
+    pub const fn as_str(self) -> &'a str {
         self.0
     }
 }
@@ -28,7 +28,7 @@ impl std::fmt::Debug for Name<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Token<'a> {
     Fn,
     Code,
@@ -115,7 +115,7 @@ pub struct Lexer<'a> {
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(input: &'a str) -> Self {
+    pub const fn new(input: &'a str) -> Self {
         Self { input }
     }
 
@@ -143,7 +143,7 @@ impl<'a> Lexer<'a> {
         token
     }
 
-    fn is_ident_char(c: char) -> bool {
+    const fn is_ident_char(c: char) -> bool {
         c.is_ascii_alphanumeric() || c == '_'
     }
 
@@ -152,14 +152,12 @@ impl<'a> Lexer<'a> {
         Ok(Token::Num(num_str.parse()?))
     }
 
-    fn read_ident(&mut self) -> Result<Token<'a>> {
+    fn read_ident(&mut self) -> Token<'a> {
         let ident = self.split_pred(|c| !Self::is_ident_char(c));
-        let token = KEYWORDS
+        KEYWORDS
             .iter()
             .find(|(kw, _)| *kw == ident)
-            .map(|(_, tok)| *tok)
-            .unwrap_or(Token::Ident(Name(ident)));
-        Ok(token)
+            .map_or(Token::Ident(Name(ident)), |(_, tok)| *tok)
     }
 
     #[inline]
@@ -179,12 +177,12 @@ impl<'a> Lexer<'a> {
             return Some(self.read_number());
         }
         if Self::is_ident_char(c) {
-            return Some(self.read_ident());
+            return Some(Ok(self.read_ident()));
         }
 
         // Unknown character - consume it to avoid infinite loop
         self.input = &self.input[c.len_utf8()..];
-        Some(Err(anyhow!("unexpected character: {}", c)))
+        Some(Err(anyhow!("unexpected character: {c}")))
     }
 
     #[inline]

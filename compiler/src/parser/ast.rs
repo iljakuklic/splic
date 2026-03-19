@@ -10,14 +10,14 @@ pub enum Phase {
 impl std::fmt::Display for Phase {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Phase::Meta => f.write_str("meta"),
-            Phase::Object => f.write_str("object"),
+            Self::Meta => f.write_str("meta"),
+            Self::Object => f.write_str("object"),
         }
     }
 }
 
 /// Binary operator
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BinOp {
     Add,
     Sub,
@@ -34,42 +34,42 @@ pub enum BinOp {
 }
 
 impl BinOp {
-    pub fn precedence(self) -> u8 {
+    pub const fn precedence(self) -> u8 {
         match self {
-            BinOp::BitOr => 1,
-            BinOp::BitAnd => 2,
-            BinOp::Eq | BinOp::Ne | BinOp::Lt | BinOp::Gt | BinOp::Le | BinOp::Ge => 3,
-            BinOp::Add | BinOp::Sub => 4,
-            BinOp::Mul | BinOp::Div => 5,
+            Self::BitOr => 1,
+            Self::BitAnd => 2,
+            Self::Eq | Self::Ne | Self::Lt | Self::Gt | Self::Le | Self::Ge => 3,
+            Self::Add | Self::Sub => 4,
+            Self::Mul | Self::Div => 5,
         }
     }
 
-    pub fn assoc(self) -> Assoc {
+    pub const fn assoc(self) -> Assoc {
         Assoc::Left
     }
 }
 
 /// Associativity
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Assoc {
     Left,
     Right,
 }
 
 /// Unary operator
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum UnOp {
     Not,
 }
 
 impl UnOp {
-    pub fn precedence(self) -> u8 {
+    pub const fn precedence(self) -> u8 {
         6
     }
 }
 
 /// Function or operator reference
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum FunName<'a> {
     Name(Name<'a>),
     BinOp(BinOp),
@@ -131,17 +131,17 @@ pub enum Term<'a> {
     Var(Name<'a>),
     App {
         func: FunName<'a>,
-        args: &'a [&'a Term<'a>],
+        args: &'a [&'a Self],
     },
-    Quote(&'a Term<'a>),
-    Splice(&'a Term<'a>),
-    Lift(&'a Term<'a>),
+    Quote(&'a Self),
+    Splice(&'a Self),
+    Lift(&'a Self),
     Match {
-        scrutinee: &'a Term<'a>,
+        scrutinee: &'a Self,
         arms: &'a [MatchArm<'a>],
     },
     Block {
         stmts: &'a [Let<'a>],
-        expr: &'a Term<'a>,
+        expr: &'a Self,
     },
 }

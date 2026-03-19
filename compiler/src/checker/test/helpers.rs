@@ -20,8 +20,8 @@ pub fn test_ctx_with_globals<'core, 'globals>(
     Ctx::new(arena, globals)
 }
 
-/// Helper: build a simple FunSig for a function `fn f() -> u64` (no params, meta phase).
-pub fn sig_no_params_returns_u64<'core>(core_arena: &'core bumpalo::Bump) -> FunSig<'core> {
+/// Helper: build a simple `FunSig` for a function `fn f() -> u64` (no params, meta phase).
+pub fn sig_no_params_returns_u64(core_arena: &bumpalo::Bump) -> FunSig<'_> {
     let ret_ty = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
         IntWidth::U64,
         Phase::Meta,
@@ -33,8 +33,8 @@ pub fn sig_no_params_returns_u64<'core>(core_arena: &'core bumpalo::Bump) -> Fun
     }
 }
 
-/// Helper: build a FunSig for `fn f(x: u32) -> u64`.
-pub fn sig_one_param_returns_u64<'core>(core_arena: &'core bumpalo::Bump) -> FunSig<'core> {
+/// Helper: build a `FunSig` for `fn f(x: u32) -> u64`.
+pub fn sig_one_param_returns_u64(core_arena: &bumpalo::Bump) -> FunSig<'_> {
     let u32_ty = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
         IntWidth::U32,
         Phase::Meta,

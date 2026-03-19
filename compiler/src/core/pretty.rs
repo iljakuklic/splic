@@ -13,7 +13,7 @@ fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
     Ok(())
 }
 
-fn prim_int_width(width: IntWidth) -> &'static str {
+const fn prim_int_width(width: IntWidth) -> &'static str {
     match width {
         IntWidth::U0 => "u0",
         IntWidth::U1 => "u1",
@@ -26,7 +26,7 @@ fn prim_int_width(width: IntWidth) -> &'static str {
 
 /// Returns the infix operator symbol for a binary primitive, or `None` if the
 /// primitive is not a binary infix operator.
-fn binop_symbol(prim: &Prim) -> Option<&'static str> {
+const fn binop_symbol(prim: Prim) -> Option<&'static str> {
     match prim {
         Prim::Add(_) => Some("+"),
         Prim::Sub(_) => Some("-"),
@@ -40,22 +40,30 @@ fn binop_symbol(prim: &Prim) -> Option<&'static str> {
         Prim::Gt(_) => Some(">"),
         Prim::Le(_) => Some("<="),
         Prim::Ge(_) => Some(">="),
-        _ => None,
+        Prim::IntTy(_) | Prim::U(_) | Prim::BitNot(_) | Prim::Embed(_) => None,
     }
 }
 
 /// Whether a term needs parentheses when used as an atomic sub-expression
 /// (i.e. as an argument to an application or operand to an operator).
-fn needs_parens(term: &Term<'_>) -> bool {
+const fn needs_parens(term: &Term<'_>) -> bool {
     match term {
         Term::App {
             head: Head::Prim(p),
             args,
         } => {
             // Binary infix ops need parens; unary BitNot does not.
-            binop_symbol(p).is_some() && args.len() == 2
+            binop_symbol(*p).is_some() && args.len() == 2
         }
-        _ => false,
+        Term::Var(_)
+        | Term::Prim(_)
+        | Term::Lit(_)
+        | Term::App { .. }
+        | Term::Lift(_)
+        | Term::Quote(_)
+        | Term::Splice(_)
+        | Term::Let { .. }
+        | Term::Match { .. } => false,
     }
 }
 
@@ -74,7 +82,13 @@ fn fmt_term<'a>(
         // Let and Match manage their own indentation internally.
         Term::Let { .. } | Term::Match { .. } => fmt_term_inline(term, env, indent, f),
         // Everything else gets a leading indent.
-        _ => {
+        Term::Var(_)
+        | Term::Prim(_)
+        | Term::Lit(_)
+        | Term::App { .. }
+        | Term::Lift(_)
+        | Term::Quote(_)
+        | Term::Splice(_) => {
             write_indent(f, indent)?;
             fmt_term_inline(term, env, indent, f)
         }
@@ -95,7 +109,7 @@ fn fmt_term_inline<'a>(
     match term {
         // ── Variable ─────────────────────────────────────────────────────────
         Term::Var(lvl) => {
-            let name = env[lvl.0];
+            let name = *env.get(lvl.0).expect("De Bruijn level in env bounds");
             write!(f, "{name}@{}", lvl.0)
         }
 
@@ -103,7 +117,7 @@ fn fmt_term_inline<'a>(
         Term::Lit(n) => write!(f, "{n}"),
 
         // ── Primitive type / universe ─────────────────────────────────────────
-        Term::Prim(p) => fmt_prim_ty(p, f),
+        Term::Prim(p) => fmt_prim_ty(*p, f),
 
         // ── Application ──────────────────────────────────────────────────────
         Term::App { head, args } => fmt_app(head, args, env, indent, f),
@@ -152,7 +166,7 @@ fn fmt_term_inline<'a>(
             write!(f, "match ")?;
             fmt_atom(scrutinee, env, indent, f)?;
             writeln!(f, " {{")?;
-            for arm in arms.iter() {
+            for arm in *arms {
                 fmt_arm(arm, env, indent + 1, f)?;
             }
             write_indent(f, indent)?;
@@ -179,7 +193,13 @@ fn fmt_expr<'a>(
             write_indent(f, indent)?;
             write!(f, "}}")
         }
-        _ => fmt_term_inline(term, env, indent, f),
+        Term::Var(_)
+        | Term::Prim(_)
+        | Term::Lit(_)
+        | Term::App { .. }
+        | Term::Lift(_)
+        | Term::Quote(_)
+        | Term::Splice(_) => fmt_term_inline(term, env, indent, f),
     }
 }
 
@@ -201,14 +221,27 @@ fn fmt_atom<'a>(
 }
 
 /// Print a `Prim` that appears in type/universe position (as `Term::Prim`).
-fn fmt_prim_ty(prim: &Prim, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+fn fmt_prim_ty(prim: Prim, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match prim {
         Prim::IntTy(it) => write!(f, "{}", prim_int_width(it.width)),
         Prim::U(Phase::Meta) => write!(f, "Type"),
         Prim::U(Phase::Object) => write!(f, "VmType"),
         // Arithmetic/comparison prims should only appear as Head::Prim inside
         // App, never as standalone Term::Prim.
-        p => panic!("unexpected primitive in type position: {p:?}"),
+        p @ (Prim::Add(_)
+        | Prim::Sub(_)
+        | Prim::Mul(_)
+        | Prim::Div(_)
+        | Prim::BitAnd(_)
+        | Prim::BitOr(_)
+        | Prim::BitNot(_)
+        | Prim::Embed(_)
+        | Prim::Eq(_)
+        | Prim::Ne(_)
+        | Prim::Lt(_)
+        | Prim::Gt(_)
+        | Prim::Le(_)
+        | Prim::Ge(_)) => panic!("unexpected primitive in type position: {p:?}"),
     }
 }
 
@@ -235,7 +268,8 @@ fn fmt_app<'a>(
 
         // ── Primitive operation ───────────────────────────────────────────────
         Head::Prim(prim) => {
-            if let Some(sym) = binop_symbol(prim) {
+            #[expect(clippy::indexing_slicing)]
+            if let Some(sym) = binop_symbol(*prim) {
                 // Binary infix operator — exactly 2 args.
                 fmt_atom(args[0], env, indent, f)?;
                 write!(f, " {sym} ")?;
@@ -251,7 +285,20 @@ fn fmt_app<'a>(
                         fmt_atom(args[0], env, indent, f)
                     }
                     // Type-level prims should not appear as App heads.
-                    p => panic!("unexpected primitive as application head: {p:?}"),
+                    p @ (Prim::IntTy(_)
+                    | Prim::U(_)
+                    | Prim::Add(_)
+                    | Prim::Sub(_)
+                    | Prim::Mul(_)
+                    | Prim::Div(_)
+                    | Prim::BitAnd(_)
+                    | Prim::BitOr(_)
+                    | Prim::Eq(_)
+                    | Prim::Ne(_)
+                    | Prim::Lt(_)
+                    | Prim::Gt(_)
+                    | Prim::Le(_)
+                    | Prim::Ge(_)) => panic!("unexpected primitive as application head: {p:?}"),
                 }
             }
         }
@@ -343,7 +390,14 @@ fn fmt_prim_ty_or_term<'a>(
     f: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
     match term {
-        Term::Prim(p) => fmt_prim_ty(p, f),
-        _ => fmt_atom(term, env, 0, f),
+        Term::Prim(p) => fmt_prim_ty(*p, f),
+        Term::Var(_)
+        | Term::Lit(_)
+        | Term::App { .. }
+        | Term::Lift(_)
+        | Term::Quote(_)
+        | Term::Splice(_)
+        | Term::Let { .. }
+        | Term::Match { .. } => fmt_atom(term, env, 0, f),
     }
 }

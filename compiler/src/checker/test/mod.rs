@@ -1,3 +1,9 @@
+#![allow(
+    clippy::get_first,
+    clippy::wildcard_enum_match_arm,
+    clippy::indexing_slicing
+)]
+
 use std::collections::HashMap;
 
 use super::*;

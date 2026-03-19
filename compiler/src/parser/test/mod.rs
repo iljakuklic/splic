@@ -1,3 +1,9 @@
+#![allow(
+    clippy::get_first,
+    clippy::wildcard_enum_match_arm,
+    clippy::indexing_slicing
+)]
+
 use std::path::PathBuf;
 
 use expect_test::expect_file;
@@ -25,7 +31,7 @@ fn expr(#[files("src/parser/test/expr/*.input.txt")] path: PathBuf) {
 }
 
 #[test]
-fn test_parse_trivial_block() {
+fn parse_trivial_block() {
     let arena = bumpalo::Bump::new();
     let lexer = Lexer::new("{ 0 + 1 }");
     let mut parser = Parser::new(lexer, &arena);
@@ -37,7 +43,7 @@ fn test_parse_trivial_block() {
 }
 
 #[test]
-fn test_parse_simple_fn() {
+fn parse_simple_fn() {
     let arena = bumpalo::Bump::new();
     let lexer = Lexer::new("fn add(x: u32, y: u32) -> u32 { x + y }");
     let mut parser = Parser::new(lexer, &arena);
@@ -49,7 +55,7 @@ fn test_parse_simple_fn() {
 }
 
 #[test]
-fn test_parse_simple_fn_and_junk() {
+fn parse_simple_fn_and_junk() {
     let arena = bumpalo::Bump::new();
     let lexer = Lexer::new("fn foo() -> u32 { 0 } wat");
     let mut parser = Parser::new(lexer, &arena);
@@ -58,7 +64,7 @@ fn test_parse_simple_fn_and_junk() {
 }
 
 #[test]
-fn test_parse_expr_prec() {
+fn parse_expr_prec() {
     let arena = bumpalo::Bump::new();
     let lexer = Lexer::new("1 + 2 * 3");
     let mut parser = Parser::new(lexer, &arena);
@@ -73,7 +79,7 @@ fn test_parse_expr_prec() {
 }
 
 #[test]
-fn test_parse_expr_prec2() {
+fn parse_expr_prec2() {
     let arena = bumpalo::Bump::new();
     let lexer = Lexer::new("1 * 2 + 3");
     let mut parser = Parser::new(lexer, &arena);
@@ -88,7 +94,7 @@ fn test_parse_expr_prec2() {
 }
 
 #[test]
-fn test_parse_expr_paren() {
+fn parse_expr_paren() {
     let arena = bumpalo::Bump::new();
     let lexer = Lexer::new("1 * (2 + 3)");
     let mut parser = Parser::new(lexer, &arena);
@@ -110,8 +116,8 @@ fn fuzz_parse_expr() {
             let arena = bumpalo::Bump::new();
             let iter = tokens.iter().map(|t| Ok(*t));
             let mut parser = Parser::new(iter, &arena);
-            let _result = parser.parse_expr();
-            if let Ok(expr) = _result {
+            let result = parser.parse_expr();
+            if let Ok(expr) = result {
                 if parser.next().is_some() {
                     return;
                 }
@@ -128,8 +134,8 @@ fn fuzz_parse_program() {
             let arena = bumpalo::Bump::new();
             let iter = tokens.iter().map(|t| Ok(*t));
             let mut parser = Parser::new(iter, &arena);
-            let _result = parser.parse_program();
-            if let Ok(prog) = _result {
+            let result = parser.parse_program();
+            if let Ok(prog) = result {
                 eprintln!("{tokens:?}: {prog:?}");
             }
         });

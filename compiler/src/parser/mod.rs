@@ -1,6 +1,6 @@
 use std::iter::Peekable;
 
-use anyhow::{Context, Result};
+use anyhow::{Context as _, Result};
 
 use crate::lexer::Token;
 use crate::parser::ast::{
@@ -282,6 +282,7 @@ where
         Ok(lhs)
     }
 
+    #[expect(clippy::wildcard_enum_match_arm)]
     fn match_unop(&mut self) -> Option<UnOp> {
         match self.peek()? {
             Token::Bang => Some(UnOp::Not),
@@ -289,6 +290,7 @@ where
         }
     }
 
+    #[expect(clippy::wildcard_enum_match_arm)]
     fn match_binop(&mut self) -> Option<BinOp> {
         match self.peek()? {
             Token::Bar => Some(BinOp::BitOr),
@@ -343,6 +345,7 @@ where
         Ok(Term::Match { scrutinee, arms })
     }
 
+    #[expect(clippy::wildcard_enum_match_arm)]
     fn parse_atom_owned(&mut self) -> Result<Term<'a>> {
         let token = self.next().context("expected expression")??;
         match token {
@@ -365,10 +368,7 @@ where
                 let (stmts, expr) = self.parse_block_inner()?;
                 Ok(Term::Block { stmts, expr })
             }
-            _ => Err(anyhow::anyhow!(
-                "unexpected token in expression: {:?}",
-                token
-            )),
+            _ => Err(anyhow::anyhow!("unexpected token in expression: {token:?}")),
         }
     }
 
@@ -388,12 +388,13 @@ where
         Ok(arms)
     }
 
+    #[expect(clippy::wildcard_enum_match_arm)]
     fn parse_pattern(&mut self) -> Result<Pat<'a>> {
         let token = self.next().context("expected pattern")??;
         match token {
             Token::Num(n) => Ok(Pat::Lit(n)),
             Token::Ident(name) => Ok(Pat::Name(name)),
-            _ => Err(anyhow::anyhow!("unexpected token in pattern: {:?}", token)),
+            _ => Err(anyhow::anyhow!("unexpected token in pattern: {token:?}")),
         }
     }
 }
