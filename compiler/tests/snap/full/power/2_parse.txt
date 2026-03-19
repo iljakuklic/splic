@@ -211,5 +211,38 @@ Program {
                 ),
             },
         },
+        Function {
+            phase: Object,
+            name: "pow11",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "power",
+                        args: [
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                            Lit(
+                                11,
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
     ],
 }

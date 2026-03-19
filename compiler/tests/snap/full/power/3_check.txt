@@ -20,3 +20,7 @@ code fn pow5(x@0: u64) -> u64 {
     $(power(#(x@0), 5))
 }
 
+code fn pow11(x@0: u64) -> u64 {
+    $(power(#(x@0), 11))
+}
+
