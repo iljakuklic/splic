@@ -1,4 +1,4 @@
-use crate::parser::ast::Phase;
+use crate::common::Phase;
 
 /// Integer widths for primitive types and operations
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
