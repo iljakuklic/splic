@@ -2,28 +2,12 @@ use std::fmt;
 
 use crate::parser::ast::Phase;
 
-use super::{App, Arm, Function, Head, Pat, Prim, Program, Term};
+use super::{App, Arm, Function, Head, Pat, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
     write!(f, "{:width$}", "", width = depth * 4)
-}
-
-/// Whether a term needs parentheses when used as an atomic sub-expression
-/// (i.e. as an argument to an application or operand to an operator).
-fn needs_parens(term: &Term<'_>) -> bool {
-    match term {
-        Term::App(app) => app.is_binop(),
-        Term::Var(_)
-        | Term::Prim(_)
-        | Term::Lit(_)
-        | Term::Lift(_)
-        | Term::Quote(_)
-        | Term::Splice(_)
-        | Term::Let(_)
-        | Term::Match(_) => false,
-    }
 }
 
 // ── Core formatting ───────────────────────────────────────────────────────────
@@ -55,7 +39,7 @@ fn fmt_term<'a>(
 }
 
 /// Print `term` **inline** (no leading indentation). Used when the term
-/// appears as a sub-expression — inside `#(...)`, as a binop operand, etc.
+/// appears as a sub-expression — inside `#(...)`, as an argument, etc.
 ///
 /// `indent` is the current block depth, used only when this term itself opens
 /// a new indented block (e.g. `Let` / `Match`).
@@ -76,7 +60,7 @@ fn fmt_term_inline<'a>(
         Term::Lit(n) => write!(f, "{n}"),
 
         // ── Primitive type / universe ─────────────────────────────────────────
-        Term::Prim(p) => fmt_prim_ty(*p, f),
+        Term::Prim(p) => write!(f, "{p}"),
 
         // ── Application ──────────────────────────────────────────────────────
         Term::App(app) => fmt_app(app, env, indent, f),
@@ -84,17 +68,17 @@ fn fmt_term_inline<'a>(
         // ── Lift / Quote / Splice ─────────────────────────────────────────────
         Term::Lift(inner) => {
             write!(f, "[[")?;
-            fmt_atom(inner, env, indent, f)?;
+            fmt_expr(inner, env, indent, f)?;
             write!(f, "]]")
         }
         Term::Quote(inner) => {
             write!(f, "#(")?;
-            fmt_atom(inner, env, indent, f)?;
+            fmt_expr(inner, env, indent, f)?;
             write!(f, ")")
         }
         Term::Splice(inner) => {
             write!(f, "$(")?;
-            fmt_atom(inner, env, indent, f)?;
+            fmt_expr(inner, env, indent, f)?;
             write!(f, ")")
         }
 
@@ -104,7 +88,7 @@ fn fmt_term_inline<'a>(
             let lvl = env.len();
             write_indent(f, indent)?;
             write!(f, "let {}@{lvl}: ", let_.name)?;
-            fmt_atom(let_.ty, env, indent, f)?;
+            fmt_expr(let_.ty, env, indent, f)?;
             write!(f, " = ")?;
             fmt_expr(let_.expr, env, indent, f)?;
             writeln!(f, ";")?;
@@ -118,7 +102,7 @@ fn fmt_term_inline<'a>(
         Term::Match(match_) => {
             write_indent(f, indent)?;
             write!(f, "match ")?;
-            fmt_atom(match_.scrutinee, env, indent, f)?;
+            fmt_expr(match_.scrutinee, env, indent, f)?;
             writeln!(f, " {{")?;
             for arm in match_.arms {
                 fmt_arm(arm, env, indent + 1, f)?;
@@ -157,47 +141,10 @@ fn fmt_expr<'a>(
     }
 }
 
-/// Print `term` as an atomic sub-expression, adding parentheses when needed
-/// to preserve syntactic validity (i.e. for binary operator applications).
-fn fmt_atom<'a>(
-    term: &Term<'a>,
-    env: &mut Vec<&'a str>,
-    indent: usize,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-    if needs_parens(term) {
-        write!(f, "(")?;
-        fmt_term_inline(term, env, indent, f)?;
-        write!(f, ")")
-    } else {
-        fmt_expr(term, env, indent, f)
-    }
-}
-
-/// Print a `Prim` that appears in type/universe position (as `Term::Prim`).
-fn fmt_prim_ty(prim: Prim, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match prim {
-        Prim::IntTy(_) | Prim::U(_) => write!(f, "{}", prim.symbol_str()),
-        // Arithmetic/comparison prims should only appear as Head::Prim inside
-        // App, never as standalone Term::Prim.
-        p @ (Prim::Add(_)
-        | Prim::Sub(_)
-        | Prim::Mul(_)
-        | Prim::Div(_)
-        | Prim::BitAnd(_)
-        | Prim::BitOr(_)
-        | Prim::BitNot(_)
-        | Prim::Embed(_)
-        | Prim::Eq(_)
-        | Prim::Ne(_)
-        | Prim::Lt(_)
-        | Prim::Gt(_)
-        | Prim::Le(_)
-        | Prim::Ge(_)) => panic!("unexpected primitive in type position: {p:?}"),
-    }
-}
-
 /// Print an application.
+///
+/// All primitives use `@name(arg, arg, ...)` function-call syntax. No infix
+/// operators are emitted in the core pretty-printer.
 fn fmt_app<'a>(
     app: &App<'a>,
     env: &mut Vec<&'a str>,
@@ -218,40 +165,16 @@ fn fmt_app<'a>(
         }
 
         // ── Primitive operation ───────────────────────────────────────────────
+        // All builtins use `@name(args...)` function-call syntax.
         Head::Prim(prim) => {
-            #[expect(clippy::indexing_slicing)]
-            if app.is_binop() {
-                // Binary infix operator — exactly 2 args.
-                fmt_atom(app.args[0], env, indent, f)?;
-                write!(f, " {} ", prim.symbol_str())?;
-                fmt_atom(app.args[1], env, indent, f)
-            } else {
-                match prim {
-                    Prim::BitNot(_) => {
-                        write!(f, "!")?;
-                        fmt_atom(app.args[0], env, indent, f)
-                    }
-                    Prim::Embed(_) => {
-                        // Transparent: just print the argument.
-                        fmt_atom(app.args[0], env, indent, f)
-                    }
-                    // Type-level prims should not appear as App heads.
-                    p @ (Prim::IntTy(_)
-                    | Prim::U(_)
-                    | Prim::Add(_)
-                    | Prim::Sub(_)
-                    | Prim::Mul(_)
-                    | Prim::Div(_)
-                    | Prim::BitAnd(_)
-                    | Prim::BitOr(_)
-                    | Prim::Eq(_)
-                    | Prim::Ne(_)
-                    | Prim::Lt(_)
-                    | Prim::Gt(_)
-                    | Prim::Le(_)
-                    | Prim::Ge(_)) => panic!("unexpected primitive as application head: {p:?}"),
+            write!(f, "{prim}(")?;
+            for (i, arg) in app.args.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
                 }
+                fmt_expr(arg, env, indent, f)?;
             }
+            write!(f, ")")
         }
     }
 }
@@ -313,12 +236,12 @@ impl fmt::Display for Function<'_> {
                 write!(f, ", ")?;
             }
             write!(f, "{name}@{i}: ")?;
-            fmt_prim_ty_or_term(ty, &mut env, f)?;
+            fmt_expr(ty, &mut env, f)?;
             env.push(name);
         }
 
         write!(f, ") -> ")?;
-        fmt_prim_ty_or_term(self.sig.ret_ty, &mut env, f)?;
+        fmt_expr(self.sig.ret_ty, &mut env, f)?;
         writeln!(f, " {{")?;
 
         // Body in statement position at indent depth 1.
@@ -328,16 +251,13 @@ impl fmt::Display for Function<'_> {
     }
 }
 
-/// Print a term that appears in a type/signature position. For the common case
-/// of a plain `Prim`, delegates to `fmt_prim_ty`. For anything more complex
-/// (e.g. `Lift`, `App`) the full inline printer is used.
-fn fmt_prim_ty_or_term<'a>(
-    term: &Term<'a>,
-    env: &mut Vec<&'a str>,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
+/// Print a term that appears in a type/signature position.
+///
+/// Delegates to `Display for Prim` for plain `Prim` terms (the common case),
+/// and uses the full inline printer for anything more complex.
+fn fmt_ty<'a>(term: &Term<'a>, env: &mut Vec<&'a str>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
     match term {
-        Term::Prim(p) => fmt_prim_ty(*p, f),
+        Term::Prim(p) => write!(f, "{p}"),
         Term::Var(_)
         | Term::Lit(_)
         | Term::App(_)
@@ -345,6 +265,6 @@ fn fmt_prim_ty_or_term<'a>(
         | Term::Quote(_)
         | Term::Splice(_)
         | Term::Let(_)
-        | Term::Match(_) => fmt_atom(term, env, 0, f),
+        | Term::Match(_) => fmt_expr(term, env, 0, f),
     }
 }
