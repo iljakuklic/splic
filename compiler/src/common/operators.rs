@@ -4,6 +4,29 @@
 //! They are used by both the parser (to create surface syntax) and the type checker
 //! (to elaborate into core primitives).
 
+/// Operator precedence level (higher value = binds tighter).
+///
+/// This type encapsulates the precedence value and only allows comparisons,
+/// preventing direct access to the internal numeric representation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Precedence(u8);
+
+impl Precedence {
+    /// Lowest precedence level (used at the top of expression parsing).
+    pub const MIN: Self = Self(1);
+
+    /// Create a precedence level from a numeric value (1-based, higher binds tighter).
+    const fn new(level: u8) -> Self {
+        Self(level)
+    }
+
+    /// Increment precedence by one level (for left-associative operators).
+    #[must_use]
+    pub const fn next_level(self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
 /// Operator associativity for precedence climbing in the parser.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Assoc {
@@ -34,17 +57,18 @@ pub enum BinOp {
 }
 
 impl BinOp {
-    /// Operator precedence (higher number = binds tighter).
+    /// Operator precedence (higher value = binds tighter).
     ///
     /// Used by the parser's precedence climbing algorithm.
-    pub const fn precedence(self) -> u8 {
-        match self {
+    pub const fn precedence(self) -> Precedence {
+        let level = match self {
             Self::BitOr => 1,
             Self::BitAnd => 2,
             Self::Eq | Self::Ne | Self::Lt | Self::Gt | Self::Le | Self::Ge => 3,
             Self::Add | Self::Sub => 4,
             Self::Mul | Self::Div => 5,
-        }
+        };
+        Precedence::new(level)
     }
 
     /// Operator associativity.
@@ -64,10 +88,10 @@ pub enum UnOp {
 }
 
 impl UnOp {
-    /// Operator precedence (higher number = binds tighter).
+    /// Operator precedence (higher value = binds tighter).
     ///
     /// Unary operators bind tighter than all binary operators.
-    pub const fn precedence(self) -> u8 {
-        6
+    pub const fn precedence(self) -> Precedence {
+        Precedence::new(6)
     }
 }

@@ -2,6 +2,7 @@ use std::iter::Peekable;
 
 use anyhow::{Context as _, Result};
 
+use crate::common::Precedence;
 use crate::lexer::Token;
 use crate::parser::ast::{
     Assoc, BinOp, FunName, Function, Let, MatchArm, Name, Param, Pat, Phase, Program, Term, UnOp,
@@ -236,10 +237,10 @@ where
     }
 
     fn parse_expr_owned(&mut self) -> Result<Term<'a>> {
-        self.parse_expr_prec(1)
+        self.parse_expr_prec(Precedence::MIN)
     }
 
-    fn parse_expr_prec(&mut self, min_prec: u8) -> Result<Term<'a>> {
+    fn parse_expr_prec(&mut self, min_prec: Precedence) -> Result<Term<'a>> {
         let mut lhs = if let Some(op) = self.match_unop() {
             self.next();
             let expr = self
@@ -263,7 +264,7 @@ where
                 break;
             }
             let next_min_prec = match op.assoc() {
-                Assoc::Left => prec + 1,
+                Assoc::Left => prec.next_level(),
                 Assoc::Right => prec,
             };
             self.next();
