@@ -236,35 +236,17 @@ impl fmt::Display for Function<'_> {
                 write!(f, ", ")?;
             }
             write!(f, "{name}@{i}: ")?;
-            fmt_expr(ty, &mut env, f)?;
+            fmt_expr(ty, &mut env, 1, f)?;
             env.push(name);
         }
 
         write!(f, ") -> ")?;
-        fmt_expr(self.sig.ret_ty, &mut env, f)?;
+        fmt_expr(self.sig.ret_ty, &mut env, 1, f)?;
         writeln!(f, " {{")?;
 
         // Body in statement position at indent depth 1.
         fmt_term(self.body, &mut env, 1, f)?;
         writeln!(f)?;
         writeln!(f, "}}")
-    }
-}
-
-/// Print a term that appears in a type/signature position.
-///
-/// Delegates to `Display for Prim` for plain `Prim` terms (the common case),
-/// and uses the full inline printer for anything more complex.
-fn fmt_ty<'a>(term: &Term<'a>, env: &mut Vec<&'a str>, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    match term {
-        Term::Prim(p) => write!(f, "{p}"),
-        Term::Var(_)
-        | Term::Lit(_)
-        | Term::App(_)
-        | Term::Lift(_)
-        | Term::Quote(_)
-        | Term::Splice(_)
-        | Term::Let(_)
-        | Term::Match(_) => fmt_expr(term, env, 0, f),
     }
 }
