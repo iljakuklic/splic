@@ -90,27 +90,28 @@ impl Prim {
                 | Self::Ge(_)
         )
     }
+}
 
-    /// Returns the source-level symbol string for this primitive.
-    pub const fn symbol_str(self) -> &'static str {
+impl std::fmt::Display for Prim {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::IntTy(it) => it.width.as_str(),
-            Self::U(Phase::Meta) => "Type",
-            Self::U(Phase::Object) => "VmType",
-            Self::Add(_) => "+",
-            Self::Sub(_) => "-",
-            Self::Mul(_) => "*",
-            Self::Div(_) => "/",
-            Self::BitAnd(_) => "&",
-            Self::BitOr(_) => "|",
-            Self::BitNot(_) => "!",
-            Self::Embed(_) => "__embed__",
-            Self::Eq(_) => "==",
-            Self::Ne(_) => "!=",
-            Self::Lt(_) => "<",
-            Self::Gt(_) => ">",
-            Self::Le(_) => "<=",
-            Self::Ge(_) => ">=",
+            Self::IntTy(it) => write!(f, "{}", it.width),
+            Self::U(Phase::Meta) => write!(f, "Type"),
+            Self::U(Phase::Object) => write!(f, "VmType"),
+            Self::Add(it) => write!(f, "@add_{}", it.width),
+            Self::Sub(it) => write!(f, "@sub_{}", it.width),
+            Self::Mul(it) => write!(f, "@mul_{}", it.width),
+            Self::Div(it) => write!(f, "@div_{}", it.width),
+            Self::BitAnd(it) => write!(f, "@and_{}", it.width),
+            Self::BitOr(it) => write!(f, "@or_{}", it.width),
+            Self::BitNot(it) => write!(f, "@not_{}", it.width),
+            Self::Embed(w) => write!(f, "@embed_{w}"),
+            Self::Eq(it) => write!(f, "@eq_{}", it.width),
+            Self::Ne(it) => write!(f, "@ne_{}", it.width),
+            Self::Lt(it) => write!(f, "@lt_{}", it.width),
+            Self::Gt(it) => write!(f, "@gt_{}", it.width),
+            Self::Le(it) => write!(f, "@le_{}", it.width),
+            Self::Ge(it) => write!(f, "@ge_{}", it.width),
         }
     }
 }

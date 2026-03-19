@@ -4,13 +4,13 @@ fn power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
         1 => x@0,
         exp@2 => {
             let exp2@3: [[u64]] = #({
-                let x2@3: u64 = $(power(x@0, exp@2 / 2));
-                x2@3 * x2@3
+                let x2@3: u64 = $(power(x@0, @div_u64(exp@2, 2)));
+                @mul_u64(x2@3, x2@3)
             });
-            let odd@4: u64 = exp@2 & 1;
-            match (odd@4 == 1) {
+            let odd@4: u64 = @and_u64(exp@2, 1);
+            match @eq_u64(odd@4, 1) {
                 0 => exp2@3,
-                1 => #(($(exp2@3) * $(x@0))),
+                1 => #(@mul_u64($(exp2@3), $(x@0))),
             }
         },
     }
