@@ -419,8 +419,9 @@ pub fn infer<'src, 'core>(
             let core_args: &'core [&'core core::Term<'core>] = ctx
                 .arena
                 .alloc_slice_try_fill_iter(args.iter().zip(params.iter()).map(
-                    |(arg, (_pname, pty))| -> Result<_> {
-                        let core_arg = check(ctx, call_phase, arg, pty)?;
+                    |(arg, (pname, pty))| -> Result<_> {
+                        let core_arg = check(ctx, call_phase, arg, pty)
+                            .with_context(|| format!("in call to '{name}' argument '{pname}'"))?;
                         Ok(core_arg)
                     },
                 ))?;
