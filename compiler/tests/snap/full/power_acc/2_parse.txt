@@ -147,29 +147,7 @@ Program {
                                                         ),
                                                         body: Quote(
                                                             Block {
-                                                                stmts: [
-                                                                    Let {
-                                                                        name: "r1",
-                                                                        ty: Some(
-                                                                            Var(
-                                                                                "u64",
-                                                                            ),
-                                                                        ),
-                                                                        expr: App {
-                                                                            func: Mul,
-                                                                            args: [
-                                                                                Splice(
-                                                                                    Var(
-                                                                                        "r",
-                                                                                    ),
-                                                                                ),
-                                                                                Var(
-                                                                                    "x1",
-                                                                                ),
-                                                                            ],
-                                                                        },
-                                                                    },
-                                                                ],
+                                                                stmts: [],
                                                                 expr: Splice(
                                                                     App {
                                                                         func: "power_acc",
@@ -199,9 +177,19 @@ Program {
                                                                                 ],
                                                                             },
                                                                             Quote(
-                                                                                Var(
-                                                                                    "r1",
-                                                                                ),
+                                                                                App {
+                                                                                    func: Mul,
+                                                                                    args: [
+                                                                                        Splice(
+                                                                                            Var(
+                                                                                                "r",
+                                                                                            ),
+                                                                                        ),
+                                                                                        Var(
+                                                                                            "x1",
+                                                                                        ),
+                                                                                    ],
+                                                                                },
                                                                             ),
                                                                         ],
                                                                     },
@@ -557,6 +545,105 @@ Program {
                             ),
                             Lit(
                                 11,
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+        Function {
+            phase: Object,
+            name: "pow15",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "power",
+                        args: [
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                            Lit(
+                                15,
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+        Function {
+            phase: Object,
+            name: "pow16",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "power",
+                        args: [
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                            Lit(
+                                16,
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+        Function {
+            phase: Object,
+            name: "pow17",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "power",
+                        args: [
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                            Lit(
+                                17,
                             ),
                         ],
                     },

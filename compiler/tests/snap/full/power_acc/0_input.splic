@@ -9,8 +9,7 @@ fn power_acc(x: [[u64]], k: u64, r: [[u64]]) -> [[u64]] {
                 $(match odd == 1 {
                     0 => power_acc(#(x1 * x1), k / 2, r),
                     1 => #{
-                        let r1: u64 = $(r) * x1;
-                        $(power_acc(#(x1 * x1), k / 2, #(r1)))
+                        $(power_acc(#(x1 * x1), k / 2, #($(r) * x1)))
                     },
                 })
             }
@@ -48,4 +47,16 @@ code fn pow5(x: u64) -> u64 {
 
 code fn pow11_inc(x: u64) -> u64 {
     $(power(#({ let y: u64 = x + 1; y }), 11))
+}
+
+code fn pow15(x: u64) -> u64 {
+    $(power(#(x), 15))
+}
+
+code fn pow16(x: u64) -> u64 {
+    $(power(#(x), 16))
+}
+
+code fn pow17(x: u64) -> u64 {
+    $(power(#(x), 17))
 }

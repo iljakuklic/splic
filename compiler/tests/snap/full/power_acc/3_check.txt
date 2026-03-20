@@ -8,10 +8,7 @@ fn power_acc(x@0: [[u64]], k@1: u64, r@2: [[u64]]) -> [[u64]] {
                 $({
                     match @eq_u64(odd@4, 1) {
                         0 => power_acc(#(@mul_u64(x1@5, x1@5)), @div_u64(k@3, 2), r@2),
-                        1 => #({
-                            let r1@6: u64 = @mul_u64($(r@2), x1@5);
-                            $(power_acc(#(@mul_u64(x1@5, x1@5)), @div_u64(k@3, 2), #(r1@6)))
-                        }),
+                        1 => #($(power_acc(#(@mul_u64(x1@5, x1@5)), @div_u64(k@3, 2), #(@mul_u64($(r@2), x1@5))))),
                     }
                 })
             })
@@ -54,5 +51,17 @@ code fn pow11_inc(x@0: u64) -> u64 {
         let y@1: u64 = @add_u64(x@0, 1);
         y@1
     }), 11))
+}
+
+code fn pow15(x@0: u64) -> u64 {
+    $(power(#(x@0), 15))
+}
+
+code fn pow16(x@0: u64) -> u64 {
+    $(power(#(x@0), 16))
+}
+
+code fn pow17(x@0: u64) -> u64 {
+    $(power(#(x@0), 17))
 }
 
