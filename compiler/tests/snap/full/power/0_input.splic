@@ -19,3 +19,7 @@ fn power(x: [[u64]], exp: u64) -> [[u64]] {
 code fn pow5(x: u64) -> u64 {
     $(power(#(x), 5))
 }
+
+code fn pow11(x: u64) -> u64 {
+    $(power(#(x), 11))
+}
