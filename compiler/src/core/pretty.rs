@@ -12,195 +12,201 @@ fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
 
 // ── Core formatting ───────────────────────────────────────────────────────────
 
-/// Print `term` in **statement position**: emits leading indentation, then
-/// the term content. `Let` and `Match` are printed without an enclosing `{ }`
-/// (the caller is responsible for any surrounding braces).
-fn fmt_term<'a>(
-    term: &Term<'a>,
-    env: &mut Vec<&'a str>,
-    indent: usize,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-    match term {
-        // Let and Match manage their own indentation internally.
-        Term::Let(_) | Term::Match(_) => fmt_term_inline(term, env, indent, f),
-        // Everything else gets a leading indent.
-        Term::Var(_)
-        | Term::Prim(_)
-        | Term::Lit(_)
-        | Term::App(_)
-        | Term::Lift(_)
-        | Term::Quote(_)
-        | Term::Splice(_) => {
-            write_indent(f, indent)?;
-            fmt_term_inline(term, env, indent, f)
-        }
-    }
-}
-
-/// Print `term` **inline** (no leading indentation). Used when the term
-/// appears as a sub-expression — inside `#(...)`, as an argument, etc.
-///
-/// `indent` is the current block depth, used only when this term itself opens
-/// a new indented block (e.g. `Let` / `Match`).
-fn fmt_term_inline<'a>(
-    term: &Term<'a>,
-    env: &mut Vec<&'a str>,
-    indent: usize,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-    match term {
-        // ── Variable ─────────────────────────────────────────────────────────
-        Term::Var(lvl) => {
-            let name = *env.get(lvl.0).expect("De Bruijn level in env bounds");
-            write!(f, "{name}@{}", lvl.0)
-        }
-
-        // ── Literal ──────────────────────────────────────────────────────────
-        Term::Lit(n) => write!(f, "{n}"),
-
-        // ── Primitive type / universe ─────────────────────────────────────────
-        Term::Prim(p) => write!(f, "{p}"),
-
-        // ── Application ──────────────────────────────────────────────────────
-        Term::App(app) => fmt_app(app, env, indent, f),
-
-        // ── Lift / Quote / Splice ─────────────────────────────────────────────
-        Term::Lift(inner) => {
-            write!(f, "[[")?;
-            fmt_expr(inner, env, indent, f)?;
-            write!(f, "]]")
-        }
-        Term::Quote(inner) => {
-            write!(f, "#(")?;
-            fmt_expr(inner, env, indent, f)?;
-            write!(f, ")")
-        }
-        Term::Splice(inner) => {
-            write!(f, "$(")?;
-            fmt_expr(inner, env, indent, f)?;
-            write!(f, ")")
-        }
-
-        // ── Let binding ───────────────────────────────────────────────────────
-        // In statement position: print as a flat let-chain without extra braces.
-        Term::Let(let_) => {
-            let lvl = env.len();
-            write_indent(f, indent)?;
-            write!(f, "let {}@{lvl}: ", let_.name)?;
-            fmt_expr(let_.ty, env, indent, f)?;
-            write!(f, " = ")?;
-            fmt_expr(let_.expr, env, indent, f)?;
-            writeln!(f, ";")?;
-            env.push(let_.name);
-            fmt_term(let_.body, env, indent, f)?;
-            env.pop();
-            Ok(())
-        }
-
-        // ── Match ─────────────────────────────────────────────────────────────
-        Term::Match(match_) => {
-            write_indent(f, indent)?;
-            write!(f, "match ")?;
-            fmt_expr(match_.scrutinee, env, indent, f)?;
-            writeln!(f, " {{")?;
-            for arm in match_.arms {
-                fmt_arm(arm, env, indent + 1, f)?;
+impl<'a> Term<'a> {
+    /// Print `self` in **statement position**: emits leading indentation, then
+    /// the term content. `Let` and `Match` are printed without an enclosing `{ }`
+    /// (the caller is responsible for any surrounding braces).
+    fn fmt_term(
+        &self,
+        env: &mut Vec<&'a str>,
+        indent: usize,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match self {
+            // Let and Match manage their own indentation internally.
+            Term::Let(_) | Term::Match(_) => self.fmt_term_inline(env, indent, f),
+            // Everything else gets a leading indent.
+            Term::Var(_)
+            | Term::Prim(_)
+            | Term::Lit(_)
+            | Term::App(_)
+            | Term::Lift(_)
+            | Term::Quote(_)
+            | Term::Splice(_) => {
+                write_indent(f, indent)?;
+                self.fmt_term_inline(env, indent, f)
             }
-            write_indent(f, indent)?;
-            write!(f, "}}")
         }
     }
-}
 
-/// Print `term` in **expression position** (inline, no leading indent).
-///
-/// Unlike `fmt_term_inline`, wraps `Let` and `Match` in `{ }` so they are
-/// syntactically valid as sub-expressions.
-fn fmt_expr<'a>(
-    term: &Term<'a>,
-    env: &mut Vec<&'a str>,
-    indent: usize,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-    match term {
-        Term::Let(_) | Term::Match(_) => {
-            writeln!(f, "{{")?;
-            fmt_term(term, env, indent + 1, f)?;
-            writeln!(f)?;
-            write_indent(f, indent)?;
-            write!(f, "}}")
-        }
-        Term::Var(_)
-        | Term::Prim(_)
-        | Term::Lit(_)
-        | Term::App(_)
-        | Term::Lift(_)
-        | Term::Quote(_)
-        | Term::Splice(_) => fmt_term_inline(term, env, indent, f),
-    }
-}
+    /// Print `self` **inline** (no leading indentation). Used when the term
+    /// appears as a sub-expression — inside `#(...)`, as an argument, etc.
+    ///
+    /// `indent` is the current block depth, used only when this term itself opens
+    /// a new indented block (e.g. `Let` / `Match`).
+    fn fmt_term_inline(
+        &self,
+        env: &mut Vec<&'a str>,
+        indent: usize,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match self {
+            // ── Variable ─────────────────────────────────────────────────────────
+            Term::Var(lvl) => {
+                let name = *env.get(lvl.0).expect("De Bruijn level in env bounds");
+                write!(f, "{name}@{}", lvl.0)
+            }
 
-/// Print an application.
-///
-/// All primitives use `@name(arg, arg, ...)` function-call syntax. No infix
-/// operators are emitted in the core pretty-printer.
-fn fmt_app<'a>(
-    app: &App<'a>,
-    env: &mut Vec<&'a str>,
-    indent: usize,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-    match &app.head {
-        // ── Global function call ──────────────────────────────────────────────
-        Head::Global(name) => {
-            write!(f, "{name}(")?;
-            for (i, arg) in app.args.iter().enumerate() {
-                if i > 0 {
-                    write!(f, ", ")?;
+            // ── Literal ──────────────────────────────────────────────────────────
+            Term::Lit(n) => write!(f, "{n}"),
+
+            // ── Primitive type / universe ─────────────────────────────────────────
+            Term::Prim(p) => write!(f, "{p}"),
+
+            // ── Application ──────────────────────────────────────────────────────
+            Term::App(app) => app.fmt_app(env, indent, f),
+
+            // ── Lift / Quote / Splice ─────────────────────────────────────────────
+            Term::Lift(inner) => {
+                write!(f, "[[")?;
+                inner.fmt_expr(env, indent, f)?;
+                write!(f, "]]")
+            }
+            Term::Quote(inner) => {
+                write!(f, "#(")?;
+                inner.fmt_expr(env, indent, f)?;
+                write!(f, ")")
+            }
+            Term::Splice(inner) => {
+                write!(f, "$(")?;
+                inner.fmt_expr(env, indent, f)?;
+                write!(f, ")")
+            }
+
+            // ── Let binding ───────────────────────────────────────────────────────
+            // In statement position: print as a flat let-chain without extra braces.
+            Term::Let(let_) => {
+                let lvl = env.len();
+                write_indent(f, indent)?;
+                write!(f, "let {}@{lvl}: ", let_.name)?;
+                let_.ty.fmt_expr(env, indent, f)?;
+                write!(f, " = ")?;
+                let_.expr.fmt_expr(env, indent, f)?;
+                writeln!(f, ";")?;
+                env.push(let_.name);
+                let_.body.fmt_term(env, indent, f)?;
+                env.pop();
+                Ok(())
+            }
+
+            // ── Match ─────────────────────────────────────────────────────────────
+            Term::Match(match_) => {
+                write_indent(f, indent)?;
+                write!(f, "match ")?;
+                match_.scrutinee.fmt_expr(env, indent, f)?;
+                writeln!(f, " {{")?;
+                for arm in match_.arms {
+                    arm.fmt_arm(env, indent + 1, f)?;
                 }
-                fmt_expr(arg, env, indent, f)?;
+                write_indent(f, indent)?;
+                write!(f, "}}")
             }
-            write!(f, ")")
         }
+    }
 
-        // ── Primitive operation ───────────────────────────────────────────────
-        // All builtins use `@name(args...)` function-call syntax.
-        Head::Prim(prim) => {
-            write!(f, "{prim}(")?;
-            for (i, arg) in app.args.iter().enumerate() {
-                if i > 0 {
-                    write!(f, ", ")?;
-                }
-                fmt_expr(arg, env, indent, f)?;
+    /// Print `self` in **expression position** (inline, no leading indent).
+    ///
+    /// Unlike `fmt_term_inline`, wraps `Let` and `Match` in `{ }` so they are
+    /// syntactically valid as sub-expressions.
+    fn fmt_expr(
+        &self,
+        env: &mut Vec<&'a str>,
+        indent: usize,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match self {
+            Term::Let(_) | Term::Match(_) => {
+                writeln!(f, "{{")?;
+                self.fmt_term(env, indent + 1, f)?;
+                writeln!(f)?;
+                write_indent(f, indent)?;
+                write!(f, "}}")
             }
-            write!(f, ")")
+            Term::Var(_)
+            | Term::Prim(_)
+            | Term::Lit(_)
+            | Term::App(_)
+            | Term::Lift(_)
+            | Term::Quote(_)
+            | Term::Splice(_) => self.fmt_term_inline(env, indent, f),
         }
     }
 }
 
-/// Print a single match arm.
-fn fmt_arm<'a>(
-    arm: &Arm<'a>,
-    env: &mut Vec<&'a str>,
-    indent: usize,
-    f: &mut fmt::Formatter<'_>,
-) -> fmt::Result {
-    write_indent(f, indent)?;
-    match &arm.pat {
-        Pat::Lit(n) => write!(f, "{n} => ")?,
-        Pat::Wildcard => write!(f, "_ => ")?,
-        Pat::Bind(name) => {
-            let lvl = env.len();
-            write!(f, "{name}@{lvl} => ")?;
-            env.push(name);
-            fmt_expr(arm.body, env, indent, f)?;
-            env.pop();
-            return writeln!(f, ",");
+impl<'a> App<'a> {
+    /// Print an application.
+    ///
+    /// All primitives use `@name(arg, arg, ...)` function-call syntax. No infix
+    /// operators are emitted in the core pretty-printer.
+    fn fmt_app(
+        &self,
+        env: &mut Vec<&'a str>,
+        indent: usize,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        match &self.head {
+            // ── Global function call ──────────────────────────────────────────────
+            Head::Global(name) => {
+                write!(f, "{name}(")?;
+                for (i, arg) in self.args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    arg.fmt_expr(env, indent, f)?;
+                }
+                write!(f, ")")
+            }
+
+            // ── Primitive operation ───────────────────────────────────────────────
+            // All builtins use `@name(args...)` function-call syntax.
+            Head::Prim(prim) => {
+                write!(f, "{prim}(")?;
+                for (i, arg) in self.args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    arg.fmt_expr(env, indent, f)?;
+                }
+                write!(f, ")")
+            }
         }
     }
-    fmt_expr(arm.body, env, indent, f)?;
-    writeln!(f, ",")
+}
+
+impl<'a> Arm<'a> {
+    /// Print a single match arm.
+    fn fmt_arm(
+        &self,
+        env: &mut Vec<&'a str>,
+        indent: usize,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write_indent(f, indent)?;
+        match &self.pat {
+            Pat::Lit(n) => write!(f, "{n} => ")?,
+            Pat::Wildcard => write!(f, "_ => ")?,
+            Pat::Bind(name) => {
+                let lvl = env.len();
+                write!(f, "{name}@{lvl} => ")?;
+                env.push(name);
+                self.body.fmt_expr(env, indent, f)?;
+                env.pop();
+                return writeln!(f, ",");
+            }
+        }
+        self.body.fmt_expr(env, indent, f)?;
+        writeln!(f, ",")
+    }
 }
 
 // ── Display impls ─────────────────────────────────────────────────────────────
@@ -236,16 +242,16 @@ impl fmt::Display for Function<'_> {
                 write!(f, ", ")?;
             }
             write!(f, "{name}@{i}: ")?;
-            fmt_expr(ty, &mut env, 1, f)?;
+            ty.fmt_expr(&mut env, 1, f)?;
             env.push(name);
         }
 
         write!(f, ") -> ")?;
-        fmt_expr(self.sig.ret_ty, &mut env, 1, f)?;
+        self.sig.ret_ty.fmt_expr(&mut env, 1, f)?;
         writeln!(f, " {{")?;
 
         // Body in statement position at indent depth 1.
-        fmt_term(self.body, &mut env, 1, f)?;
+        self.body.fmt_term(&mut env, 1, f)?;
         writeln!(f)?;
         writeln!(f, "}}")
     }
