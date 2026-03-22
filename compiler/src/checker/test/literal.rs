@@ -12,7 +12,7 @@ fn check_lit_against_matching_int_type_succeeds() {
 
     let term = src_arena.alloc(ast::Term::Lit(42));
     let result = check(&mut ctx, Phase::Object, term, expected).expect("should check");
-    assert!(matches!(result, core::Term::Lit(42)));
+    assert!(matches!(result, core::Term::Lit(42, _)));
 }
 
 // `check` at meta phase with an object-phase expected type must fail (universe mismatch).

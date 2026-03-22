@@ -129,8 +129,8 @@ pub enum Term<'a> {
     Var(Lvl),
     /// Built-in type or operation
     Prim(Prim),
-    /// Numeric literal
-    Lit(u64),
+    /// Numeric literal with its integer type
+    Lit(u64, IntType),
     /// Application of a global function or primitive operation to arguments
     App(App<'a>),
     /// Lift: [[T]] — meta type representing object-level code of type T

@@ -206,7 +206,7 @@ const fn type_universe(ty: &core::Term<'_>) -> Option<Phase> {
         core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) => Some(Phase::Meta),
         core::Term::Var(_)
         | core::Term::Prim(_)
-        | core::Term::Lit(_)
+        | core::Term::Lit(..)
         | core::Term::App { .. }
         | core::Term::Quote(_)
         | core::Term::Splice(_)
@@ -252,7 +252,7 @@ pub fn infer<'src, 'core>(
                     }
                     core::Term::Prim(_)
                     | core::Term::Var(_)
-                    | core::Term::Lit(_)
+                    | core::Term::Lit(..)
                     | core::Term::App(_)
                     | core::Term::Lift(_)
                     | core::Term::Quote(_)
@@ -357,7 +357,7 @@ pub fn infer<'src, 'core>(
                 core::Term::Prim(Prim::IntTy(it)) => *it,
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
@@ -459,7 +459,7 @@ pub fn infer<'src, 'core>(
                 }
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
@@ -514,7 +514,7 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
         })) => Some(vec![false; 256]),
         core::Term::Var(_)
         | core::Term::Prim(_)
-        | core::Term::Lit(_)
+        | core::Term::Lit(..)
         | core::Term::App { .. }
         | core::Term::Lift(_)
         | core::Term::Quote(_)
@@ -680,10 +680,10 @@ pub fn check<'src, 'core>(
         // ------------------------------------------------------------------ Lit
         // Literals check against any integer type.
         ast::Term::Lit(n) => match expected {
-            core::Term::Prim(Prim::IntTy(_)) => Ok(ctx.alloc(core::Term::Lit(*n))),
+            core::Term::Prim(Prim::IntTy(it)) => Ok(ctx.alloc(core::Term::Lit(*n, *it))),
             core::Term::Var(_)
             | core::Term::Prim(_)
-            | core::Term::Lit(_)
+            | core::Term::Lit(..)
             | core::Term::App { .. }
             | core::Term::Lift(_)
             | core::Term::Quote(_)
@@ -715,7 +715,7 @@ pub fn check<'src, 'core>(
                 core::Term::Prim(Prim::IntTy(it)) => *it,
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App { .. }
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
@@ -761,7 +761,7 @@ pub fn check<'src, 'core>(
                 core::Term::Prim(Prim::IntTy(it)) => *it,
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
@@ -794,7 +794,7 @@ pub fn check<'src, 'core>(
             }
             core::Term::Var(_)
             | core::Term::Prim(_)
-            | core::Term::Lit(_)
+            | core::Term::Lit(..)
             | core::Term::App(_)
             | core::Term::Quote(_)
             | core::Term::Splice(_)

@@ -28,7 +28,7 @@ impl<'a> Term<'a> {
             // Everything else gets a leading indent.
             Term::Var(_)
             | Term::Prim(_)
-            | Term::Lit(_)
+            | Term::Lit(..)
             | Term::App(_)
             | Term::Lift(_)
             | Term::Quote(_)
@@ -58,7 +58,7 @@ impl<'a> Term<'a> {
             }
 
             // ── Literal ──────────────────────────────────────────────────────────
-            Term::Lit(n) => write!(f, "{n}"),
+            Term::Lit(n, _) => write!(f, "{n}"),
 
             // ── Primitive type / universe ─────────────────────────────────────────
             Term::Prim(p) => write!(f, "{p}"),
@@ -134,7 +134,7 @@ impl<'a> Term<'a> {
             }
             Term::Var(_)
             | Term::Prim(_)
-            | Term::Lit(_)
+            | Term::Lit(..)
             | Term::App(_)
             | Term::Lift(_)
             | Term::Quote(_)
