@@ -98,78 +98,21 @@ fn builtin_prim_ty(name: &str, phase: Phase) -> Option<&'static core::Term<'stat
     })
 }
 
-/// Elaborate a surface type expression into a core `Term`.
-///
-/// Only the forms that can appear in top-level type positions are handled here:
-/// primitive type names (`u1`, `u32`, `u64`, `Type`, `VmType`) and `[[T]]`.
-/// This is intentionally restricted — full term elaboration happens in `infer`/`check`.
-fn elaborate_ty<'src, 'core>(
-    arena: &'core bumpalo::Bump,
-    phase: Phase,
-    ty: &'src ast::Term<'src>,
-) -> Result<&'core core::Term<'core>> {
-    match ty {
-        ast::Term::Var(name) => {
-            let term = builtin_prim_ty(name.as_str(), phase)
-                .ok_or_else(|| anyhow!("unknown type `{}`", name.as_str()))?;
-            // Verify the resulting type inhabits the correct universe for `phase`.
-            // `Type` always inhabits `U(Meta)` and `VmType` always inhabits `U(Meta)` too
-            // (the meta universe classifies both), but `Type` is only valid as a type in
-            // meta context and `VmType` only in object context.
-            let ty_phase = match term {
-                core::Term::Prim(Prim::IntTy(IntType { phase: p, .. }))
-                | core::Term::Prim(Prim::U(p)) => *p,
-                core::Term::Prim(_)
-                | core::Term::Var(_)
-                | core::Term::Lit(_)
-                | core::Term::App(_)
-                | core::Term::Lift(_)
-                | core::Term::Quote(_)
-                | core::Term::Splice(_)
-                | core::Term::Let(_)
-                | core::Term::Match(_) => unreachable!("builtin_prim_ty only returns IntTy or U"),
-            };
-            if ty_phase != phase {
-                return Err(anyhow!(
-                    "`{}` is a {ty_phase}-phase type, not valid in a {phase}-phase type position",
-                    name.as_str(),
-                ));
-            }
-            Ok(term)
-        }
-        ast::Term::Lift(inner) => {
-            // `[[T]]` is only a valid type in a meta-level function signature.
-            if phase != Phase::Meta {
-                return Err(anyhow!(
-                    "`[[...]]` is only valid in a meta-phase type position"
-                ));
-            }
-            // The inner type must be an object type.
-            let inner_ty = elaborate_ty(arena, Phase::Object, inner)?;
-            Ok(arena.alloc(core::Term::Lift(inner_ty)))
-        }
-        ast::Term::Lit(_)
-        | ast::Term::App { .. }
-        | ast::Term::Quote(_)
-        | ast::Term::Splice(_)
-        | ast::Term::Match { .. }
-        | ast::Term::Block { .. } => Err(anyhow!("expected a type expression")),
-    }
-}
-
-/// Elaborate the signature (parameter types + return type) of a single function.
 fn elaborate_sig<'src, 'core>(
     arena: &'core bumpalo::Bump,
     func: &ast::Function<'src>,
 ) -> Result<core::FunSig<'core>> {
+    let empty_globals = HashMap::new();
+    let mut ctx = Ctx::new(arena, &empty_globals);
+
     let params: &'core [(&'core str, &'core core::Term<'core>)] =
         arena.alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
             let param_name: &'core str = arena.alloc_str(p.name.as_str());
-            let param_ty = elaborate_ty(arena, func.phase, p.ty)?;
+            let (param_ty, _) = infer(&mut ctx, func.phase, p.ty)?;
             Ok((param_name, param_ty))
         }))?;
 
-    let ret_ty = elaborate_ty(arena, func.phase, func.ret_ty)?;
+    let (ret_ty, _) = infer(&mut ctx, func.phase, func.ret_ty)?;
 
     Ok(core::FunSig {
         params,
@@ -298,7 +241,15 @@ pub fn infer<'src, 'core>(
                 // U(Object) : U(Meta) — VmType is classified by the meta universe
                 let ty = match term {
                     core::Term::Prim(Prim::IntTy(_)) => core::Term::universe(phase),
-                    core::Term::Prim(Prim::U(_)) => &core::Term::TYPE,
+                    core::Term::Prim(Prim::U(u_phase)) => {
+                        if *u_phase != phase {
+                            return Err(anyhow!(
+                                "`{name_str}` is a {u_phase}-phase type, \
+                                 not valid in a {phase}-phase context"
+                            ));
+                        }
+                        &core::Term::TYPE
+                    }
                     core::Term::Prim(_)
                     | core::Term::Var(_)
                     | core::Term::Lit(_)
@@ -644,7 +595,7 @@ where
 {
     // Determine the binding type: use annotation if present, otherwise infer.
     let (core_expr, bind_ty) = if let Some(ann) = stmt.ty {
-        let ty = elaborate_ty(ctx.arena, phase, ann)?;
+        let (ty, _) = infer(ctx, phase, ann)?;
         let core_e = check(ctx, phase, stmt.expr, ty)
             .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?;
         (core_e, ty)
