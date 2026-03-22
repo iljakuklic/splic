@@ -15,7 +15,8 @@ fn infer_global_call_no_args_returns_ret_ty() {
         func: FunName::Name(ast::Name::new("f")),
         args: &[],
     });
-    let (_, ty) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let ty = ctx.type_of(result);
     assert!(matches!(
         ty,
         core::Term::Prim(Prim::IntTy(IntType {
@@ -103,7 +104,8 @@ fn infer_global_call_with_arg_checks_arg_type() {
         func: FunName::Name(ast::Name::new("f")),
         args,
     });
-    let (_, ty) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let ty = ctx.type_of(result);
     assert!(matches!(
         ty,
         core::Term::Prim(Prim::IntTy(IntType {
@@ -169,7 +171,8 @@ fn infer_comparison_op_returns_u1() {
     });
 
     // Eq is inferable: result is u1, prim carries the operand type (u64).
-    let (core_term, ty) = infer(&mut ctx, Phase::Object, term).expect("should infer");
+    let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
+    let ty = ctx.type_of(core_term);
     assert!(matches!(
         core_term,
         core::Term::App(core::App {
