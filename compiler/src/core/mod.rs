@@ -145,6 +145,62 @@ pub enum Term<'a> {
     Match(Match<'a>),
 }
 
+impl Term<'static> {
+    // Integer types at meta phase
+    pub const U0_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U0, Phase::Meta)));
+    pub const U1_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U1, Phase::Meta)));
+    pub const U8_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U8, Phase::Meta)));
+    pub const U16_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U16, Phase::Meta)));
+    pub const U32_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U32, Phase::Meta)));
+    pub const U64_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U64, Phase::Meta)));
+
+    // Integer types at object phase
+    pub const U0_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U0, Phase::Object)));
+    pub const U1_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U1, Phase::Object)));
+    pub const U8_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U8, Phase::Object)));
+    pub const U16_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U16, Phase::Object)));
+    pub const U32_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U32, Phase::Object)));
+    pub const U64_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U64, Phase::Object)));
+
+    // Universes
+    pub const TYPE: Self = Self::Prim(Prim::U(Phase::Meta));
+    pub const VM_TYPE: Self = Self::Prim(Prim::U(Phase::Object));
+
+    /// Return the static integer-type term for the given width and phase.
+    pub const fn int_ty(width: IntWidth, phase: Phase) -> &'static Self {
+        match (width, phase) {
+            (IntWidth::U0, Phase::Meta) => &Self::U0_META,
+            (IntWidth::U1, Phase::Meta) => &Self::U1_META,
+            (IntWidth::U8, Phase::Meta) => &Self::U8_META,
+            (IntWidth::U16, Phase::Meta) => &Self::U16_META,
+            (IntWidth::U32, Phase::Meta) => &Self::U32_META,
+            (IntWidth::U64, Phase::Meta) => &Self::U64_META,
+            (IntWidth::U0, Phase::Object) => &Self::U0_OBJ,
+            (IntWidth::U1, Phase::Object) => &Self::U1_OBJ,
+            (IntWidth::U8, Phase::Object) => &Self::U8_OBJ,
+            (IntWidth::U16, Phase::Object) => &Self::U16_OBJ,
+            (IntWidth::U32, Phase::Object) => &Self::U32_OBJ,
+            (IntWidth::U64, Phase::Object) => &Self::U64_OBJ,
+        }
+    }
+
+    /// Return the static u1 term for the given phase.
+    pub const fn u1_ty(phase: Phase) -> &'static Self {
+        match phase {
+            Phase::Meta => &Self::U1_META,
+            Phase::Object => &Self::U1_OBJ,
+        }
+    }
+
+    /// Return the universe term for the given phase (`Type` or `VmType`).
+    pub const fn universe(phase: Phase) -> &'static Self {
+        match phase {
+            Phase::Meta => &Self::TYPE,
+            Phase::Object => &Self::VM_TYPE,
+        }
+    }
+}
+
 impl<'a> Term<'a> {
     pub const fn new_app(head: Head<'a>, args: &'a [&'a Self]) -> Self {
         Self::App(App { head, args })

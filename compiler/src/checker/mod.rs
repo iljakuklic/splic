@@ -76,46 +76,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         self.locals.len()
     }
 
-    /// Helper to create an integer type term at the given phase
-    pub fn int_ty(&self, width: IntWidth, phase: Phase) -> &'core core::Term<'core> {
-        self.arena
-            .alloc(core::Term::Prim(Prim::IntTy(IntType::new(width, phase))))
-    }
-
-    /// Helper to create a u64 type term (meta phase)
-    pub fn u64_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-            IntWidth::U64,
-            Phase::Meta,
-        ))))
-    }
-
-    /// Helper to create a u32 type term (meta phase)
-    pub fn u32_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-            IntWidth::U32,
-            Phase::Meta,
-        ))))
-    }
-
-    /// Helper to create a u1 type term (meta phase)
-    pub fn u1_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-            IntWidth::U1,
-            Phase::Meta,
-        ))))
-    }
-
-    /// Helper to create a Type (meta universe) term
-    pub fn type_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::U(Phase::Meta)))
-    }
-
-    /// Helper to create a `VmType` (object universe) term
-    pub fn vm_type_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::U(Phase::Object)))
-    }
-
     /// Helper to create a lifted type [[T]]
     pub fn lift_ty(&self, inner: &'core core::Term<'core>) -> &'core core::Term<'core> {
         self.arena.alloc(core::Term::Lift(inner))
@@ -492,10 +452,7 @@ pub fn infer<'src, 'core>(
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
             let core_term = ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args));
             // Result type is always u1 at the current phase.
-            let u1_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-                IntWidth::U1,
-                phase,
-            ))));
+            let u1_ty = core::Term::u1_ty(phase);
             Ok((core_term, u1_ty))
         }
         ast::Term::App {

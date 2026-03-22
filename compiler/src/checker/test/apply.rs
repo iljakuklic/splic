@@ -8,7 +8,7 @@ fn infer_global_call_no_args_returns_ret_ty() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut globals = HashMap::new();
-    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
+    globals.insert(Name::new("f"), sig_no_params_returns_u64());
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
@@ -47,7 +47,7 @@ fn infer_global_call_wrong_arity_fails() {
     let extra_arg = src_arena.alloc(ast::Term::Lit(99));
     let args = src_arena.alloc_slice_fill_iter([extra_arg as &ast::Term]);
     let mut globals = HashMap::new();
-    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
+    globals.insert(Name::new("f"), sig_no_params_returns_u64());
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
@@ -123,7 +123,7 @@ fn check_binop_add_against_u32_succeeds() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u32_obj = ctx.int_ty(IntWidth::U32, Phase::Object);
+    let u32_obj = core::Term::int_ty(IntWidth::U32, Phase::Object);
     // push two object-phase u32 locals to use as operands
     ctx.push_local("a", u32_obj);
     ctx.push_local("b", u32_obj);
@@ -136,7 +136,7 @@ fn check_binop_add_against_u32_succeeds() {
         args,
     });
 
-    let expected = ctx.int_ty(IntWidth::U32, Phase::Object);
+    let expected = core::Term::int_ty(IntWidth::U32, Phase::Object);
     let result = check(&mut ctx, Phase::Object, term, expected).expect("should check");
     assert!(matches!(
         result,
@@ -156,7 +156,7 @@ fn infer_comparison_op_returns_u1() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u64_obj = ctx.int_ty(IntWidth::U64, Phase::Object);
+    let u64_obj = core::Term::int_ty(IntWidth::U64, Phase::Object);
     ctx.push_local("a", u64_obj);
     ctx.push_local("b", u64_obj);
 
@@ -195,8 +195,8 @@ fn infer_comparison_op_mismatched_operands_fails() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u64_ty = ctx.u64_ty();
-    let u32_ty = ctx.u32_ty();
+    let u64_ty = &core::Term::U64_META;
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("a", u64_ty);
     ctx.push_local("b", u32_ty); // different type
 
@@ -217,7 +217,7 @@ fn infer_binop_add_without_expected_type_fails() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u32_ty = ctx.u32_ty();
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("a", u32_ty);
     ctx.push_local("b", u32_ty);
 
@@ -239,8 +239,8 @@ fn check_binop_add_with_mismatched_operand_types_fails() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     // push a (u64) and b (u32) — they don't match the expected u32 for 'a'
-    let u64_ty = ctx.u64_ty();
-    let u32_ty = ctx.u32_ty();
+    let u64_ty = &core::Term::U64_META;
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("a", u64_ty); // u64, but op expects u32
     ctx.push_local("b", u32_ty);
 
@@ -252,7 +252,7 @@ fn check_binop_add_with_mismatched_operand_types_fails() {
         args,
     });
 
-    let expected = ctx.u32_ty(); // we expect u32, but `a` is u64
+    let expected = &core::Term::U32_META; // we expect u32, but `a` is u64
     assert!(check(&mut ctx, Phase::Object, term, expected).is_err());
 }
 
@@ -264,7 +264,7 @@ fn check_eq_op_produces_u1() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     // Use meta-phase locals so the phase is consistent throughout.
-    let u64_ty = ctx.u64_ty(); // u64 at meta phase
+    let u64_ty = &core::Term::U64_META; // u64 at meta phase
     ctx.push_local("a", u64_ty);
     ctx.push_local("b", u64_ty);
 
@@ -277,7 +277,7 @@ fn check_eq_op_produces_u1() {
     });
 
     // Checking at meta phase against meta-phase u1.
-    let expected = ctx.u1_ty();
+    let expected = &core::Term::U1_META;
     let result = check(&mut ctx, Phase::Meta, term, expected).expect("should check");
     // The prim carries the operand type (u64), not u1.
     assert!(matches!(

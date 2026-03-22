@@ -76,7 +76,7 @@ fn infer_let_annotation_mismatch_fails() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u64_ty = ctx.u64_ty();
+    let u64_ty = &core::Term::U64_META;
     ctx.push_local("y", u64_ty); // y: u64
 
     // `let x: u32 = y; x`  — y is u64, annotation says u32

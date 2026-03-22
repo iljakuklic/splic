@@ -21,11 +21,8 @@ pub fn test_ctx_with_globals<'core, 'globals>(
 }
 
 /// Helper: build a simple `FunSig` for a function `fn f() -> u64` (no params, meta phase).
-pub fn sig_no_params_returns_u64(core_arena: &bumpalo::Bump) -> FunSig<'_> {
-    let ret_ty = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U64,
-        Phase::Meta,
-    ))));
+pub fn sig_no_params_returns_u64() -> FunSig<'static> {
+    let ret_ty = &core::Term::U64_META;
     FunSig {
         params: &[],
         ret_ty,
@@ -35,14 +32,8 @@ pub fn sig_no_params_returns_u64(core_arena: &bumpalo::Bump) -> FunSig<'_> {
 
 /// Helper: build a `FunSig` for `fn f(x: u32) -> u64`.
 pub fn sig_one_param_returns_u64(core_arena: &bumpalo::Bump) -> FunSig<'_> {
-    let u32_ty = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U32,
-        Phase::Meta,
-    ))));
-    let u64_ty = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U64,
-        Phase::Meta,
-    ))));
+    let u32_ty = &core::Term::U32_META;
+    let u64_ty = &core::Term::U64_META;
     let param = core_arena.alloc(("x", u32_ty as &core::Term));
     FunSig {
         params: std::slice::from_ref(param),
