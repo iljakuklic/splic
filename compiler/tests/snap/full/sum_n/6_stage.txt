@@ -1,4 +1,4 @@
 code fn sum_to_five() -> u64 {
-    15
+    15_u64
 }
 
