@@ -8,10 +8,7 @@ fn check_match_all_arms_same_type_succeeds() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
 
-    let u32_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U32,
-        Phase::Meta,
-    ))));
+    let u32_ty_core = &core::Term::U32_META;
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k32"),
@@ -22,7 +19,7 @@ fn check_match_all_arms_same_type_succeeds() {
         },
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
-    let u32_ty = ctx.u32_ty();
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("x", u32_ty);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
@@ -55,10 +52,7 @@ fn check_match_u1_fully_covered_succeeds() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
 
-    let u1_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U1,
-        Phase::Meta,
-    ))));
+    let u1_ty_core = &core::Term::U1_META;
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k1"),
@@ -102,10 +96,7 @@ fn infer_match_u1_partially_covered_fails() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
 
-    let u1_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U1,
-        Phase::Meta,
-    ))));
+    let u1_ty_core = &core::Term::U1_META;
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k1"),
@@ -139,10 +130,7 @@ fn infer_match_no_catch_all_fails() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
 
-    let u32_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U32,
-        Phase::Meta,
-    ))));
+    let u32_ty_core = &core::Term::U32_META;
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k32"),
@@ -153,7 +141,7 @@ fn infer_match_no_catch_all_fails() {
         },
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
-    let u32_ty = ctx.u32_ty();
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("x", u32_ty);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
@@ -187,14 +175,8 @@ fn infer_match_arms_type_mismatch_fails() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
 
-    let u32_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U32,
-        Phase::Meta,
-    ))));
-    let u64_ty_core = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U64,
-        Phase::Meta,
-    ))));
+    let u32_ty_core = &core::Term::U32_META;
+    let u64_ty_core = &core::Term::U64_META;
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k32"),
@@ -213,7 +195,7 @@ fn infer_match_arms_type_mismatch_fails() {
         },
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
-    let u32_ty = ctx.u32_ty();
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("x", u32_ty);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));

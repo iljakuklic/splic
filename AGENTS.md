@@ -29,10 +29,12 @@ just fmt         # Format the codebase
 
 ### Testing
 ```bash
-cargo test                          # Run all tests
+cargo test --quiet                  # Run all tests (reduced output)
 cargo test -p splic-compiler        # Run tests for the compiler crate only
 cargo test -p splic-compiler <FILTER>  # Run matching tests
 ```
+
+Use `--quiet` to suppress per-test output and only show the summary lines; errors still appear in full.
 
 Note: `just test` adds `--locked` and snapshot drift detection; prefer `cargo test` directly during development for flexibility.
 

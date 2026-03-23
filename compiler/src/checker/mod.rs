@@ -76,146 +76,171 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         self.locals.len()
     }
 
-    /// Helper to create an integer type term at the given phase
-    pub fn int_ty(&self, width: IntWidth, phase: Phase) -> &'core core::Term<'core> {
-        self.arena
-            .alloc(core::Term::Prim(Prim::IntTy(IntType::new(width, phase))))
-    }
-
-    /// Helper to create a u64 type term (meta phase)
-    pub fn u64_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-            IntWidth::U64,
-            Phase::Meta,
-        ))))
-    }
-
-    /// Helper to create a u32 type term (meta phase)
-    pub fn u32_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-            IntWidth::U32,
-            Phase::Meta,
-        ))))
-    }
-
-    /// Helper to create a u1 type term (meta phase)
-    pub fn u1_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-            IntWidth::U1,
-            Phase::Meta,
-        ))))
-    }
-
-    /// Helper to create a Type (meta universe) term
-    pub fn type_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::U(Phase::Meta)))
-    }
-
-    /// Helper to create a `VmType` (object universe) term
-    pub fn vm_type_ty(&self) -> &'core core::Term<'core> {
-        self.arena.alloc(core::Term::Prim(Prim::U(Phase::Object)))
-    }
-
     /// Helper to create a lifted type [[T]]
     pub fn lift_ty(&self, inner: &'core core::Term<'core>) -> &'core core::Term<'core> {
         self.arena.alloc(core::Term::Lift(inner))
     }
+
+    /// Recover the type of an already-elaborated core term without re-elaborating.
+    ///
+    /// Precondition: `term` was produced by `infer` or `check` in a context
+    /// compatible with `self`.  Panics on typechecker invariant violations.
+    pub fn type_of(&mut self, term: &'core core::Term<'core>) -> &'core core::Term<'core> {
+        match term {
+            // Literal or arithmetic/bitwise op: type is (or returns) the integer type.
+            core::Term::Lit(_, it)
+            | core::Term::Prim(
+                Prim::Add(it)
+                | Prim::Sub(it)
+                | Prim::Mul(it)
+                | Prim::Div(it)
+                | Prim::BitAnd(it)
+                | Prim::BitOr(it)
+                | Prim::BitNot(it),
+            ) => core::Term::int_ty(it.width, it.phase),
+
+            // Variable: look up by De Bruijn level.
+            core::Term::Var(lvl) => {
+                self.locals
+                    .get(lvl.0)
+                    .expect("Var level out of range (typechecker invariant)")
+                    .1
+            }
+
+            // Primitive types inhabit the relevant universe.
+            core::Term::Prim(Prim::IntTy(it)) => core::Term::universe(it.phase),
+            // Type, VmType, and [[T]] all inhabit Type (meta universe).
+            core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) => &core::Term::TYPE,
+
+            // Comparison ops return u1 at the operand phase.
+            core::Term::Prim(
+                Prim::Eq(it)
+                | Prim::Ne(it)
+                | Prim::Lt(it)
+                | Prim::Gt(it)
+                | Prim::Le(it)
+                | Prim::Ge(it),
+            ) => core::Term::u1_ty(it.phase),
+
+            // Embed: IntTy(w, Meta) -> [[IntTy(w, Object)]]
+            core::Term::Prim(Prim::Embed(w)) => {
+                self.alloc(core::Term::Lift(core::Term::int_ty(*w, Phase::Object)))
+            }
+
+            // Application: return type comes from the head.
+            core::Term::App(app) => match &app.head {
+                core::Head::Global(name) => {
+                    self.globals
+                        .get(name)
+                        .expect("App/Global with unknown name (typechecker invariant)")
+                        .ret_ty
+                }
+                core::Head::Prim(p) => match *p {
+                    Prim::Add(it)
+                    | Prim::Sub(it)
+                    | Prim::Mul(it)
+                    | Prim::Div(it)
+                    | Prim::BitAnd(it)
+                    | Prim::BitOr(it)
+                    | Prim::BitNot(it) => core::Term::int_ty(it.width, it.phase),
+                    Prim::Eq(it)
+                    | Prim::Ne(it)
+                    | Prim::Lt(it)
+                    | Prim::Gt(it)
+                    | Prim::Le(it)
+                    | Prim::Ge(it) => core::Term::u1_ty(it.phase),
+                    Prim::Embed(w) => {
+                        self.alloc(core::Term::Lift(core::Term::int_ty(w, Phase::Object)))
+                    }
+                    Prim::IntTy(_) | Prim::U(_) => {
+                        unreachable!("type-level prim in App head (typechecker invariant)")
+                    }
+                },
+            },
+
+            // #(t) : [[type_of(t)]]
+            core::Term::Quote(inner) => {
+                let inner_ty = self.type_of(inner);
+                self.alloc(core::Term::Lift(inner_ty))
+            }
+
+            // $(t) where t : [[T]] — strips the Lift.
+            core::Term::Splice(inner) => {
+                let inner_ty = self.type_of(inner);
+                match inner_ty {
+                    core::Term::Lift(object_ty) => object_ty,
+                    core::Term::Var(_)
+                    | core::Term::Prim(_)
+                    | core::Term::Lit(..)
+                    | core::Term::App(_)
+                    | core::Term::Quote(_)
+                    | core::Term::Splice(_)
+                    | core::Term::Let(_)
+                    | core::Term::Match(_) => {
+                        unreachable!("Splice inner must have Lift type (typechecker invariant)")
+                    }
+                }
+            }
+
+            // let x : T = e in body — type is type_of(body) with x in scope.
+            core::Term::Let(core::Let { name, ty, body, .. }) => {
+                self.push_local(name, ty);
+                let result = self.type_of(body);
+                self.pop_local();
+                result
+            }
+
+            // match: all arms share the same type; recover from the first.
+            core::Term::Match(core::Match { scrutinee, arms }) => {
+                let arm = arms
+                    .first()
+                    .expect("Match with no arms (typechecker invariant)");
+                match arm.pat {
+                    core::Pat::Lit(_) | core::Pat::Wildcard => self.type_of(arm.body),
+                    core::Pat::Bind(name) => {
+                        let scrut_ty = self.type_of(scrutinee);
+                        self.push_local(name, scrut_ty);
+                        let result = self.type_of(arm.body);
+                        self.pop_local();
+                        result
+                    }
+                }
+            }
+        }
+    }
 }
 
-/// Resolve a built-in name to a `Prim`, using `phase` for integer types.
+/// Resolve a built-in type name to a static core term, using `phase` for integer types.
 ///
-/// Returns `None` if the name is not a built-in.
-fn builtin_prim(name: &str, phase: Phase) -> Option<Prim> {
+/// Returns `None` if the name is not a built-in type.
+fn builtin_prim_ty(name: &str, phase: Phase) -> Option<&'static core::Term<'static>> {
     Some(match name {
-        "u1" => Prim::IntTy(IntType::new(IntWidth::U1, phase)),
-        "u8" => Prim::IntTy(IntType::new(IntWidth::U8, phase)),
-        "u16" => Prim::IntTy(IntType::new(IntWidth::U16, phase)),
-        "u32" => Prim::IntTy(IntType::new(IntWidth::U32, phase)),
-        "u64" => Prim::IntTy(IntType::new(IntWidth::U64, phase)),
-        "Type" => Prim::U(Phase::Meta),
-        "VmType" => Prim::U(Phase::Object),
+        "u1" => core::Term::int_ty(IntWidth::U1, phase),
+        "u8" => core::Term::int_ty(IntWidth::U8, phase),
+        "u16" => core::Term::int_ty(IntWidth::U16, phase),
+        "u32" => core::Term::int_ty(IntWidth::U32, phase),
+        "u64" => core::Term::int_ty(IntWidth::U64, phase),
+        "Type" => &core::Term::TYPE,
+        "VmType" => &core::Term::VM_TYPE,
         _ => return None,
     })
 }
 
-/// Elaborate a surface type expression into a core `Term`.
-///
-/// Only the forms that can appear in top-level type positions are handled here:
-/// primitive type names (`u1`, `u32`, `u64`, `Type`, `VmType`) and `[[T]]`.
-/// This is intentionally restricted — full term elaboration happens in `infer`/`check`.
-fn elaborate_ty<'src, 'core>(
-    arena: &'core bumpalo::Bump,
-    phase: Phase,
-    ty: &'src ast::Term<'src>,
-) -> Result<&'core core::Term<'core>> {
-    match ty {
-        ast::Term::Var(name) => {
-            let prim = builtin_prim(name.as_str(), phase)
-                .ok_or_else(|| anyhow!("unknown type `{}`", name.as_str()))?;
-            // Verify the resulting type inhabits the correct universe for `phase`.
-            // `Type` always inhabits `U(Meta)` and `VmType` always inhabits `U(Meta)` too
-            // (the meta universe classifies both), but `Type` is only valid as a type in
-            // meta context and `VmType` only in object context.
-            let ty_phase = match prim {
-                Prim::IntTy(IntType { phase: p, .. }) => p,
-                Prim::U(Phase::Meta) => Phase::Meta, // "Type"
-                Prim::U(Phase::Object) => Phase::Object, // "VmType"
-                Prim::Add(_)
-                | Prim::Sub(_)
-                | Prim::Mul(_)
-                | Prim::Div(_)
-                | Prim::BitAnd(_)
-                | Prim::BitOr(_)
-                | Prim::BitNot(_)
-                | Prim::Embed(_)
-                | Prim::Eq(_)
-                | Prim::Ne(_)
-                | Prim::Lt(_)
-                | Prim::Gt(_)
-                | Prim::Le(_)
-                | Prim::Ge(_) => unreachable!("builtin_prim only returns IntTy or U"),
-            };
-            if ty_phase != phase {
-                return Err(anyhow!(
-                    "`{}` is a {ty_phase}-phase type, not valid in a {phase}-phase type position",
-                    name.as_str(),
-                ));
-            }
-            Ok(arena.alloc(core::Term::Prim(prim)))
-        }
-        ast::Term::Lift(inner) => {
-            // `[[T]]` is only a valid type in a meta-level function signature.
-            if phase != Phase::Meta {
-                return Err(anyhow!(
-                    "`[[...]]` is only valid in a meta-phase type position"
-                ));
-            }
-            // The inner type must be an object type.
-            let inner_ty = elaborate_ty(arena, Phase::Object, inner)?;
-            Ok(arena.alloc(core::Term::Lift(inner_ty)))
-        }
-        ast::Term::Lit(_)
-        | ast::Term::App { .. }
-        | ast::Term::Quote(_)
-        | ast::Term::Splice(_)
-        | ast::Term::Match { .. }
-        | ast::Term::Block { .. } => Err(anyhow!("expected a type expression")),
-    }
-}
-
-/// Elaborate the signature (parameter types + return type) of a single function.
 fn elaborate_sig<'src, 'core>(
     arena: &'core bumpalo::Bump,
     func: &ast::Function<'src>,
 ) -> Result<core::FunSig<'core>> {
+    let empty_globals = HashMap::new();
+    let mut ctx = Ctx::new(arena, &empty_globals);
+
     let params: &'core [(&'core str, &'core core::Term<'core>)] =
         arena.alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
             let param_name: &'core str = arena.alloc_str(p.name.as_str());
-            let param_ty = elaborate_ty(arena, func.phase, p.ty)?;
+            let param_ty = infer(&mut ctx, func.phase, p.ty)?;
             Ok((param_name, param_ty))
         }))?;
 
-    let ret_ty = elaborate_ty(arena, func.phase, func.ret_ty)?;
+    let ret_ty = infer(&mut ctx, func.phase, func.ret_ty)?;
 
     Ok(core::FunSig {
         params,
@@ -259,33 +284,29 @@ fn elaborate_bodies<'src, 'core>(
     let functions: &'core [core::Function<'core>] =
         arena.alloc_slice_try_fill_iter(program.functions.iter().map(|func| -> Result<_> {
             let name = core::Name::new(arena.alloc_str(func.name.as_str()));
-            let sig = globals.get(&name).expect("signature missing from pass 1");
+            let ast_sig = globals.get(&name).expect("signature missing from pass 1");
 
             // Build a fresh context borrowing the stack-owned globals map.
             let mut ctx = Ctx::new(arena, globals);
 
             // Push parameters as locals so the body can reference them.
-            for (pname, pty) in sig.params {
+            for (pname, pty) in ast_sig.params {
                 ctx.push_local(pname, pty);
             }
 
             // Elaborate the body, checking it against the declared return type.
-            let core_body = check(&mut ctx, sig.phase, func.body, sig.ret_ty)
+            let body = check(&mut ctx, ast_sig.phase, func.body, ast_sig.ret_ty)
                 .with_context(|| format!("in function `{name}`"))?;
 
             // Re-borrow sig from globals (ctx was consumed in the check above).
             // We need the sig fields for the Function; collect them before moving ctx.
-            let core_sig = core::FunSig {
-                params: sig.params,
-                ret_ty: sig.ret_ty,
-                phase: sig.phase,
+            let sig = core::FunSig {
+                params: ast_sig.params,
+                ret_ty: ast_sig.ret_ty,
+                phase: ast_sig.phase,
             };
 
-            Ok(core::Function {
-                name,
-                sig: core_sig,
-                body: core_body,
-            })
+            Ok(core::Function { name, sig, body })
         }))?;
 
     Ok(core::Program { functions })
@@ -313,7 +334,7 @@ const fn type_universe(ty: &core::Term<'_>) -> Option<Phase> {
         core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) => Some(Phase::Meta),
         core::Term::Var(_)
         | core::Term::Prim(_)
-        | core::Term::Lit(_)
+        | core::Term::Lit(..)
         | core::Term::App { .. }
         | core::Term::Quote(_)
         | core::Term::Splice(_)
@@ -329,53 +350,35 @@ fn types_equal(a: &core::Term<'_>, b: &core::Term<'_>) -> bool {
     std::ptr::eq(a, b) || a == b
 }
 
-/// Synthesise the type of `term`, returning `(elaborated_term, type)`.
+/// Synthesise and return the elaborated core term; recover its type via `ctx.type_of`.
 pub fn infer<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
     phase: Phase,
     term: &'src ast::Term<'src>,
-) -> Result<(&'core core::Term<'core>, &'core core::Term<'core>)> {
+) -> Result<&'core core::Term<'core>> {
     match term {
         // ------------------------------------------------------------------ Var
         // Look up the name in locals; return its level and type.
         ast::Term::Var(name) => {
             let name_str = name.as_str();
             // First check if it's a built-in type name — those are inferable too.
-            let builtin = builtin_prim(name_str, phase);
-            if let Some(prim) = builtin {
-                let term = ctx.alloc(core::Term::Prim(prim));
-                // The type of a type is the relevant universe.
-                // U(Meta) : U(Meta)   — type-in-type for the meta universe
-                // U(Object) : U(Meta) — VmType is classified by the meta universe
-                // Both arms return U(Meta) for distinct semantic reasons; keep them separate.
-                #[expect(clippy::match_same_arms)]
-                let ty = match prim {
-                    Prim::IntTy(_) => ctx.alloc(core::Term::Prim(Prim::U(phase))),
-                    Prim::U(Phase::Meta) => ctx.alloc(core::Term::Prim(Prim::U(Phase::Meta))),
-                    Prim::U(Phase::Object) => ctx.alloc(core::Term::Prim(Prim::U(Phase::Meta))),
-                    Prim::Add(_)
-                    | Prim::Sub(_)
-                    | Prim::Mul(_)
-                    | Prim::Div(_)
-                    | Prim::BitAnd(_)
-                    | Prim::BitOr(_)
-                    | Prim::BitNot(_)
-                    | Prim::Embed(_)
-                    | Prim::Eq(_)
-                    | Prim::Ne(_)
-                    | Prim::Lt(_)
-                    | Prim::Gt(_)
-                    | Prim::Le(_)
-                    | Prim::Ge(_) => unreachable!(),
-                };
-                return Ok((term, ty));
+            if let Some(term) = builtin_prim_ty(name_str, phase) {
+                // Phase check: U(Object) (VmType) is only valid in a meta-phase context.
+                if let core::Term::Prim(Prim::U(u_phase)) = term
+                    && *u_phase != phase
+                {
+                    return Err(anyhow!(
+                        "`{name_str}` is a {u_phase}-phase type, \
+                         not valid in a {phase}-phase context"
+                    ));
+                }
+                return Ok(term);
             }
             // Otherwise look in locals.
-            let (lvl, ty) = ctx
+            let (lvl, _) = ctx
                 .lookup_local(name_str)
                 .ok_or_else(|| anyhow!("unbound variable `{name_str}`"))?;
-            let core_term = ctx.alloc(core::Term::Var(lvl));
-            Ok((core_term, ty))
+            Ok(ctx.alloc(core::Term::Var(lvl)))
         }
 
         // ------------------------------------------------------------------ Lit
@@ -404,7 +407,6 @@ pub fn infer<'src, 'core>(
                 ));
             }
             let call_phase = sig.phase;
-            let ret_ty = sig.ret_ty;
             let params = sig.params;
 
             if args.len() != params.len() {
@@ -426,11 +428,10 @@ pub fn infer<'src, 'core>(
                     },
                 ))?;
 
-            let core_term = ctx.alloc(core::Term::new_app(
+            Ok(ctx.alloc(core::Term::new_app(
                 core::Head::Global(core::Name::new(ctx.arena.alloc_str(name.as_str()))),
                 core_args,
-            ));
-            Ok((core_term, ret_ty))
+            )))
         }
 
         // ------------------------------------------------------------------ App { Prim (BinOp/UnOp) }
@@ -451,21 +452,21 @@ pub fn infer<'src, 'core>(
         ) =>
         {
             use ast::BinOp;
-            if args.len() != 2 {
+            let [lhs, rhs] = args else {
                 return Err(anyhow!("binary operation expects exactly 2 arguments"));
-            }
+            };
+
             // Infer the operand type from the first argument.
-            #[expect(clippy::indexing_slicing)]
-            let (core_arg0, operand_ty) = infer(ctx, phase, args[0])?;
+            let core_arg0 = infer(ctx, phase, lhs)?;
+            let operand_ty = ctx.type_of(core_arg0);
             // Check the second argument against the same operand type.
-            #[expect(clippy::indexing_slicing)]
-            let core_arg1 = check(ctx, phase, args[1], operand_ty)?;
+            let core_arg1 = check(ctx, phase, rhs, operand_ty)?;
             // Verify both operands are integers and build the prim carrying the operand type.
             let op_int_ty = match operand_ty {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
@@ -490,13 +491,7 @@ pub fn infer<'src, 'core>(
                 | BinOp::BitOr => unreachable!(),
             };
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
-            let core_term = ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args));
-            // Result type is always u1 at the current phase.
-            let u1_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-                IntWidth::U1,
-                phase,
-            ))));
-            Ok((core_term, u1_ty))
+            Ok(ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args)))
         }
         ast::Term::App {
             func: ast::FunName::BinOp(_) | ast::FunName::UnOp(_),
@@ -513,14 +508,12 @@ pub fn infer<'src, 'core>(
                 return Err(anyhow!("`[[...]]` is only valid in a meta-phase context"));
             }
             // The inner expression must be an object type.
-            let (core_inner, inner_ty) = infer(ctx, Phase::Object, inner)?;
+            let core_inner = infer(ctx, Phase::Object, inner)?;
             // Verify the inner term is indeed a type (inhabits VmType).
-            if !types_equal(inner_ty, &core::Term::Prim(Prim::U(Phase::Object))) {
+            if !types_equal(ctx.type_of(core_inner), &core::Term::VM_TYPE) {
                 return Err(anyhow!("argument of `[[...]]` must be an object type"));
             }
-            let lift_term = ctx.alloc(core::Term::Lift(core_inner));
-            let ty = ctx.alloc(core::Term::Prim(Prim::U(Phase::Meta)));
-            Ok((lift_term, ty))
+            Ok(ctx.alloc(core::Term::Lift(core_inner)))
         }
 
         // ------------------------------------------------------------------ Quote
@@ -530,10 +523,8 @@ pub fn infer<'src, 'core>(
             if phase != Phase::Meta {
                 return Err(anyhow!("`#(...)` is only valid in a meta-phase context"));
             }
-            let (core_inner, inner_ty) = infer(ctx, Phase::Object, inner)?;
-            let lift_ty = ctx.alloc(core::Term::Lift(inner_ty));
-            let core_term = ctx.alloc(core::Term::Quote(core_inner));
-            Ok((core_term, lift_ty))
+            let core_inner = infer(ctx, Phase::Object, inner)?;
+            Ok(ctx.alloc(core::Term::Quote(core_inner)))
         }
 
         // ------------------------------------------------------------------ Splice
@@ -545,32 +536,25 @@ pub fn infer<'src, 'core>(
             if phase != Phase::Object {
                 return Err(anyhow!("`$(...)` is only valid in an object-phase context"));
             }
-            let (core_inner, inner_ty) = infer(ctx, Phase::Meta, inner)?;
+            let core_inner = infer(ctx, Phase::Meta, inner)?;
+            let inner_ty = ctx.type_of(core_inner);
             match inner_ty {
-                core::Term::Lift(object_ty) => {
-                    let core_term = ctx.alloc(core::Term::Splice(core_inner));
-                    Ok((core_term, object_ty))
-                }
+                core::Term::Lift(_) => Ok(ctx.alloc(core::Term::Splice(core_inner))),
                 // A meta-level integer is implicitly embedded: insert Embed(w) so that
                 // the splice argument has type `[[IntTy(w, Object)]]`.
                 core::Term::Prim(Prim::IntTy(IntType {
                     width,
                     phase: Phase::Meta,
                 })) => {
-                    let obj_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-                        *width,
-                        Phase::Object,
-                    ))));
                     let embedded = ctx.alloc(core::Term::new_app(
                         core::Head::Prim(Prim::Embed(*width)),
                         ctx.alloc_slice([core_inner]),
                     ));
-                    let core_term = ctx.alloc(core::Term::Splice(embedded));
-                    Ok((core_term, obj_ty))
+                    Ok(ctx.alloc(core::Term::Splice(embedded)))
                 }
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
@@ -611,21 +595,15 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
     // (u16/u32/u64) we only accept a wildcard or bind-all arm as evidence of
     // exhaustiveness, since enumerating every value is impractical.
     let mut covered_lits: Option<Vec<bool>> = match scrut_ty {
-        core::Term::Prim(Prim::IntTy(IntType {
-            width: IntWidth::U0,
-            ..
-        })) => Some(vec![false; 1]),
-        core::Term::Prim(Prim::IntTy(IntType {
-            width: IntWidth::U1,
-            ..
-        })) => Some(vec![false; 2]),
-        core::Term::Prim(Prim::IntTy(IntType {
-            width: IntWidth::U8,
-            ..
-        })) => Some(vec![false; 256]),
+        core::Term::Prim(Prim::IntTy(ty)) => match ty.width {
+            IntWidth::U0 => Some(vec![false; 1]),
+            IntWidth::U1 => Some(vec![false; 2]),
+            IntWidth::U8 => Some(vec![false; 256]),
+            IntWidth::U16 | IntWidth::U32 | IntWidth::U64 => None,
+        },
         core::Term::Var(_)
         | core::Term::Prim(_)
-        | core::Term::Lit(_)
+        | core::Term::Lit(..)
         | core::Term::App { .. }
         | core::Term::Lift(_)
         | core::Term::Quote(_)
@@ -642,15 +620,10 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
             }
             ast::Pat::Lit(n) => {
                 if let Some(ref mut bits) = covered_lits {
-                    // Out-of-range literal for the type — the pattern can never
-                    // match, but we don't hard-error here; the body is still
-                    // elaborated and will catch type errors if any.
-                    let Ok(idx) = usize::try_from(*n) else {
-                        continue;
-                    };
-                    if let Some(bit) = bits.get_mut(idx) {
-                        *bit = true;
-                    }
+                    let bit = bits
+                        .get_mut(usize::try_from(*n)?)
+                        .context("Pattern literal out of range")?;
+                    *bit = true;
                 }
             }
         }
@@ -706,13 +679,15 @@ where
 {
     // Determine the binding type: use annotation if present, otherwise infer.
     let (core_expr, bind_ty) = if let Some(ann) = stmt.ty {
-        let ty = elaborate_ty(ctx.arena, phase, ann)?;
+        let ty = infer(ctx, phase, ann)?;
         let core_e = check(ctx, phase, stmt.expr, ty)
             .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?;
         (core_e, ty)
     } else {
-        infer(ctx, phase, stmt.expr)
-            .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?
+        let core_e = infer(ctx, phase, stmt.expr)
+            .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?;
+        let bind_ty = ctx.type_of(core_e);
+        (core_e, bind_ty)
     };
 
     let bind_name: &'core str = ctx.arena.alloc_str(stmt.name.as_str());
@@ -734,7 +709,7 @@ fn infer_block<'src, 'core>(
     phase: Phase,
     stmts: &'src [ast::Let<'src>],
     expr: &'src ast::Term<'src>,
-) -> Result<(&'core core::Term<'core>, &'core core::Term<'core>)> {
+) -> Result<&'core core::Term<'core>> {
     match stmts {
         [] => infer(ctx, phase, expr),
         [first, rest @ ..] => elaborate_let(
@@ -742,8 +717,8 @@ fn infer_block<'src, 'core>(
             phase,
             first,
             |ctx| infer_block(ctx, phase, rest, expr),
-            |(body, _ty)| body,
-            |let_term, (_body, ty)| (let_term, ty),
+            |body| body,
+            |let_term, _body| let_term,
         ),
     }
 }
@@ -791,10 +766,10 @@ pub fn check<'src, 'core>(
         // ------------------------------------------------------------------ Lit
         // Literals check against any integer type.
         ast::Term::Lit(n) => match expected {
-            core::Term::Prim(Prim::IntTy(_)) => Ok(ctx.alloc(core::Term::Lit(*n))),
+            core::Term::Prim(Prim::IntTy(it)) => Ok(ctx.alloc(core::Term::Lit(*n, *it))),
             core::Term::Var(_)
             | core::Term::Prim(_)
-            | core::Term::Lit(_)
+            | core::Term::Lit(..)
             | core::Term::App { .. }
             | core::Term::Lift(_)
             | core::Term::Quote(_)
@@ -826,7 +801,7 @@ pub fn check<'src, 'core>(
                 core::Term::Prim(Prim::IntTy(it)) => *it,
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App { .. }
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
@@ -872,7 +847,7 @@ pub fn check<'src, 'core>(
                 core::Term::Prim(Prim::IntTy(it)) => *it,
                 core::Term::Var(_)
                 | core::Term::Prim(_)
-                | core::Term::Lit(_)
+                | core::Term::Lit(..)
                 | core::Term::App(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
@@ -905,7 +880,7 @@ pub fn check<'src, 'core>(
             }
             core::Term::Var(_)
             | core::Term::Prim(_)
-            | core::Term::Lit(_)
+            | core::Term::Lit(..)
             | core::Term::App(_)
             | core::Term::Quote(_)
             | core::Term::Splice(_)
@@ -939,10 +914,7 @@ pub fn check<'src, 'core>(
                 if let Ok(core_inner) = check(ctx, Phase::Meta, inner, lift_ty) {
                     return Ok(ctx.alloc(core::Term::Splice(core_inner)));
                 }
-                let meta_int_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-                    *width,
-                    Phase::Meta,
-                ))));
+                let meta_int_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::meta(*width))));
                 let core_inner = check(ctx, Phase::Meta, inner, meta_int_ty)?;
                 let embedded = ctx.alloc(core::Term::new_app(
                     core::Head::Prim(Prim::Embed(*width)),
@@ -958,7 +930,8 @@ pub fn check<'src, 'core>(
         // ------------------------------------------------------------------ Match (check mode)
         // Check each arm body against the expected type; the scrutinee is always inferred.
         ast::Term::Match { scrutinee, arms } => {
-            let (core_scrutinee, scrut_ty) = infer(ctx, phase, scrutinee)?;
+            let core_scrutinee = infer(ctx, phase, scrutinee)?;
+            let scrut_ty = ctx.type_of(core_scrutinee);
 
             check_exhaustiveness(scrut_ty, arms)?;
 
@@ -1002,8 +975,8 @@ pub fn check<'src, 'core>(
         // ------------------------------------------------------------------ fallthrough: infer then unify
         // For all other forms, infer the type and check it matches expected.
         ast::Term::Var(_) | ast::Term::App { .. } | ast::Term::Lift(_) => {
-            let (core_term, inferred_ty) = infer(ctx, phase, term)?;
-            if !types_equal(inferred_ty, expected) {
+            let core_term = infer(ctx, phase, term)?;
+            if !types_equal(ctx.type_of(core_term), expected) {
                 return Err(anyhow!("type mismatch"));
             }
             Ok(core_term)

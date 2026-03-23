@@ -8,11 +8,12 @@ fn infer_var_in_scope_returns_its_type() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u32_ty = ctx.u32_ty();
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("x", u32_ty);
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let (core_term, ty) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let ty = ctx.type_of(core_term);
     assert!(matches!(core_term, core::Term::Var(Lvl(0))));
     assert!(matches!(
         ty,
@@ -40,13 +41,13 @@ fn infer_var_returns_correct_level() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u64_ty = ctx.u64_ty();
-    let u32_ty = ctx.u32_ty();
+    let u64_ty = &core::Term::U64_META;
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("x", u64_ty); // level 0
     ctx.push_local("y", u32_ty); // level 1
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("y")));
-    let (core_term, _) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(core_term, core::Term::Var(Lvl(1))));
 }
 
@@ -56,13 +57,14 @@ fn infer_var_shadowed_returns_innermost() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
-    let u64_ty = ctx.u64_ty();
-    let u32_ty = ctx.u32_ty();
+    let u64_ty = &core::Term::U64_META;
+    let u32_ty = &core::Term::U32_META;
     ctx.push_local("x", u64_ty); // level 0, u64
     ctx.push_local("x", u32_ty); // level 1, u32 — shadows
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let (core_term, ty) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    let ty = ctx.type_of(core_term);
     assert!(matches!(core_term, core::Term::Var(Lvl(1))));
     assert!(matches!(
         ty,

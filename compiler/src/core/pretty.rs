@@ -28,7 +28,7 @@ impl<'a> Term<'a> {
             // Everything else gets a leading indent.
             Term::Var(_)
             | Term::Prim(_)
-            | Term::Lit(_)
+            | Term::Lit(..)
             | Term::App(_)
             | Term::Lift(_)
             | Term::Quote(_)
@@ -58,7 +58,7 @@ impl<'a> Term<'a> {
             }
 
             // ── Literal ──────────────────────────────────────────────────────────
-            Term::Lit(n) => write!(f, "{n}"),
+            Term::Lit(n, _) => write!(f, "{n}"),
 
             // ── Primitive type / universe ─────────────────────────────────────────
             Term::Prim(p) => write!(f, "{p}"),
@@ -86,9 +86,8 @@ impl<'a> Term<'a> {
             // ── Let binding ───────────────────────────────────────────────────────
             // In statement position: print as a flat let-chain without extra braces.
             Term::Let(let_) => {
-                let lvl = env.len();
                 write_indent(f, indent)?;
-                write!(f, "let {}@{lvl}: ", let_.name)?;
+                write!(f, "let {}@{}: ", let_.name, env.len())?;
                 let_.ty.fmt_expr(env, indent, f)?;
                 write!(f, " = ")?;
                 let_.expr.fmt_expr(env, indent, f)?;
@@ -134,7 +133,7 @@ impl<'a> Term<'a> {
             }
             Term::Var(_)
             | Term::Prim(_)
-            | Term::Lit(_)
+            | Term::Lit(..)
             | Term::App(_)
             | Term::Lift(_)
             | Term::Quote(_)

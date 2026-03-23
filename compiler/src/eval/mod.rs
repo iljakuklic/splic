@@ -134,7 +134,7 @@ fn eval_meta<'out, 'core>(
         },
 
         // ── Literal ──────────────────────────────────────────────────────────
-        Term::Lit(n) => Ok(MetaVal::VLit(*n)),
+        Term::Lit(n, _) => Ok(MetaVal::VLit(*n)),
 
         // ── Application ──────────────────────────────────────────────────────
         Term::App(app) => eval_meta_app(arena, globals, env, app),
@@ -317,9 +317,10 @@ fn eval_meta_prim<'out, 'core>(
         // `Embed(w)` applied to a meta integer `n` produces object-level code
         // consisting of the literal `n`.  This is how a compile-time integer
         // constant is embedded into the generated object program.
-        Prim::Embed(_) => {
+        Prim::Embed(width) => {
             let n = eval_lit(arena, globals, env, args[0])?;
-            let lit_term = arena.alloc(Term::Lit(n));
+            let phase = Phase::Object;
+            let lit_term = arena.alloc(Term::Lit(n, IntType { width, phase }));
             Ok(MetaVal::VCode(lit_term))
         }
 
@@ -416,7 +417,7 @@ fn unstage_obj<'out, 'core>(
         },
 
         // ── Literal ──────────────────────────────────────────────────────────
-        Term::Lit(n) => Ok(arena.alloc(Term::Lit(*n))),
+        Term::Lit(n, it) => Ok(arena.alloc(Term::Lit(*n, *it))),
 
         // ── Primitive ────────────────────────────────────────────────────────
         Term::Prim(p) => Ok(arena.alloc(Term::Prim(*p))),

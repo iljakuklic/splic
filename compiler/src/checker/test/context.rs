@@ -4,9 +4,7 @@ use super::*;
 
 #[test]
 fn prim_types_are_well_kinded() {
-    let arena = bumpalo::Bump::new();
-    let ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
+    let u64_term = &core::Term::U64_META;
     assert!(matches!(
         u64_term,
         core::Term::Prim(Prim::IntTy(IntType {
@@ -19,8 +17,8 @@ fn prim_types_are_well_kinded() {
 #[test]
 fn literal_checks_against_int_type() {
     let arena = bumpalo::Bump::new();
-    let lit = arena.alloc(core::Term::Lit(42));
-    assert!(matches!(lit, core::Term::Lit(42)));
+    let lit = arena.alloc(core::Term::Lit(42, IntType::U64_META));
+    assert!(matches!(lit, core::Term::Lit(42, _)));
 }
 
 #[test]
@@ -34,7 +32,7 @@ fn variable_lookup_in_empty_context() {
 fn variable_lookup_after_push() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
+    let u64_term = &core::Term::U64_META;
     ctx.push_local("x", u64_term);
 
     let (lvl, ty) = ctx.lookup_local("x").expect("x should be in scope");
@@ -52,8 +50,8 @@ fn variable_lookup_after_push() {
 fn variable_lookup_with_multiple_locals() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
-    let u32_term = ctx.u32_ty();
+    let u64_term = &core::Term::U64_META;
+    let u32_term = &core::Term::U32_META;
 
     ctx.push_local("x", u64_term);
     ctx.push_local("y", u32_term);
@@ -83,8 +81,8 @@ fn variable_lookup_with_multiple_locals() {
 fn variable_shadowing() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
-    let u32_term = ctx.u32_ty();
+    let u64_term = &core::Term::U64_META;
+    let u32_term = &core::Term::U32_META;
 
     ctx.push_local("x", u64_term);
     ctx.push_local("x", u32_term);
@@ -104,7 +102,7 @@ fn variable_shadowing() {
 fn context_depth() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
+    let u64_term = &core::Term::U64_META;
 
     assert_eq!(ctx.depth(), 0);
     ctx.push_local("x", u64_term);
@@ -119,7 +117,7 @@ fn context_depth() {
 fn meta_variable_in_quote_is_ok() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
+    let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
     ctx.push_local("x", lifted_u64);
     let x_var = arena.alloc(core::Term::Var(Lvl(0)));
@@ -130,7 +128,7 @@ fn meta_variable_in_quote_is_ok() {
 fn object_variable_outside_quote_is_invalid() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
+    let u64_term = &core::Term::U64_META;
     ctx.push_local("x", u64_term);
     assert_eq!(ctx.depth(), 1);
 }
@@ -144,10 +142,8 @@ fn phase_is_argument_not_context() {
 
 #[test]
 fn type_universe_distinction() {
-    let arena = bumpalo::Bump::new();
-    let ctx = test_ctx(&arena);
-    let type_tm = ctx.type_ty();
-    let vm_type_tm = ctx.vm_type_ty();
+    let type_tm = &core::Term::TYPE;
+    let vm_type_tm = &core::Term::VM_TYPE;
 
     assert!(matches!(type_tm, core::Term::Prim(Prim::U(Phase::Meta))));
     assert!(matches!(
@@ -158,7 +154,7 @@ fn type_universe_distinction() {
 
 #[test]
 fn arithmetic_requires_expected_type() {
-    let add_u32 = Prim::Add(IntType::new(IntWidth::U32, Phase::Object));
+    let add_u32 = Prim::Add(IntType::U32_OBJ);
     assert!(matches!(
         add_u32,
         Prim::Add(IntType {
@@ -171,7 +167,7 @@ fn arithmetic_requires_expected_type() {
 #[test]
 fn global_call_is_inferable() {
     let arena = bumpalo::Bump::new();
-    let arg = arena.alloc(core::Term::Lit(1));
+    let arg = arena.alloc(core::Term::Lit(1, IntType::U64_META));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
     let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
     assert!(matches!(
@@ -185,7 +181,7 @@ fn global_call_is_inferable() {
 
 #[test]
 fn comparison_operation_returns_u1() {
-    let eq_u64 = Prim::Eq(IntType::new(IntWidth::U64, Phase::Object));
+    let eq_u64 = Prim::Eq(IntType::U64_OBJ);
     assert!(matches!(
         eq_u64,
         Prim::Eq(IntType {
@@ -199,7 +195,7 @@ fn comparison_operation_returns_u1() {
 fn lift_type_structure() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
+    let u64_term = &core::Term::U64_META;
     let lifted = ctx.lift_ty(u64_term);
     assert!(matches!(lifted, core::Term::Lift(_)));
 }
@@ -219,7 +215,7 @@ fn quote_inference_mirrors_inner() {
 fn splice_inference_mirrors_inner() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
+    let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
     ctx.push_local("x", lifted_u64);
     let x_var = arena.alloc(core::Term::Var(Lvl(0)));
@@ -230,9 +226,8 @@ fn splice_inference_mirrors_inner() {
 #[test]
 fn let_binding_structure() {
     let arena = bumpalo::Bump::new();
-    let ctx = test_ctx(&arena);
-    let u64_term = ctx.u64_ty();
-    let expr = arena.alloc(core::Term::Lit(42));
+    let u64_term = &core::Term::U64_META;
+    let expr = arena.alloc(core::Term::Lit(42, IntType::U64_META));
     let body = arena.alloc(core::Term::Var(Lvl(0)));
     let let_term = arena.alloc(core::Term::new_let("x", u64_term, expr, body));
     assert!(matches!(let_term, core::Term::Let(_)));
@@ -242,8 +237,8 @@ fn let_binding_structure() {
 fn match_with_literal_pattern() {
     let arena = bumpalo::Bump::new();
     let scrutinee = arena.alloc(core::Term::Var(Lvl(0)));
-    let body0 = arena.alloc(core::Term::Lit(0));
-    let body1 = arena.alloc(core::Term::Lit(1));
+    let body0 = arena.alloc(core::Term::Lit(0, IntType::U64_META));
+    let body1 = arena.alloc(core::Term::Lit(1, IntType::U64_META));
 
     let arm0 = core::Arm {
         pat: Pat::Lit(0),
@@ -280,7 +275,7 @@ fn match_with_binding_pattern() {
 #[test]
 fn function_call_to_global() {
     let arena = bumpalo::Bump::new();
-    let arg = arena.alloc(core::Term::Lit(42));
+    let arg = arena.alloc(core::Term::Lit(42, IntType::U64_META));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
     let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
 
@@ -296,11 +291,11 @@ fn function_call_to_global() {
 #[test]
 fn builtin_operation_call() {
     let arena = bumpalo::Bump::new();
-    let arg1 = arena.alloc(core::Term::Lit(1));
-    let arg2 = arena.alloc(core::Term::Lit(2));
+    let arg1 = arena.alloc(core::Term::Lit(1, IntType::U64_OBJ));
+    let arg2 = arena.alloc(core::Term::Lit(2, IntType::U64_OBJ));
     let args = &*arena.alloc_slice_fill_iter([&*arg1, &*arg2]);
     let app = arena.alloc(core::Term::new_app(
-        Head::Prim(Prim::Add(IntType::new(IntWidth::U64, Phase::Object))),
+        Head::Prim(Prim::Add(IntType::U64_OBJ)),
         args,
     ));
 
