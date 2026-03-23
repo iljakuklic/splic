@@ -825,14 +825,12 @@ pub fn check<'src, 'core>(
                 }
             };
 
-            if args.len() != 2 {
+            let [lhs, rhs] = args else {
                 return Err(anyhow!("binary operation expects exactly 2 arguments"));
-            }
+            };
 
-            #[expect(clippy::indexing_slicing)]
-            let core_arg0 = check(ctx, phase, args[0], expected)?;
-            #[expect(clippy::indexing_slicing)]
-            let core_arg1 = check(ctx, phase, args[1], expected)?;
+            let core_arg0 = check(ctx, phase, lhs, expected)?;
+            let core_arg1 = check(ctx, phase, rhs, expected)?;
 
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
             Ok(ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args)))
@@ -862,11 +860,10 @@ pub fn check<'src, 'core>(
                 ast::UnOp::Not => Prim::BitNot(int_ty),
             };
 
-            if args.len() != 1 {
+            let [arg] = args else {
                 return Err(anyhow!("unary operation expects exactly 1 argument"));
-            }
-            #[expect(clippy::indexing_slicing)]
-            let core_arg = check(ctx, phase, args[0], expected)?;
+            };
+            let core_arg = check(ctx, phase, arg, expected)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
             Ok(ctx.alloc(core::Term::new_app(core::Head::Prim(prim), core_args)))
         }
