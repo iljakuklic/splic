@@ -100,11 +100,12 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
             ) => core::Term::int_ty(it.width, it.phase),
 
             // Variable: look up by De Bruijn level.
-            core::Term::Var(lvl) => self
-                .locals
-                .get(lvl.0)
-                .expect("Var level out of range (typechecker invariant)")
-                .1,
+            core::Term::Var(lvl) => {
+                self.locals
+                    .get(lvl.0)
+                    .expect("Var level out of range (typechecker invariant)")
+                    .1
+            }
 
             // Primitive types inhabit the relevant universe.
             core::Term::Prim(Prim::IntTy(it)) => core::Term::universe(it.phase),
@@ -128,11 +129,12 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
             // Application: return type comes from the head.
             core::Term::App(app) => match &app.head {
-                core::Head::Global(name) => self
-                    .globals
-                    .get(name)
-                    .expect("App/Global with unknown name (typechecker invariant)")
-                    .ret_ty,
+                core::Head::Global(name) => {
+                    self.globals
+                        .get(name)
+                        .expect("App/Global with unknown name (typechecker invariant)")
+                        .ret_ty
+                }
                 core::Head::Prim(p) => match *p {
                     Prim::Add(it)
                     | Prim::Sub(it)
@@ -190,7 +192,9 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
             // match: all arms share the same type; recover from the first.
             core::Term::Match(core::Match { scrutinee, arms }) => {
-                let arm = arms.first().expect("Match with no arms (typechecker invariant)");
+                let arm = arms
+                    .first()
+                    .expect("Match with no arms (typechecker invariant)");
                 match arm.pat {
                     core::Pat::Lit(_) | core::Pat::Wildcard => self.type_of(arm.body),
                     core::Pat::Bind(name) => {
@@ -507,7 +511,10 @@ pub fn infer<'src, 'core>(
             // The inner expression must be an object type.
             let core_inner = infer(ctx, Phase::Object, inner)?;
             // Verify the inner term is indeed a type (inhabits VmType).
-            if !types_equal(ctx.type_of(core_inner), &core::Term::Prim(Prim::U(Phase::Object))) {
+            if !types_equal(
+                ctx.type_of(core_inner),
+                &core::Term::Prim(Prim::U(Phase::Object)),
+            ) {
                 return Err(anyhow!("argument of `[[...]]` must be an object type"));
             }
             Ok(ctx.alloc(core::Term::Lift(core_inner)))

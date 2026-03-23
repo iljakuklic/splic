@@ -17,7 +17,10 @@ fn prim_types_are_well_kinded() {
 #[test]
 fn literal_checks_against_int_type() {
     let arena = bumpalo::Bump::new();
-    let lit = arena.alloc(core::Term::Lit(42, IntType::new(IntWidth::U64, Phase::Meta)));
+    let lit = arena.alloc(core::Term::Lit(
+        42,
+        IntType::new(IntWidth::U64, Phase::Meta),
+    ));
     assert!(matches!(lit, core::Term::Lit(42, _)));
 }
 
@@ -227,7 +230,10 @@ fn splice_inference_mirrors_inner() {
 fn let_binding_structure() {
     let arena = bumpalo::Bump::new();
     let u64_term = &core::Term::U64_META;
-    let expr = arena.alloc(core::Term::Lit(42, IntType::new(IntWidth::U64, Phase::Meta)));
+    let expr = arena.alloc(core::Term::Lit(
+        42,
+        IntType::new(IntWidth::U64, Phase::Meta),
+    ));
     let body = arena.alloc(core::Term::Var(Lvl(0)));
     let let_term = arena.alloc(core::Term::new_let("x", u64_term, expr, body));
     assert!(matches!(let_term, core::Term::Let(_)));
@@ -275,7 +281,10 @@ fn match_with_binding_pattern() {
 #[test]
 fn function_call_to_global() {
     let arena = bumpalo::Bump::new();
-    let arg = arena.alloc(core::Term::Lit(42, IntType::new(IntWidth::U64, Phase::Meta)));
+    let arg = arena.alloc(core::Term::Lit(
+        42,
+        IntType::new(IntWidth::U64, Phase::Meta),
+    ));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
     let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
 
@@ -291,8 +300,14 @@ fn function_call_to_global() {
 #[test]
 fn builtin_operation_call() {
     let arena = bumpalo::Bump::new();
-    let arg1 = arena.alloc(core::Term::Lit(1, IntType::new(IntWidth::U64, Phase::Object)));
-    let arg2 = arena.alloc(core::Term::Lit(2, IntType::new(IntWidth::U64, Phase::Object)));
+    let arg1 = arena.alloc(core::Term::Lit(
+        1,
+        IntType::new(IntWidth::U64, Phase::Object),
+    ));
+    let arg2 = arena.alloc(core::Term::Lit(
+        2,
+        IntType::new(IntWidth::U64, Phase::Object),
+    ));
     let args = &*arena.alloc_slice_fill_iter([&*arg1, &*arg2]);
     let app = arena.alloc(core::Term::new_app(
         Head::Prim(Prim::Add(IntType::new(IntWidth::U64, Phase::Object))),
