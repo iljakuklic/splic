@@ -1,0 +1,8 @@
+fn f() -> u8 {
+    @sub_u8(5_u8, 10_u8)
+}
+
+code fn g() -> u8 {
+    $(@embed_u8(f()))
+}
+

@@ -1,0 +1,43 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "f",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Sub,
+                    args: [
+                        Lit(
+                            5,
+                        ),
+                        Lit(
+                            10,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "g",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "f",
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

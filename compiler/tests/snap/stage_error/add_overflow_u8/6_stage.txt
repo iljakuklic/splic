@@ -1,0 +1,2 @@
+ERROR
+arithmetic overflow during staging: 200 + 100 = 300 exceeds maximum value of u8 (255)
