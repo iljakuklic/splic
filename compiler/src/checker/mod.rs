@@ -452,16 +452,15 @@ pub fn infer<'src, 'core>(
         ) =>
         {
             use ast::BinOp;
-            if args.len() != 2 {
+            let [lhs, rhs] = args else {
                 return Err(anyhow!("binary operation expects exactly 2 arguments"));
-            }
+            };
+
             // Infer the operand type from the first argument.
-            #[expect(clippy::indexing_slicing)]
-            let core_arg0 = infer(ctx, phase, args[0])?;
+            let core_arg0 = infer(ctx, phase, lhs)?;
             let operand_ty = ctx.type_of(core_arg0);
             // Check the second argument against the same operand type.
-            #[expect(clippy::indexing_slicing)]
-            let core_arg1 = check(ctx, phase, args[1], operand_ty)?;
+            let core_arg1 = check(ctx, phase, rhs, operand_ty)?;
             // Verify both operands are integers and build the prim carrying the operand type.
             let op_int_ty = match operand_ty {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
@@ -511,10 +510,7 @@ pub fn infer<'src, 'core>(
             // The inner expression must be an object type.
             let core_inner = infer(ctx, Phase::Object, inner)?;
             // Verify the inner term is indeed a type (inhabits VmType).
-            if !types_equal(
-                ctx.type_of(core_inner),
-                &core::Term::Prim(Prim::U(Phase::Object)),
-            ) {
+            if !types_equal(ctx.type_of(core_inner), &core::Term::VM_TYPE) {
                 return Err(anyhow!("argument of `[[...]]` must be an object type"));
             }
             Ok(ctx.alloc(core::Term::Lift(core_inner)))
@@ -600,18 +596,12 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
     // (u16/u32/u64) we only accept a wildcard or bind-all arm as evidence of
     // exhaustiveness, since enumerating every value is impractical.
     let mut covered_lits: Option<Vec<bool>> = match scrut_ty {
-        core::Term::Prim(Prim::IntTy(IntType {
-            width: IntWidth::U0,
-            ..
-        })) => Some(vec![false; 1]),
-        core::Term::Prim(Prim::IntTy(IntType {
-            width: IntWidth::U1,
-            ..
-        })) => Some(vec![false; 2]),
-        core::Term::Prim(Prim::IntTy(IntType {
-            width: IntWidth::U8,
-            ..
-        })) => Some(vec![false; 256]),
+        core::Term::Prim(Prim::IntTy(ty)) => match ty.width {
+            IntWidth::U0 => Some(vec![false; 1]),
+            IntWidth::U1 => Some(vec![false; 2]),
+            IntWidth::U8 => Some(vec![false; 256]),
+            IntWidth::U16 | IntWidth::U32 | IntWidth::U64 => None,
+        },
         core::Term::Var(_)
         | core::Term::Prim(_)
         | core::Term::Lit(..)
@@ -631,15 +621,10 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
             }
             ast::Pat::Lit(n) => {
                 if let Some(ref mut bits) = covered_lits {
-                    // Out-of-range literal for the type — the pattern can never
-                    // match, but we don't hard-error here; the body is still
-                    // elaborated and will catch type errors if any.
-                    let Ok(idx) = usize::try_from(*n) else {
-                        continue;
-                    };
-                    if let Some(bit) = bits.get_mut(idx) {
-                        *bit = true;
-                    }
+                    let bit = bits
+                        .get_mut(*n as usize)
+                        .context("Pattern literal out of range")?;
+                    *bit = true;
                 }
             }
         }
