@@ -766,7 +766,13 @@ pub fn check<'src, 'core>(
         // ------------------------------------------------------------------ Lit
         // Literals check against any integer type.
         ast::Term::Lit(n) => match expected {
-            core::Term::Prim(Prim::IntTy(it)) => Ok(ctx.alloc(core::Term::Lit(*n, *it))),
+            core::Term::Prim(Prim::IntTy(it)) => {
+                let width = it.width;
+                if *n > width.max_value() {
+                    return Err(anyhow!("literal `{n}` does not fit in type `{width}`"));
+                }
+                Ok(ctx.alloc(core::Term::Lit(*n, *it)))
+            }
             core::Term::Var(_)
             | core::Term::Prim(_)
             | core::Term::Lit(..)
