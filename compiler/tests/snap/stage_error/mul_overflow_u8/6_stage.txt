@@ -1,0 +1,2 @@
+ERROR
+arithmetic overflow during staging: 16 * 16 = 256 exceeds maximum value of u8 (255)

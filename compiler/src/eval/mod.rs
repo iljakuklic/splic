@@ -241,20 +241,48 @@ fn eval_meta_prim<'out, 'core>(
     #[expect(clippy::indexing_slicing)]
     match prim {
         // ── Arithmetic ────────────────────────────────────────────────────────
-        Prim::Add(_) => {
+        Prim::Add(IntType { width, .. }) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(a.wrapping_add(b)))
+            let result = a
+                .checked_add(b)
+                .filter(|&r| r <= width.max_value())
+                .ok_or_else(|| {
+                    anyhow!(
+                        "arithmetic overflow during staging: \
+                         {a} + {b} = {} exceeds maximum value of {width} ({})",
+                        a.wrapping_add(b),
+                        width.max_value()
+                    )
+                })?;
+            Ok(MetaVal::VLit(result))
         }
-        Prim::Sub(_) => {
+        Prim::Sub(IntType { width, .. }) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(a.wrapping_sub(b)))
+            let result = a.checked_sub(b).ok_or_else(|| {
+                anyhow!(
+                    "arithmetic overflow during staging: \
+                     {a} - {b} underflows {width}"
+                )
+            })?;
+            Ok(MetaVal::VLit(result))
         }
-        Prim::Mul(_) => {
+        Prim::Mul(IntType { width, .. }) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(a.wrapping_mul(b)))
+            let result = a
+                .checked_mul(b)
+                .filter(|&r| r <= width.max_value())
+                .ok_or_else(|| {
+                    anyhow!(
+                        "arithmetic overflow during staging: \
+                         {a} * {b} = {} exceeds maximum value of {width} ({})",
+                        a.wrapping_mul(b),
+                        width.max_value()
+                    )
+                })?;
+            Ok(MetaVal::VLit(result))
         }
         Prim::Div(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
