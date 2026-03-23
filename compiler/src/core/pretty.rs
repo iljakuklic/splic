@@ -86,9 +86,8 @@ impl<'a> Term<'a> {
             // ── Let binding ───────────────────────────────────────────────────────
             // In statement position: print as a flat let-chain without extra braces.
             Term::Let(let_) => {
-                let lvl = env.len();
                 write_indent(f, indent)?;
-                write!(f, "let {}@{lvl}: ", let_.name)?;
+                write!(f, "let {}@{}: ", let_.name, env.len())?;
                 let_.ty.fmt_expr(env, indent, f)?;
                 write!(f, " = ")?;
                 let_.expr.fmt_expr(env, indent, f)?;

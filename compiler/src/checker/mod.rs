@@ -546,9 +546,8 @@ pub fn infer<'src, 'core>(
                     width,
                     phase: Phase::Meta,
                 })) => {
-                    let width = *width;
                     let embedded = ctx.alloc(core::Term::new_app(
-                        core::Head::Prim(Prim::Embed(width)),
+                        core::Head::Prim(Prim::Embed(*width)),
                         ctx.alloc_slice([core_inner]),
                     ));
                     Ok(ctx.alloc(core::Term::Splice(embedded)))
