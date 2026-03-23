@@ -65,10 +65,7 @@ fn infer_global_call_phase_mismatch_fails() {
     let core_arena = bumpalo::Bump::new();
 
     // `code fn f() -> u64` — object-phase function
-    let u64_obj = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-        IntWidth::U64,
-        Phase::Object,
-    ))));
+    let u64_obj = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::U64_OBJ)));
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("f"),

@@ -42,6 +42,28 @@ impl IntType {
     pub const fn new(width: IntWidth, phase: Phase) -> Self {
         Self { width, phase }
     }
+
+    pub const fn meta(width: IntWidth) -> Self {
+        Self::new(width, Phase::Meta)
+    }
+
+    pub const fn obj(width: IntWidth) -> Self {
+        Self::new(width, Phase::Object)
+    }
+
+    pub const U0_META: Self = Self::new(IntWidth::U0, Phase::Meta);
+    pub const U1_META: Self = Self::new(IntWidth::U1, Phase::Meta);
+    pub const U8_META: Self = Self::new(IntWidth::U8, Phase::Meta);
+    pub const U16_META: Self = Self::new(IntWidth::U16, Phase::Meta);
+    pub const U32_META: Self = Self::new(IntWidth::U32, Phase::Meta);
+    pub const U64_META: Self = Self::new(IntWidth::U64, Phase::Meta);
+
+    pub const U0_OBJ: Self = Self::new(IntWidth::U0, Phase::Object);
+    pub const U1_OBJ: Self = Self::new(IntWidth::U1, Phase::Object);
+    pub const U8_OBJ: Self = Self::new(IntWidth::U8, Phase::Object);
+    pub const U16_OBJ: Self = Self::new(IntWidth::U16, Phase::Object);
+    pub const U32_OBJ: Self = Self::new(IntWidth::U32, Phase::Object);
+    pub const U64_OBJ: Self = Self::new(IntWidth::U64, Phase::Object);
 }
 
 /// Built-in types and operations, fully resolved by the elaborator

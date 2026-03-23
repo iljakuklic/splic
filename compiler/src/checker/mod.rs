@@ -930,10 +930,7 @@ pub fn check<'src, 'core>(
                 if let Ok(core_inner) = check(ctx, Phase::Meta, inner, lift_ty) {
                     return Ok(ctx.alloc(core::Term::Splice(core_inner)));
                 }
-                let meta_int_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::new(
-                    *width,
-                    Phase::Meta,
-                ))));
+                let meta_int_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::meta(*width))));
                 let core_inner = check(ctx, Phase::Meta, inner, meta_int_ty)?;
                 let embedded = ctx.alloc(core::Term::new_app(
                     core::Head::Prim(Prim::Embed(*width)),

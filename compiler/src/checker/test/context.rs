@@ -17,10 +17,7 @@ fn prim_types_are_well_kinded() {
 #[test]
 fn literal_checks_against_int_type() {
     let arena = bumpalo::Bump::new();
-    let lit = arena.alloc(core::Term::Lit(
-        42,
-        IntType::new(IntWidth::U64, Phase::Meta),
-    ));
+    let lit = arena.alloc(core::Term::Lit(42, IntType::U64_META));
     assert!(matches!(lit, core::Term::Lit(42, _)));
 }
 
@@ -157,7 +154,7 @@ fn type_universe_distinction() {
 
 #[test]
 fn arithmetic_requires_expected_type() {
-    let add_u32 = Prim::Add(IntType::new(IntWidth::U32, Phase::Object));
+    let add_u32 = Prim::Add(IntType::U32_OBJ);
     assert!(matches!(
         add_u32,
         Prim::Add(IntType {
@@ -170,7 +167,7 @@ fn arithmetic_requires_expected_type() {
 #[test]
 fn global_call_is_inferable() {
     let arena = bumpalo::Bump::new();
-    let arg = arena.alloc(core::Term::Lit(1, IntType::new(IntWidth::U64, Phase::Meta)));
+    let arg = arena.alloc(core::Term::Lit(1, IntType::U64_META));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
     let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
     assert!(matches!(
@@ -184,7 +181,7 @@ fn global_call_is_inferable() {
 
 #[test]
 fn comparison_operation_returns_u1() {
-    let eq_u64 = Prim::Eq(IntType::new(IntWidth::U64, Phase::Object));
+    let eq_u64 = Prim::Eq(IntType::U64_OBJ);
     assert!(matches!(
         eq_u64,
         Prim::Eq(IntType {
@@ -230,10 +227,7 @@ fn splice_inference_mirrors_inner() {
 fn let_binding_structure() {
     let arena = bumpalo::Bump::new();
     let u64_term = &core::Term::U64_META;
-    let expr = arena.alloc(core::Term::Lit(
-        42,
-        IntType::new(IntWidth::U64, Phase::Meta),
-    ));
+    let expr = arena.alloc(core::Term::Lit(42, IntType::U64_META));
     let body = arena.alloc(core::Term::Var(Lvl(0)));
     let let_term = arena.alloc(core::Term::new_let("x", u64_term, expr, body));
     assert!(matches!(let_term, core::Term::Let(_)));
@@ -243,8 +237,8 @@ fn let_binding_structure() {
 fn match_with_literal_pattern() {
     let arena = bumpalo::Bump::new();
     let scrutinee = arena.alloc(core::Term::Var(Lvl(0)));
-    let body0 = arena.alloc(core::Term::Lit(0, IntType::new(IntWidth::U64, Phase::Meta)));
-    let body1 = arena.alloc(core::Term::Lit(1, IntType::new(IntWidth::U64, Phase::Meta)));
+    let body0 = arena.alloc(core::Term::Lit(0, IntType::U64_META));
+    let body1 = arena.alloc(core::Term::Lit(1, IntType::U64_META));
 
     let arm0 = core::Arm {
         pat: Pat::Lit(0),
@@ -281,10 +275,7 @@ fn match_with_binding_pattern() {
 #[test]
 fn function_call_to_global() {
     let arena = bumpalo::Bump::new();
-    let arg = arena.alloc(core::Term::Lit(
-        42,
-        IntType::new(IntWidth::U64, Phase::Meta),
-    ));
+    let arg = arena.alloc(core::Term::Lit(42, IntType::U64_META));
     let args = &*arena.alloc_slice_fill_iter([&*arg]);
     let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
 
@@ -300,17 +291,11 @@ fn function_call_to_global() {
 #[test]
 fn builtin_operation_call() {
     let arena = bumpalo::Bump::new();
-    let arg1 = arena.alloc(core::Term::Lit(
-        1,
-        IntType::new(IntWidth::U64, Phase::Object),
-    ));
-    let arg2 = arena.alloc(core::Term::Lit(
-        2,
-        IntType::new(IntWidth::U64, Phase::Object),
-    ));
+    let arg1 = arena.alloc(core::Term::Lit(1, IntType::U64_OBJ));
+    let arg2 = arena.alloc(core::Term::Lit(2, IntType::U64_OBJ));
     let args = &*arena.alloc_slice_fill_iter([&*arg1, &*arg2]);
     let app = arena.alloc(core::Term::new_app(
-        Head::Prim(Prim::Add(IntType::new(IntWidth::U64, Phase::Object))),
+        Head::Prim(Prim::Add(IntType::U64_OBJ)),
         args,
     ));
 

@@ -147,20 +147,20 @@ pub enum Term<'a> {
 
 impl Term<'static> {
     // Integer types at meta phase
-    pub const U0_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U0, Phase::Meta)));
-    pub const U1_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U1, Phase::Meta)));
-    pub const U8_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U8, Phase::Meta)));
-    pub const U16_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U16, Phase::Meta)));
-    pub const U32_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U32, Phase::Meta)));
-    pub const U64_META: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U64, Phase::Meta)));
+    pub const U0_META: Self = Self::Prim(Prim::IntTy(IntType::U0_META));
+    pub const U1_META: Self = Self::Prim(Prim::IntTy(IntType::U1_META));
+    pub const U8_META: Self = Self::Prim(Prim::IntTy(IntType::U8_META));
+    pub const U16_META: Self = Self::Prim(Prim::IntTy(IntType::U16_META));
+    pub const U32_META: Self = Self::Prim(Prim::IntTy(IntType::U32_META));
+    pub const U64_META: Self = Self::Prim(Prim::IntTy(IntType::U64_META));
 
     // Integer types at object phase
-    pub const U0_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U0, Phase::Object)));
-    pub const U1_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U1, Phase::Object)));
-    pub const U8_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U8, Phase::Object)));
-    pub const U16_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U16, Phase::Object)));
-    pub const U32_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U32, Phase::Object)));
-    pub const U64_OBJ: Self = Self::Prim(Prim::IntTy(IntType::new(IntWidth::U64, Phase::Object)));
+    pub const U0_OBJ: Self = Self::Prim(Prim::IntTy(IntType::U0_OBJ));
+    pub const U1_OBJ: Self = Self::Prim(Prim::IntTy(IntType::U1_OBJ));
+    pub const U8_OBJ: Self = Self::Prim(Prim::IntTy(IntType::U8_OBJ));
+    pub const U16_OBJ: Self = Self::Prim(Prim::IntTy(IntType::U16_OBJ));
+    pub const U32_OBJ: Self = Self::Prim(Prim::IntTy(IntType::U32_OBJ));
+    pub const U64_OBJ: Self = Self::Prim(Prim::IntTy(IntType::U64_OBJ));
 
     // Universes
     pub const TYPE: Self = Self::Prim(Prim::U(Phase::Meta));

@@ -319,13 +319,8 @@ fn eval_meta_prim<'out, 'core>(
         // constant is embedded into the generated object program.
         Prim::Embed(width) => {
             let n = eval_lit(arena, globals, env, args[0])?;
-            let lit_term = arena.alloc(Term::Lit(
-                n,
-                IntType {
-                    width,
-                    phase: Phase::Object,
-                },
-            ));
+            let phase = Phase::Object;
+            let lit_term = arena.alloc(Term::Lit(n, IntType { width, phase }));
             Ok(MetaVal::VCode(lit_term))
         }
 
