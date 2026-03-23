@@ -23,6 +23,18 @@ impl IntWidth {
             Self::U64 => "u64",
         }
     }
+
+    /// Returns the maximum value that can be represented in this integer width.
+    pub const fn max_value(self) -> u64 {
+        match self {
+            Self::U0 => 0,
+            Self::U1 => 1,
+            Self::U8 => u8::MAX as u64,
+            Self::U16 => u16::MAX as u64,
+            Self::U32 => u32::MAX as u64,
+            Self::U64 => u64::MAX,
+        }
+    }
 }
 
 impl std::fmt::Display for IntWidth {
