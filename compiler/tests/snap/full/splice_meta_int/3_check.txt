@@ -1,5 +1,5 @@
 fn val() -> u32 {
-    42
+    42_u32
 }
 
 code fn use_val() -> u32 {

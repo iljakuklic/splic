@@ -58,7 +58,7 @@ impl<'a> Term<'a> {
             }
 
             // ── Literal ──────────────────────────────────────────────────────────
-            Term::Lit(n, _) => write!(f, "{n}"),
+            Term::Lit(n, ty) => write!(f, "{n}_{}", ty.width),
 
             // ── Primitive type / universe ─────────────────────────────────────────
             Term::Prim(p) => write!(f, "{p}"),
