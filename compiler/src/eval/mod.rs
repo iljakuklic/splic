@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Result, anyhow};
+use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
 use crate::core::{
@@ -259,9 +259,7 @@ fn eval_meta_prim<'out, 'core>(
         Prim::Div(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            if b == 0 {
-                return Err(anyhow!("division by zero during staging"));
-            }
+            ensure!(b != 0, "division by zero during staging");
             Ok(MetaVal::VLit(a / b))
         }
 

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use anyhow::{Context as _, Result, anyhow};
+use anyhow::{Context as _, Result, anyhow, bail, ensure};
 
 use crate::core::{self, IntType, IntWidth, Lvl, Prim};
 use crate::parser::ast::{self, Phase};
@@ -263,9 +263,10 @@ pub(crate) fn collect_signatures<'src, 'core>(
     for func in program.functions {
         let name = core::Name::new(arena.alloc_str(func.name.as_str()));
 
-        if globals.contains_key(&name) {
-            return Err(anyhow!("duplicate function name `{name}`"));
-        }
+        ensure!(
+            !globals.contains_key(&name),
+            "duplicate function name `{name}`"
+        );
 
         let sig = elaborate_sig(arena, func).with_context(|| format!("in function `{name}`"))?;
 
@@ -364,13 +365,12 @@ pub fn infer<'src, 'core>(
             // First check if it's a built-in type name — those are inferable too.
             if let Some(term) = builtin_prim_ty(name_str, phase) {
                 // Phase check: U(Object) (VmType) is only valid in a meta-phase context.
-                if let core::Term::Prim(Prim::U(u_phase)) = term
-                    && *u_phase != phase
-                {
-                    return Err(anyhow!(
+                if let core::Term::Prim(Prim::U(u_phase)) = term {
+                    ensure!(
+                        *u_phase == phase,
                         "`{name_str}` is a {u_phase}-phase type, \
                          not valid in a {phase}-phase context"
-                    ));
+                    );
                 }
                 return Ok(term);
             }
@@ -399,23 +399,19 @@ pub fn infer<'src, 'core>(
                 .ok_or_else(|| anyhow!("unknown function `{name}`"))?;
 
             // The call phase must match the current elaboration phase.
-            if sig.phase != phase {
-                return Err(anyhow!(
-                    "function `{name}` is a {}-phase function, but called in {}-phase context",
-                    sig.phase,
-                    phase,
-                ));
-            }
             let call_phase = sig.phase;
+            ensure!(
+                call_phase == phase,
+                "function `{name}` is a {call_phase}-phase function, but called in {phase}-phase context"
+            );
             let params = sig.params;
 
-            if args.len() != params.len() {
-                return Err(anyhow!(
-                    "function `{name}` expects {} argument(s), got {}",
-                    params.len(),
-                    args.len()
-                ));
-            }
+            ensure!(
+                args.len() == params.len(),
+                "function `{name}` expects {} argument(s), got {}",
+                params.len(),
+                args.len()
+            );
 
             // Check each argument against its declared parameter type.
             let core_args: &'core [&'core core::Term<'core>] = ctx
@@ -453,7 +449,7 @@ pub fn infer<'src, 'core>(
         {
             use ast::BinOp;
             let [lhs, rhs] = args else {
-                return Err(anyhow!("binary operation expects exactly 2 arguments"));
+                bail!("binary operation expects exactly 2 arguments")
             };
 
             // Infer the operand type from the first argument.
@@ -473,7 +469,8 @@ pub fn infer<'src, 'core>(
                 | core::Term::Splice(_)
                 | core::Term::Let(_)
                 | core::Term::Match(_) => {
-                    return Err(anyhow!("comparison operands must be integers"));
+                    ensure!(false, "comparison operands must be integers");
+                    unreachable!()
                 }
             };
             let prim = match op {
@@ -504,15 +501,17 @@ pub fn infer<'src, 'core>(
         // `[[T]]` — elaborate T at the object phase, type is Type (meta universe).
         ast::Term::Lift(inner) => {
             // Lift is only legal in meta phase.
-            if phase != Phase::Meta {
-                return Err(anyhow!("`[[...]]` is only valid in a meta-phase context"));
-            }
+            ensure!(
+                phase == Phase::Meta,
+                "`[[...]]` is only valid in a meta-phase context"
+            );
             // The inner expression must be an object type.
             let core_inner = infer(ctx, Phase::Object, inner)?;
             // Verify the inner term is indeed a type (inhabits VmType).
-            if !types_equal(ctx.type_of(core_inner), &core::Term::VM_TYPE) {
-                return Err(anyhow!("argument of `[[...]]` must be an object type"));
-            }
+            ensure!(
+                types_equal(ctx.type_of(core_inner), &core::Term::VM_TYPE),
+                "argument of `[[...]]` must be an object type"
+            );
             Ok(ctx.alloc(core::Term::Lift(core_inner)))
         }
 
@@ -520,9 +519,10 @@ pub fn infer<'src, 'core>(
         // `#(t)` — infer iff the inner term is inferable (phase shifts meta→object).
         ast::Term::Quote(inner) => {
             // Quote is only legal in meta phase.
-            if phase != Phase::Meta {
-                return Err(anyhow!("`#(...)` is only valid in a meta-phase context"));
-            }
+            ensure!(
+                phase == Phase::Meta,
+                "`#(...)` is only valid in a meta-phase context"
+            );
             let core_inner = infer(ctx, Phase::Object, inner)?;
             Ok(ctx.alloc(core::Term::Quote(core_inner)))
         }
@@ -533,9 +533,10 @@ pub fn infer<'src, 'core>(
         // to produce `[[IntTy(w, Object)]]` before splicing.
         ast::Term::Splice(inner) => {
             // Splice is only legal in object phase.
-            if phase != Phase::Object {
-                return Err(anyhow!("`$(...)` is only valid in an object-phase context"));
-            }
+            ensure!(
+                phase == Phase::Object,
+                "`$(...)` is only valid in an object-phase context"
+            );
             let core_inner = infer(ctx, Phase::Meta, inner)?;
             let inner_ty = ctx.type_of(core_inner);
             match inner_ty {
@@ -630,11 +631,10 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
     }
 
     let fully_covered = covered_lits.is_some_and(|bits| bits.iter().all(|&b| b));
-    if !has_catch_all && !fully_covered {
-        return Err(anyhow!(
-            "match expression is not exhaustive: no wildcard or bind-all arm"
-        ));
-    }
+    ensure!(
+        has_catch_all || fully_covered,
+        "match expression is not exhaustive: no wildcard or bind-all arm"
+    );
     Ok(())
 }
 
@@ -756,21 +756,21 @@ pub fn check<'src, 'core>(
     // only produce `IntTy`, `U`, or `Lift` — so `None` here is an internal compiler bug.
     let ty_phase = type_universe(expected)
         .expect("expected type passed to `check` is not a well-formed type expression");
-    if ty_phase != phase {
-        return Err(anyhow!(
-            "expected type inhabits the {ty_phase}-phase universe, \
-             but elaborating at {phase} phase"
-        ));
-    }
+    ensure!(
+        ty_phase == phase,
+        "expected type inhabits the {ty_phase}-phase universe, \
+         but elaborating at {phase} phase"
+    );
     match term {
         // ------------------------------------------------------------------ Lit
         // Literals check against any integer type.
         ast::Term::Lit(n) => match expected {
             core::Term::Prim(Prim::IntTy(it)) => {
                 let width = it.width;
-                if *n > width.max_value() {
-                    return Err(anyhow!("literal `{n}` does not fit in type `{width}`"));
-                }
+                ensure!(
+                    *n <= width.max_value(),
+                    "literal `{n}` does not fit in type `{width}`"
+                );
                 Ok(ctx.alloc(core::Term::Lit(*n, *it)))
             }
             core::Term::Var(_)
@@ -814,7 +814,7 @@ pub fn check<'src, 'core>(
                 | core::Term::Splice(_)
                 | core::Term::Let { .. }
                 | core::Term::Match { .. } => {
-                    return Err(anyhow!("primitive operation requires an integer type"));
+                    bail!("primitive operation requires an integer type")
                 }
             };
 
@@ -832,7 +832,7 @@ pub fn check<'src, 'core>(
             };
 
             let [lhs, rhs] = args else {
-                return Err(anyhow!("binary operation expects exactly 2 arguments"));
+                bail!("binary operation expects exactly 2 arguments")
             };
 
             let core_arg0 = check(ctx, phase, lhs, expected)?;
@@ -858,7 +858,7 @@ pub fn check<'src, 'core>(
                 | core::Term::Splice(_)
                 | core::Term::Let(_)
                 | core::Term::Match(_) => {
-                    return Err(anyhow!("primitive operation requires an integer type"));
+                    bail!("primitive operation requires an integer type")
                 }
             };
 
@@ -867,7 +867,7 @@ pub fn check<'src, 'core>(
             };
 
             let [arg] = args else {
-                return Err(anyhow!("unary operation expects exactly 1 argument"));
+                bail!("unary operation expects exactly 1 argument")
             };
             let core_arg = check(ctx, phase, arg, expected)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
@@ -901,9 +901,10 @@ pub fn check<'src, 'core>(
         // For object integer types `T = IntTy(w, Object)`, also accept `e : IntTy(w, Meta)`
         // with an implicit `Embed(w)` insertion — the same coercion as the infer path.
         ast::Term::Splice(inner) => {
-            if phase != Phase::Object {
-                return Err(anyhow!("`$(...)` is only valid in an object-phase context"));
-            }
+            ensure!(
+                phase == Phase::Object,
+                "`$(...)` is only valid in an object-phase context"
+            );
             // For object integer expected types, first try the standard [[T]] path; if
             // that fails, try the meta-integer embed path (inner has type IntTy(w, Meta)).
             // Trying [[T]] first means a variable `x : [[u64]]` is always handled
@@ -979,9 +980,10 @@ pub fn check<'src, 'core>(
         // For all other forms, infer the type and check it matches expected.
         ast::Term::Var(_) | ast::Term::App { .. } | ast::Term::Lift(_) => {
             let core_term = infer(ctx, phase, term)?;
-            if !types_equal(ctx.type_of(core_term), expected) {
-                return Err(anyhow!("type mismatch"));
-            }
+            ensure!(
+                types_equal(ctx.type_of(core_term), expected),
+                "type mismatch"
+            );
             Ok(core_term)
         }
     }
