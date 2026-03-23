@@ -621,7 +621,7 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
             ast::Pat::Lit(n) => {
                 if let Some(ref mut bits) = covered_lits {
                     let bit = bits
-                        .get_mut(*n as usize)
+                        .get_mut(usize::try_from(*n)?)
                         .context("Pattern literal out of range")?;
                     *bit = true;
                 }
