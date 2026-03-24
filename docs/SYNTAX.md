@@ -22,7 +22,7 @@ x + y  // This is also a comment
 
 | Keyword   | Description |
 |-----------|-------------|
-| `fn`      | Function definition |
+| `fn`      | Function definition or function type |
 | `code`    | Object-level marker |
 | `let`     | Variable binding |
 | `match`   | Pattern matching |
@@ -45,6 +45,41 @@ x + y  // This is also a comment
 
 Identifiers matching `u[0-9]+` are reserved for primitive types.
 
+## Function Types
+
+Function types use the `fn` keyword with parenthesized parameters:
+
+```
+fn(u64) -> u64                    // non-dependent function type
+fn(x: u64) -> u64                // dependent: return type may mention x
+fn(A: Type, x: A) -> A           // polymorphic: type parameter used in value positions
+fn(fn(u64) -> u64) -> u64        // higher-order: function taking a function
+```
+
+Function types are right-associative: `fn(A) -> fn(B) -> C` means `fn(A) -> (fn(B) -> C)`.
+
+Multi-parameter function types desugar to nested single-parameter types:
+
+```
+fn(A: Type, x: A) -> A   ≡   fn(A: Type) -> fn(x: A) -> A
+```
+
+Function types are meta-level only — they inhabit `Type`, not `VmType`.
+
+## Lambda Expressions
+
+Lambdas use Rust's closure syntax with mandatory type annotations:
+
+```
+|x: u64| x + 1                   // single parameter
+|x: u64, y: u64| x + y           // multi-parameter (desugars to nested lambdas)
+|f: fn(u64) -> u64, x: u64| f(x) // higher-order
+```
+
+Type annotations on lambda parameters are required. This makes lambdas inferable — the typechecker can synthesise the full function type from the annotations and the body.
+
+Lambdas are meta-level only — they cannot appear in object-level (`code fn`) bodies.
+
 ## Operators
 
 Lowest to highest, left-associative unless noted:
@@ -57,6 +92,8 @@ Lowest to highest, left-associative unless noted:
 | 4 | `+` `-` |
 | 5 | `*` `/` |
 | 6 | `!` (unary) |
+
+Note: `|` as bitwise OR is distinguished from `|` as lambda delimiter by position: a leading `|` in atom position starts a lambda; `|` after an expression is bitwise OR.
 
 Note: The comparison operators are provisional. See [bs/comparison_operators.md](bs/comparison_operators.md) for discussion.
 
@@ -87,13 +124,22 @@ expr        ::= literal
              | expr "(" expr ("," expr)* ")"   -- application
              | expr binary_op expr
              | unary_op expr
-             | "#(" expr ")"                   -- quotation
+             | fn_type                          -- function type
+             | lambda                           -- lambda expression
+             | "#(" expr ")"                    -- quotation
              | "#{" stmt* expr "}"              -- block quotation
              | "$(" expr ")"                    -- splice
              | "${" stmt* expr "}"              -- block splice
              | "[[" expr "]]"                   -- lifting
              | "match" expr "{" match_arm* "}"
              | block
+
+fn_type     ::= "fn" "(" fn_params ")" "->" expr
+fn_params   ::= (fn_param ("," fn_param)*)?
+fn_param    ::= identifier ":" expr             -- dependent: fn(x: A) -> B
+             | expr                              -- non-dependent: fn(A) -> B
+
+lambda      ::= "|" param ("," param)* "|" expr
 
 binary_op   ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&" | "|"
 unary_op    ::= "!"
