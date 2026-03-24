@@ -1,0 +1,10 @@
+// Const combinator: returns a function that ignores its argument
+fn const_(A: Type, B: Type) -> fn(A) -> fn(B) -> A {
+    |a: A| |b: B| a
+}
+
+fn test() -> u64 {
+    const_(u64, u8)(42)(7)
+}
+
+code fn result() -> u64 { $(test()) }

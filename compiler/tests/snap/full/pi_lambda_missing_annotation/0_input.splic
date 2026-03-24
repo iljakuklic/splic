@@ -1,0 +1,8 @@
+// ERROR: lambda without type annotation should fail
+fn apply(f: fn(u64) -> u64, x: u64) -> u64 {
+    f(x)
+}
+
+fn test() -> u64 {
+    apply(|x| x + 1, 42)
+}
