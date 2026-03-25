@@ -3,10 +3,10 @@ fn const_(A@0: Type, B@1: Type) -> fn(A@0) -> fn(B@1) -> A@0 {
 }
 
 fn test() -> u64 {
-    const_(u64, u8, 42_u64, 7_u8)
+    const_(u64, u8)(42_u64)(7_u8)
 }
 
 code fn result() -> u64 {
-    $(@embed_u64(test))
+    $(@embed_u64(test()))
 }
 

@@ -3,6 +3,6 @@ fn val() -> u32 {
 }
 
 code fn use_val() -> u32 {
-    $(@embed_u32(val))
+    $(@embed_u32(val()))
 }
 

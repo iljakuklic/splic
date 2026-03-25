@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
 use crate::core::{
-    Arm, FunApp, FunSig, Function, IntType, IntWidth, Lam, Lvl, Name, Pat, Prim, Program, Term,
+    Arm, FunSig, Function, IntType, IntWidth, Lam, Lvl, Name, Pat, Prim, Program, Term,
 };
 use crate::parser::ast::Phase;
 
@@ -150,15 +150,18 @@ fn eval_meta<'out, 'eval>(
             obj_next: env.obj_next,
         }),
 
-        // ── Function application ─────────────────────────────────────────────
-        Term::FunApp(app) => {
-            let func_val = eval_meta(arena, eval_arena, globals, env, app.func)?;
-            let arg_val = eval_meta(arena, eval_arena, globals, env, app.arg)?;
-            apply_closure(arena, eval_arena, globals, func_val, arg_val)
-        }
-
-        // ── PrimApp ──────────────────────────────────────────────────────────
-        Term::PrimApp(app) => eval_meta_prim(arena, eval_arena, globals, env, app.prim, app.args),
+        // ── Application ──────────────────────────────────────────────────────
+        Term::App(app) => match app.func {
+            Term::Prim(prim) => eval_meta_prim(arena, eval_arena, globals, env, *prim, app.args),
+            _ => {
+                let mut val = eval_meta(arena, eval_arena, globals, env, app.func)?;
+                for arg in app.args {
+                    let arg_val = eval_meta(arena, eval_arena, globals, env, arg)?;
+                    val = apply_closure(arena, eval_arena, globals, val, arg_val)?;
+                }
+                Ok(val)
+            }
+        },
 
         // ── Quote: #(t) ──────────────────────────────────────────────────────
         Term::Quote(inner) => {
@@ -482,24 +485,15 @@ fn unstage_obj<'out, 'eval>(
             Ok(arena.alloc(Term::Global(Name::new(arena.alloc_str(name.as_str())))))
         }
 
-        // ── PrimApp ──────────────────────────────────────────────────────────
-        Term::PrimApp(app) => {
+        // ── App ───────────────────────────────────────────────────────────────
+        Term::App(app) => {
+            let staged_func = unstage_obj(arena, eval_arena, globals, env, app.func)?;
             let staged_args: &'out [&'out Term<'out>] = arena.alloc_slice_try_fill_iter(
                 app.args
                     .iter()
                     .map(|arg| unstage_obj(arena, eval_arena, globals, env, arg)),
             )?;
-            Ok(arena.alloc(Term::new_prim_app(app.prim, staged_args)))
-        }
-
-        // ── FunApp (in object terms) ─────────────────────────────────────────
-        Term::FunApp(app) => {
-            let staged_func = unstage_obj(arena, eval_arena, globals, env, app.func)?;
-            let staged_arg = unstage_obj(arena, eval_arena, globals, env, app.arg)?;
-            Ok(arena.alloc(Term::FunApp(FunApp {
-                func: staged_func,
-                arg: staged_arg,
-            })))
+            Ok(arena.alloc(Term::new_app(staged_func, staged_args)))
         }
 
         // ── Splice: $(t) — the key staging step ──────────────────────────────

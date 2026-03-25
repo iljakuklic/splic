@@ -86,31 +86,19 @@ pub struct Program<'a> {
     pub functions: &'a [Function<'a>],
 }
 
-/// Primitive operation application (always fully applied, carries resolved `IntType`)
+/// Function or primitive application: `func(args...)`
+///
+/// `func` may be any term yielding a function type — most commonly:
+/// - `Term::Global(name)` for top-level function calls
+/// - `Term::Prim(p)` for built-in primitive operations
+/// - any expression for higher-order calls
+///
+/// An empty `args` slice represents a zero-argument call and is distinct from
+/// a bare reference to `func`.
 #[derive(Debug, PartialEq, Eq)]
-pub struct PrimApp<'a> {
-    pub prim: Prim,
+pub struct App<'a> {
+    pub func: &'a Term<'a>,
     pub args: &'a [&'a Term<'a>],
-}
-
-impl PrimApp<'_> {
-    /// Returns the number of arguments.
-    pub const fn arity(&self) -> usize {
-        self.args.len()
-    }
-
-    /// Returns `true` if this is a binary infix primitive operator.
-    pub fn is_binop(&self) -> bool {
-        let result = self.prim.is_binop();
-        if result {
-            assert_eq!(
-                self.arity(),
-                2,
-                "binop PrimApp must have exactly 2 arguments"
-            );
-        }
-        result
-    }
 }
 
 /// Dependent function type: fn(x: A) -> B
@@ -127,13 +115,6 @@ pub struct Lam<'a> {
     pub param_name: &'a str,
     pub param_ty: &'a Term<'a>,
     pub body: &'a Term<'a>,
-}
-
-/// Function application (single-arg, curried): f(x)
-#[derive(Debug, PartialEq, Eq)]
-pub struct FunApp<'a> {
-    pub func: &'a Term<'a>,
-    pub arg: &'a Term<'a>,
 }
 
 /// Let binding with explicit type annotation and a body.
@@ -163,14 +144,12 @@ pub enum Term<'a> {
     Lit(u64, IntType),
     /// Global function reference
     Global(Name<'a>),
-    /// Primitive operation application (always fully applied, carries resolved `IntType`)
-    PrimApp(PrimApp<'a>),
+    /// Function or primitive application: func(args...)
+    App(App<'a>),
     /// Dependent function type: fn(x: A) -> B
     Pi(Pi<'a>),
     /// Lambda abstraction: |x: A| body
     Lam(Lam<'a>),
-    /// Function application (single-arg, curried): f(x)
-    FunApp(FunApp<'a>),
     /// Lift: [[T]] — meta type representing object-level code of type T
     Lift(&'a Self),
     /// Quotation: #(t) — produce object-level code from a meta expression
@@ -240,8 +219,8 @@ impl Term<'static> {
 }
 
 impl<'a> Term<'a> {
-    pub const fn new_prim_app(prim: Prim, args: &'a [&'a Self]) -> Self {
-        Self::PrimApp(PrimApp { prim, args })
+    pub const fn new_app(func: &'a Self, args: &'a [&'a Self]) -> Self {
+        Self::App(App { func, args })
     }
 
     pub const fn new_let(name: &'a str, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
@@ -258,15 +237,15 @@ impl<'a> Term<'a> {
     }
 }
 
-impl<'a> From<PrimApp<'a>> for Term<'a> {
-    fn from(app: PrimApp<'a>) -> Self {
-        Self::PrimApp(app)
-    }
-}
-
 impl<'a> From<Let<'a>> for Term<'a> {
     fn from(let_: Let<'a>) -> Self {
         Self::Let(let_)
+    }
+}
+
+impl<'a> From<App<'a>> for Term<'a> {
+    fn from(app: App<'a>) -> Self {
+        Self::App(app)
     }
 }
 

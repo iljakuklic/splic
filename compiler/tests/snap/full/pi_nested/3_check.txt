@@ -11,6 +11,6 @@ fn test() -> u64 {
 }
 
 code fn result() -> u64 {
-    $(@embed_u64(test))
+    $(@embed_u64(test()))
 }
 

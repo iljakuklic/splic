@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{Context as _, Result, anyhow, bail, ensure};
 
-use crate::core::{self, FunApp, IntType, IntWidth, Lam, Lvl, Pi, Prim, alpha_eq, subst};
+use crate::core::{self, IntType, IntWidth, Lam, Lvl, Pi, Prim, alpha_eq, subst};
 use crate::parser::ast::{self, Phase};
 
 /// Elaboration context.
@@ -138,26 +138,49 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                 sig.to_pi_type(self.arena)
             }
 
-            // PrimApp: return type comes from the prim.
-            core::Term::PrimApp(app) => match app.prim {
-                Prim::Add(it)
-                | Prim::Sub(it)
-                | Prim::Mul(it)
-                | Prim::Div(it)
-                | Prim::BitAnd(it)
-                | Prim::BitOr(it)
-                | Prim::BitNot(it) => core::Term::int_ty(it.width, it.phase),
-                Prim::Eq(it)
-                | Prim::Ne(it)
-                | Prim::Lt(it)
-                | Prim::Gt(it)
-                | Prim::Le(it)
-                | Prim::Ge(it) => core::Term::u1_ty(it.phase),
-                Prim::Embed(w) => {
-                    self.alloc(core::Term::Lift(core::Term::int_ty(w, Phase::Object)))
-                }
-                Prim::IntTy(_) | Prim::U(_) => {
-                    unreachable!("type-level prim in PrimApp (typechecker invariant)")
+            // App: dispatch on func.
+            // - Prim callee: return type is determined by the primitive.
+            // - Other callee: peel Pi types, substituting each arg.
+            core::Term::App(app) => match app.func {
+                core::Term::Prim(prim) => match prim {
+                    Prim::Add(it)
+                    | Prim::Sub(it)
+                    | Prim::Mul(it)
+                    | Prim::Div(it)
+                    | Prim::BitAnd(it)
+                    | Prim::BitOr(it)
+                    | Prim::BitNot(it) => core::Term::int_ty(it.width, it.phase),
+                    Prim::Eq(it)
+                    | Prim::Ne(it)
+                    | Prim::Lt(it)
+                    | Prim::Gt(it)
+                    | Prim::Le(it)
+                    | Prim::Ge(it) => core::Term::u1_ty(it.phase),
+                    Prim::Embed(w) => {
+                        self.alloc(core::Term::Lift(core::Term::int_ty(*w, Phase::Object)))
+                    }
+                    Prim::IntTy(_) | Prim::U(_) => {
+                        unreachable!("type-level prim in App (typechecker invariant)")
+                    }
+                },
+                _ => {
+                    // Global function signatures are elaborated in an empty context,
+                    // so the i-th Pi binder is at De Bruijn level (base_depth + i)
+                    // where base_depth counts args already applied by an outer App.
+                    let base_depth = app_base_depth(app.func);
+                    let mut current_ty = self.type_of(app.func);
+                    for (i, arg) in app.args.iter().enumerate() {
+                        match current_ty {
+                            core::Term::Pi(pi) => {
+                                current_ty =
+                                    subst(self.arena, pi.body_ty, Lvl(base_depth + i), arg);
+                            }
+                            _ => unreachable!(
+                                "App func must have Pi type for each arg (typechecker invariant)"
+                            ),
+                        }
+                    }
+                    current_ty
                 }
             },
 
@@ -171,34 +194,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                     param_ty: lam.param_ty,
                     body_ty,
                 }))
-            }
-
-            // FunApp: get func type (must be Pi), return body_ty with substitution.
-            // The Pi binder level equals the number of FunApp layers already applied to the
-            // root callee — global signatures are elaborated in an empty context so the i-th
-            // binder is at level i.
-            core::Term::FunApp(app) => {
-                let func_ty = self.type_of(app.func);
-                match func_ty {
-                    core::Term::Pi(pi) => {
-                        let binder_lvl = Lvl(funapp_depth(app.func));
-                        subst(self.arena, pi.body_ty, binder_lvl, app.arg)
-                    }
-                    core::Term::Var(_)
-                    | core::Term::Prim(_)
-                    | core::Term::Lit(..)
-                    | core::Term::Global(_)
-                    | core::Term::PrimApp(_)
-                    | core::Term::Lam(_)
-                    | core::Term::FunApp(_)
-                    | core::Term::Lift(_)
-                    | core::Term::Quote(_)
-                    | core::Term::Splice(_)
-                    | core::Term::Let(_)
-                    | core::Term::Match(_) => {
-                        unreachable!("FunApp func must have Pi type (typechecker invariant)")
-                    }
-                }
             }
 
             // #(t) : [[type_of(t)]]
@@ -216,10 +211,9 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                     | core::Term::Prim(_)
                     | core::Term::Lit(..)
                     | core::Term::Global(_)
-                    | core::Term::PrimApp(_)
+                    | core::Term::App(_)
                     | core::Term::Pi(_)
                     | core::Term::Lam(_)
-                    | core::Term::FunApp(_)
                     | core::Term::Quote(_)
                     | core::Term::Splice(_)
                     | core::Term::Let(_)
@@ -394,10 +388,9 @@ fn type_universe<'core>(
             | core::Term::Prim(_)
             | core::Term::Lit(..)
             | core::Term::Global(_)
-            | core::Term::PrimApp(_)
+            | core::Term::App(_)
             | core::Term::Pi(_)
             | core::Term::Lam(_)
-            | core::Term::FunApp(_)
             | core::Term::Lift(_)
             | core::Term::Quote(_)
             | core::Term::Splice(_)
@@ -407,9 +400,8 @@ fn type_universe<'core>(
         core::Term::Prim(_)
         | core::Term::Lit(..)
         | core::Term::Global(_)
-        | core::Term::PrimApp(_)
+        | core::Term::App(_)
         | core::Term::Lam(_)
-        | core::Term::FunApp(_)
         | core::Term::Quote(_)
         | core::Term::Splice(_)
         | core::Term::Let(_)
@@ -422,19 +414,16 @@ fn types_equal(a: &core::Term<'_>, b: &core::Term<'_>) -> bool {
     alpha_eq(a, b)
 }
 
-/// Count the number of `FunApp` layers between the outermost callee and the given term.
+/// Count the total number of arguments already applied by nested `App` nodes.
 ///
 /// Used to determine which Pi binder level to target during dependent-return-type
 /// substitution: global function signatures are elaborated in an empty context, so the
 /// binder introduced by the i-th Pi in the chain sits at De Bruijn level i.
-const fn funapp_depth(term: &core::Term<'_>) -> usize {
-    let mut depth = 0;
-    let mut cur = term;
-    while let core::Term::FunApp(app) = cur {
-        depth += 1;
-        cur = app.func;
+fn app_base_depth(term: &core::Term<'_>) -> usize {
+    match term {
+        core::Term::App(app) => app_base_depth(app.func) + app.args.len(),
+        _ => 0,
     }
-    depth
 }
 
 /// Synthesise and return the elaborated core term; recover its type via `ctx.type_of`.
@@ -501,8 +490,8 @@ pub fn infer<'src, 'core>(
                 );
             }
 
-            // Build curried FunApp chain, checking each arg against the Pi param type.
-            let mut result: &'core core::Term<'core> = callee;
+            // Check each argument against the next Pi parameter type and collect.
+            let mut core_args: Vec<&'core core::Term<'core>> = Vec::with_capacity(args.len());
             for (i, arg) in args.iter().enumerate() {
                 let pi = match callee_ty {
                     core::Term::Pi(pi) => pi,
@@ -510,9 +499,8 @@ pub fn infer<'src, 'core>(
                     | core::Term::Prim(_)
                     | core::Term::Lit(..)
                     | core::Term::Global(_)
-                    | core::Term::PrimApp(_)
+                    | core::Term::App(_)
                     | core::Term::Lam(_)
-                    | core::Term::FunApp(_)
                     | core::Term::Lift(_)
                     | core::Term::Quote(_)
                     | core::Term::Splice(_)
@@ -530,14 +518,11 @@ pub fn infer<'src, 'core>(
                 // Global function signatures are elaborated in an empty context,
                 // so the i-th Pi binder corresponds to De Bruijn level i.
                 callee_ty = subst(ctx.arena, pi.body_ty, Lvl(i), core_arg);
-
-                result = ctx.alloc(core::Term::FunApp(FunApp {
-                    func: result,
-                    arg: core_arg,
-                }));
+                core_args.push(core_arg);
             }
 
-            Ok(result)
+            let args_slice = ctx.alloc_slice(core_args);
+            Ok(ctx.alloc(core::Term::new_app(callee, args_slice)))
         }
 
         // ------------------------------------------------------------------ App { Prim (BinOp/UnOp) }
@@ -569,10 +554,9 @@ pub fn infer<'src, 'core>(
                 | core::Term::Prim(_)
                 | core::Term::Lit(..)
                 | core::Term::Global(_)
-                | core::Term::PrimApp(_)
+                | core::Term::App(_)
                 | core::Term::Pi(_)
                 | core::Term::Lam(_)
-                | core::Term::FunApp(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
@@ -596,7 +580,10 @@ pub fn infer<'src, 'core>(
                 | BinOp::BitOr => unreachable!(),
             };
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
-            Ok(ctx.alloc(core::Term::new_prim_app(prim, core_args)))
+            Ok(ctx.alloc(core::Term::new_app(
+                ctx.alloc(core::Term::Prim(prim)),
+                core_args,
+            )))
         }
         ast::Term::App {
             func: ast::FunName::BinOp(_) | ast::FunName::UnOp(_),
@@ -725,8 +712,8 @@ pub fn infer<'src, 'core>(
                     width,
                     phase: Phase::Meta,
                 })) => {
-                    let embedded = ctx.alloc(core::Term::new_prim_app(
-                        Prim::Embed(*width),
+                    let embedded = ctx.alloc(core::Term::new_app(
+                        ctx.alloc(core::Term::Prim(Prim::Embed(*width))),
                         ctx.alloc_slice([core_inner]),
                     ));
                     Ok(ctx.alloc(core::Term::Splice(embedded)))
@@ -735,10 +722,9 @@ pub fn infer<'src, 'core>(
                 | core::Term::Prim(_)
                 | core::Term::Lit(..)
                 | core::Term::Global(_)
-                | core::Term::PrimApp(_)
+                | core::Term::App(_)
                 | core::Term::Pi(_)
                 | core::Term::Lam(_)
-                | core::Term::FunApp(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
                 | core::Term::Let(_)
@@ -777,10 +763,9 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
         | core::Term::Prim(_)
         | core::Term::Lit(..)
         | core::Term::Global(_)
-        | core::Term::PrimApp(_)
+        | core::Term::App(_)
         | core::Term::Pi(_)
         | core::Term::Lam(_)
-        | core::Term::FunApp(_)
         | core::Term::Lift(_)
         | core::Term::Quote(_)
         | core::Term::Splice(_)
@@ -939,10 +924,9 @@ pub fn check<'src, 'core>(
             | core::Term::Prim(_)
             | core::Term::Lit(..)
             | core::Term::Global(_)
-            | core::Term::PrimApp(_)
+            | core::Term::App(_)
             | core::Term::Pi(_)
             | core::Term::Lam(_)
-            | core::Term::FunApp(_)
             | core::Term::Lift(_)
             | core::Term::Quote(_)
             | core::Term::Splice(_)
@@ -971,10 +955,9 @@ pub fn check<'src, 'core>(
                 | core::Term::Prim(_)
                 | core::Term::Lit(..)
                 | core::Term::Global(_)
-                | core::Term::PrimApp(_)
+                | core::Term::App(_)
                 | core::Term::Pi(_)
                 | core::Term::Lam(_)
-                | core::Term::FunApp(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
@@ -1005,7 +988,10 @@ pub fn check<'src, 'core>(
             let core_arg1 = check(ctx, phase, rhs, expected)?;
 
             let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
-            Ok(ctx.alloc(core::Term::new_prim_app(prim, core_args)))
+            Ok(ctx.alloc(core::Term::new_app(
+                ctx.alloc(core::Term::Prim(prim)),
+                core_args,
+            )))
         }
 
         // ------------------------------------------------------------------ App { UnOp }
@@ -1019,10 +1005,9 @@ pub fn check<'src, 'core>(
                 | core::Term::Prim(_)
                 | core::Term::Lit(..)
                 | core::Term::Global(_)
-                | core::Term::PrimApp(_)
+                | core::Term::App(_)
                 | core::Term::Pi(_)
                 | core::Term::Lam(_)
-                | core::Term::FunApp(_)
                 | core::Term::Lift(_)
                 | core::Term::Quote(_)
                 | core::Term::Splice(_)
@@ -1041,7 +1026,10 @@ pub fn check<'src, 'core>(
             };
             let core_arg = check(ctx, phase, arg, expected)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
-            Ok(ctx.alloc(core::Term::new_prim_app(prim, core_args)))
+            Ok(ctx.alloc(core::Term::new_app(
+                ctx.alloc(core::Term::Prim(prim)),
+                core_args,
+            )))
         }
 
         // ------------------------------------------------------------------ Quote (check mode)
@@ -1054,10 +1042,9 @@ pub fn check<'src, 'core>(
             | core::Term::Prim(_)
             | core::Term::Lit(..)
             | core::Term::Global(_)
-            | core::Term::PrimApp(_)
+            | core::Term::App(_)
             | core::Term::Pi(_)
             | core::Term::Lam(_)
-            | core::Term::FunApp(_)
             | core::Term::Quote(_)
             | core::Term::Splice(_)
             | core::Term::Let(_)
@@ -1083,8 +1070,8 @@ pub fn check<'src, 'core>(
                 }
                 let meta_int_ty = ctx.alloc(core::Term::Prim(Prim::IntTy(IntType::meta(*width))));
                 let core_inner = check(ctx, Phase::Meta, inner, meta_int_ty)?;
-                let embedded = ctx.alloc(core::Term::new_prim_app(
-                    Prim::Embed(*width),
+                let embedded = ctx.alloc(core::Term::new_app(
+                    ctx.alloc(core::Term::Prim(Prim::Embed(*width))),
                     ctx.arena.alloc_slice_fill_iter([core_inner]),
                 ));
                 return Ok(ctx.alloc(core::Term::Splice(embedded)));
@@ -1119,9 +1106,8 @@ pub fn check<'src, 'core>(
                     | core::Term::Prim(_)
                     | core::Term::Lit(..)
                     | core::Term::Global(_)
-                    | core::Term::PrimApp(_)
+                    | core::Term::App(_)
                     | core::Term::Lam(_)
-                    | core::Term::FunApp(_)
                     | core::Term::Lift(_)
                     | core::Term::Quote(_)
                     | core::Term::Splice(_)

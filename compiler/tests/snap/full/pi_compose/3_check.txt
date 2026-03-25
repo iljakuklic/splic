@@ -11,10 +11,10 @@ fn inc(x@0: u64) -> u64 {
 }
 
 fn test() -> u64 {
-    compose(double, inc, 5_u64)
+    compose(double, inc)(5_u64)
 }
 
 code fn result() -> u64 {
-    $(@embed_u64(test))
+    $(@embed_u64(test()))
 }
 

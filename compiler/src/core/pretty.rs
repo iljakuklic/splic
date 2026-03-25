@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::parser::ast::Phase;
 
-use super::{Arm, Function, Pat, PrimApp, Program, Term};
+use super::{Arm, Function, Pat, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -30,10 +30,9 @@ impl<'a> Term<'a> {
             | Term::Prim(_)
             | Term::Lit(..)
             | Term::Global(_)
-            | Term::PrimApp(_)
+            | Term::App(_)
             | Term::Pi(_)
             | Term::Lam(_)
-            | Term::FunApp(_)
             | Term::Lift(_)
             | Term::Quote(_)
             | Term::Splice(_) => {
@@ -70,8 +69,18 @@ impl<'a> Term<'a> {
             // ── Global reference ──────────────────────────────────────────────────
             Term::Global(name) => write!(f, "{name}"),
 
-            // ── Primitive application ─────────────────────────────────────────────
-            Term::PrimApp(app) => app.fmt_prim_app(env, indent, f),
+            // ── Application ───────────────────────────────────────────────────────
+            Term::App(app) => {
+                app.func.fmt_expr(env, indent, f)?;
+                write!(f, "(")?;
+                for (i, arg) in app.args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    arg.fmt_expr(env, indent, f)?;
+                }
+                write!(f, ")")
+            }
 
             // ── Pi type ───────────────────────────────────────────────────────────
             Term::Pi(pi) => {
@@ -100,21 +109,6 @@ impl<'a> Term<'a> {
                 lam.body.fmt_expr(env, indent, f)?;
                 env.pop();
                 Ok(())
-            }
-
-            // ── Function application ──────────────────────────────────────────────
-            // For curried chains FunApp(FunApp(f, a), b), collect args and print f(a, b).
-            Term::FunApp(_) => {
-                let (head, args) = self.collect_fun_app_args();
-                head.fmt_expr(env, indent, f)?;
-                write!(f, "(")?;
-                for (i, arg) in args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    arg.fmt_expr(env, indent, f)?;
-                }
-                write!(f, ")")
             }
 
             // ── Lift / Quote / Splice ─────────────────────────────────────────────
@@ -186,45 +180,13 @@ impl<'a> Term<'a> {
             | Term::Prim(_)
             | Term::Lit(..)
             | Term::Global(_)
-            | Term::PrimApp(_)
+            | Term::App(_)
             | Term::Pi(_)
             | Term::Lam(_)
-            | Term::FunApp(_)
             | Term::Lift(_)
             | Term::Quote(_)
             | Term::Splice(_) => self.fmt_term_inline(env, indent, f),
         }
-    }
-
-    /// Collect a chain of curried `FunApp` into (head, [arg1, arg2, ...]).
-    fn collect_fun_app_args(&self) -> (&Self, Vec<&Self>) {
-        let mut args = Vec::new();
-        let mut current = self;
-        while let Term::FunApp(app) = current {
-            args.push(app.arg);
-            current = app.func;
-        }
-        args.reverse();
-        (current, args)
-    }
-}
-
-impl<'a> PrimApp<'a> {
-    /// Print a primitive application using `@name(arg, arg, ...)` syntax.
-    fn fmt_prim_app(
-        &self,
-        env: &mut Vec<&'a str>,
-        indent: usize,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write!(f, "{}(", self.prim)?;
-        for (i, arg) in self.args.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-            arg.fmt_expr(env, indent, f)?;
-        }
-        write!(f, ")")
     }
 }
 

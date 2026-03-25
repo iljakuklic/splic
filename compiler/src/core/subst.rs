@@ -1,4 +1,4 @@
-use super::{Arm, FunApp, Lam, Lvl, Pi, Term};
+use super::{Arm, Lam, Lvl, Pi, Term};
 
 /// Substitute `replacement` for `Var(target)` in `term`.
 ///
@@ -14,13 +14,14 @@ pub fn subst<'a>(
         Term::Var(lvl) if *lvl == target => replacement,
         Term::Var(_) | Term::Prim(_) | Term::Lit(..) | Term::Global(_) => term,
 
-        Term::PrimApp(app) => {
+        Term::App(app) => {
+            let new_func = subst(arena, app.func, target, replacement);
             let new_args = arena.alloc_slice_fill_iter(
                 app.args
                     .iter()
                     .map(|arg| subst(arena, arg, target, replacement)),
             );
-            arena.alloc(Term::new_prim_app(app.prim, new_args))
+            arena.alloc(Term::new_app(new_func, new_args))
         }
 
         Term::Pi(pi) => {
@@ -40,15 +41,6 @@ pub fn subst<'a>(
                 param_name: lam.param_name,
                 param_ty: new_param_ty,
                 body: new_body,
-            }))
-        }
-
-        Term::FunApp(app) => {
-            let new_func = subst(arena, app.func, target, replacement);
-            let new_arg = subst(arena, app.arg, target, replacement);
-            arena.alloc(Term::FunApp(FunApp {
-                func: new_func,
-                arg: new_arg,
             }))
         }
 

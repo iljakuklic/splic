@@ -11,8 +11,8 @@ pub fn alpha_eq(a: &Term<'_>, b: &Term<'_>) -> bool {
         (Term::Prim(p1), Term::Prim(p2)) => p1 == p2,
         (Term::Lit(n1, t1), Term::Lit(n2, t2)) => n1 == n2 && t1 == t2,
         (Term::Global(n1), Term::Global(n2)) => n1 == n2,
-        (Term::PrimApp(a1), Term::PrimApp(a2)) => {
-            a1.prim == a2.prim
+        (Term::App(a1), Term::App(a2)) => {
+            alpha_eq(a1.func, a2.func)
                 && a1.args.len() == a2.args.len()
                 && a1
                     .args
@@ -25,9 +25,6 @@ pub fn alpha_eq(a: &Term<'_>, b: &Term<'_>) -> bool {
         }
         (Term::Lam(l1), Term::Lam(l2)) => {
             alpha_eq(l1.param_ty, l2.param_ty) && alpha_eq(l1.body, l2.body)
-        }
-        (Term::FunApp(a1), Term::FunApp(a2)) => {
-            alpha_eq(a1.func, a2.func) && alpha_eq(a1.arg, a2.arg)
         }
         (Term::Lift(i1), Term::Lift(i2))
         | (Term::Quote(i1), Term::Quote(i2))
