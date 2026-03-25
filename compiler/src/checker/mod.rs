@@ -110,7 +110,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
             // Primitive types inhabit the relevant universe.
             core::Term::Prim(Prim::IntTy(it)) => core::Term::universe(it.phase),
             // Type, VmType, and [[T]] all inhabit Type (meta universe).
-            core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) => &core::Term::TYPE,
+            core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) | core::Term::Pi(_) => &core::Term::TYPE,
 
             // Comparison ops return u1 at the operand phase.
             core::Term::Prim(
@@ -159,9 +159,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                 }
             },
 
-            // Pi type inhabits Type
-            core::Term::Pi(_) => &core::Term::TYPE,
-
             // Lam: synthesise Pi from param_ty and body type
             core::Term::Lam(lam) => {
                 self.push_local(lam.param_name, lam.param_ty);
@@ -185,7 +182,20 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                         let binder_lvl = Lvl(funapp_depth(app.func));
                         subst(self.arena, pi.body_ty, binder_lvl, app.arg)
                     }
-                    _ => unreachable!("FunApp func must have Pi type (typechecker invariant)"),
+                    core::Term::Var(_)
+                    | core::Term::Prim(_)
+                    | core::Term::Lit(..)
+                    | core::Term::Global(_)
+                    | core::Term::PrimApp(_)
+                    | core::Term::Lam(_)
+                    | core::Term::FunApp(_)
+                    | core::Term::Lift(_)
+                    | core::Term::Quote(_)
+                    | core::Term::Splice(_)
+                    | core::Term::Let(_)
+                    | core::Term::Match(_) => {
+                        unreachable!("FunApp func must have Pi type (typechecker invariant)")
+                    }
                 }
             }
 
@@ -200,7 +210,20 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                 let inner_ty = self.type_of(inner);
                 match inner_ty {
                     core::Term::Lift(object_ty) => object_ty,
-                    _ => unreachable!("Splice inner must have Lift type (typechecker invariant)"),
+                    core::Term::Var(_)
+                    | core::Term::Prim(_)
+                    | core::Term::Lit(..)
+                    | core::Term::Global(_)
+                    | core::Term::PrimApp(_)
+                    | core::Term::Pi(_)
+                    | core::Term::Lam(_)
+                    | core::Term::FunApp(_)
+                    | core::Term::Quote(_)
+                    | core::Term::Splice(_)
+                    | core::Term::Let(_)
+                    | core::Term::Match(_) => {
+                        unreachable!("Splice inner must have Lift type (typechecker invariant)")
+                    }
                 }
             }
 
@@ -365,9 +388,30 @@ fn type_universe<'core>(
         // E.g. if `A : Type` (= U(Meta)), then A is a meta-level type.
         core::Term::Var(lvl) => match locals.get(lvl.0)?.1 {
             core::Term::Prim(Prim::U(phase)) => Some(*phase),
-            _ => None,
+            core::Term::Var(_)
+            | core::Term::Prim(_)
+            | core::Term::Lit(..)
+            | core::Term::Global(_)
+            | core::Term::PrimApp(_)
+            | core::Term::Pi(_)
+            | core::Term::Lam(_)
+            | core::Term::FunApp(_)
+            | core::Term::Lift(_)
+            | core::Term::Quote(_)
+            | core::Term::Splice(_)
+            | core::Term::Let(_)
+            | core::Term::Match(_) => None,
         },
-        _ => None,
+        core::Term::Prim(_)
+        | core::Term::Lit(..)
+        | core::Term::Global(_)
+        | core::Term::PrimApp(_)
+        | core::Term::Lam(_)
+        | core::Term::FunApp(_)
+        | core::Term::Quote(_)
+        | core::Term::Splice(_)
+        | core::Term::Let(_)
+        | core::Term::Match(_) => None,
     }
 }
 
@@ -460,7 +504,18 @@ pub fn infer<'src, 'core>(
             for (i, arg) in args.iter().enumerate() {
                 let pi = match callee_ty {
                     core::Term::Pi(pi) => pi,
-                    _ => bail!(
+                    core::Term::Var(_)
+                    | core::Term::Prim(_)
+                    | core::Term::Lit(..)
+                    | core::Term::Global(_)
+                    | core::Term::PrimApp(_)
+                    | core::Term::Lam(_)
+                    | core::Term::FunApp(_)
+                    | core::Term::Lift(_)
+                    | core::Term::Quote(_)
+                    | core::Term::Splice(_)
+                    | core::Term::Let(_)
+                    | core::Term::Match(_) => bail!(
                         "too many arguments: function `{name}` expects {i} argument(s), got {}",
                         args.len()
                     ),
@@ -508,7 +563,19 @@ pub fn infer<'src, 'core>(
             let core_arg1 = check(ctx, phase, rhs, operand_ty)?;
             let op_int_ty = match operand_ty {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
-                _ => {
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(..)
+                | core::Term::Global(_)
+                | core::Term::PrimApp(_)
+                | core::Term::Pi(_)
+                | core::Term::Lam(_)
+                | core::Term::FunApp(_)
+                | core::Term::Lift(_)
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let(_)
+                | core::Term::Match(_) => {
                     bail!("comparison operands must be integers");
                 }
             };
@@ -662,7 +729,18 @@ pub fn infer<'src, 'core>(
                     ));
                     Ok(ctx.alloc(core::Term::Splice(embedded)))
                 }
-                _ => Err(anyhow!(
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(..)
+                | core::Term::Global(_)
+                | core::Term::PrimApp(_)
+                | core::Term::Pi(_)
+                | core::Term::Lam(_)
+                | core::Term::FunApp(_)
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let(_)
+                | core::Term::Match(_) => Err(anyhow!(
                     "argument of `$(...)` must have a lifted type `[[T]]` or be a meta-level integer"
                 )),
             }
@@ -693,7 +771,19 @@ fn check_exhaustiveness(scrut_ty: &core::Term<'_>, arms: &[ast::MatchArm<'_>]) -
             IntWidth::U8 => Some(vec![false; 256]),
             IntWidth::U16 | IntWidth::U32 | IntWidth::U64 => None,
         },
-        _ => None,
+        core::Term::Var(_)
+        | core::Term::Prim(_)
+        | core::Term::Lit(..)
+        | core::Term::Global(_)
+        | core::Term::PrimApp(_)
+        | core::Term::Pi(_)
+        | core::Term::Lam(_)
+        | core::Term::FunApp(_)
+        | core::Term::Lift(_)
+        | core::Term::Quote(_)
+        | core::Term::Splice(_)
+        | core::Term::Let(_)
+        | core::Term::Match(_) => None,
     };
     let mut has_catch_all = false;
 
@@ -843,7 +933,19 @@ pub fn check<'src, 'core>(
                 );
                 Ok(ctx.alloc(core::Term::Lit(*n, *it)))
             }
-            _ => Err(anyhow!("literal `{n}` cannot have a non-integer type")),
+            core::Term::Var(_)
+            | core::Term::Prim(_)
+            | core::Term::Lit(..)
+            | core::Term::Global(_)
+            | core::Term::PrimApp(_)
+            | core::Term::Pi(_)
+            | core::Term::Lam(_)
+            | core::Term::FunApp(_)
+            | core::Term::Lift(_)
+            | core::Term::Quote(_)
+            | core::Term::Splice(_)
+            | core::Term::Let(_)
+            | core::Term::Match(_) => Err(anyhow!("literal `{n}` cannot have a non-integer type")),
         },
 
         // ------------------------------------------------------------------ App { Prim (BinOp) }
@@ -863,7 +965,19 @@ pub fn check<'src, 'core>(
         {
             let int_ty = match expected {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
-                _ => {
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(..)
+                | core::Term::Global(_)
+                | core::Term::PrimApp(_)
+                | core::Term::Pi(_)
+                | core::Term::Lam(_)
+                | core::Term::FunApp(_)
+                | core::Term::Lift(_)
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let(_)
+                | core::Term::Match(_) => {
                     bail!("primitive operation requires an integer type")
                 }
             };
@@ -899,7 +1013,19 @@ pub fn check<'src, 'core>(
         } => {
             let int_ty = match expected {
                 core::Term::Prim(Prim::IntTy(it)) => *it,
-                _ => {
+                core::Term::Var(_)
+                | core::Term::Prim(_)
+                | core::Term::Lit(..)
+                | core::Term::Global(_)
+                | core::Term::PrimApp(_)
+                | core::Term::Pi(_)
+                | core::Term::Lam(_)
+                | core::Term::FunApp(_)
+                | core::Term::Lift(_)
+                | core::Term::Quote(_)
+                | core::Term::Splice(_)
+                | core::Term::Let(_)
+                | core::Term::Match(_) => {
                     bail!("primitive operation requires an integer type")
                 }
             };
@@ -922,7 +1048,20 @@ pub fn check<'src, 'core>(
                 let core_inner = check(ctx, Phase::Object, inner, obj_ty)?;
                 Ok(ctx.alloc(core::Term::Quote(core_inner)))
             }
-            _ => Err(anyhow!("quote `#(...)` must have a lifted type `[[T]]`")),
+            core::Term::Var(_)
+            | core::Term::Prim(_)
+            | core::Term::Lit(..)
+            | core::Term::Global(_)
+            | core::Term::PrimApp(_)
+            | core::Term::Pi(_)
+            | core::Term::Lam(_)
+            | core::Term::FunApp(_)
+            | core::Term::Quote(_)
+            | core::Term::Splice(_)
+            | core::Term::Let(_)
+            | core::Term::Match(_) => {
+                Err(anyhow!("quote `#(...)` must have a lifted type `[[T]]`"))
+            }
         },
 
         // ------------------------------------------------------------------ Splice (check mode)
@@ -974,7 +1113,20 @@ pub fn check<'src, 'core>(
             for p in *params {
                 let pi = match current_expected {
                     core::Term::Pi(pi) => pi,
-                    _ => bail!("lambda has more parameters than the expected function type"),
+                    core::Term::Var(_)
+                    | core::Term::Prim(_)
+                    | core::Term::Lit(..)
+                    | core::Term::Global(_)
+                    | core::Term::PrimApp(_)
+                    | core::Term::Lam(_)
+                    | core::Term::FunApp(_)
+                    | core::Term::Lift(_)
+                    | core::Term::Quote(_)
+                    | core::Term::Splice(_)
+                    | core::Term::Let(_)
+                    | core::Term::Match(_) => {
+                        bail!("lambda has more parameters than the expected function type")
+                    }
                 };
 
                 let param_name: &'core str = ctx.arena.alloc_str(p.name.as_str());

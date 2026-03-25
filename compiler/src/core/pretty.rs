@@ -26,7 +26,17 @@ impl<'a> Term<'a> {
             // Let and Match manage their own indentation internally.
             Term::Let(_) | Term::Match(_) => self.fmt_term_inline(env, indent, f),
             // Everything else gets a leading indent.
-            _ => {
+            Term::Var(_)
+            | Term::Prim(_)
+            | Term::Lit(..)
+            | Term::Global(_)
+            | Term::PrimApp(_)
+            | Term::Pi(_)
+            | Term::Lam(_)
+            | Term::FunApp(_)
+            | Term::Lift(_)
+            | Term::Quote(_)
+            | Term::Splice(_) => {
                 write_indent(f, indent)?;
                 self.fmt_term_inline(env, indent, f)
             }
@@ -172,7 +182,17 @@ impl<'a> Term<'a> {
                 write_indent(f, indent)?;
                 write!(f, "}}")
             }
-            _ => self.fmt_term_inline(env, indent, f),
+            Term::Var(_)
+            | Term::Prim(_)
+            | Term::Lit(..)
+            | Term::Global(_)
+            | Term::PrimApp(_)
+            | Term::Pi(_)
+            | Term::Lam(_)
+            | Term::FunApp(_)
+            | Term::Lift(_)
+            | Term::Quote(_)
+            | Term::Splice(_) => self.fmt_term_inline(env, indent, f),
         }
     }
 
