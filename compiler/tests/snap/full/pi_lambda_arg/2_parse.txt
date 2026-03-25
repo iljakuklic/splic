@@ -1,2 +1,103 @@
-ERROR
-in function `test`: expected function body: parsing expression in block: parsing function argument: expected parameter name in lambda: expected identifier, got Num(42)
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "apply",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Var(
+                                    "u64",
+                                ),
+                            },
+                        ],
+                        ret_ty: Var(
+                            "u64",
+                        ),
+                    },
+                },
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "f",
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "apply",
+                    args: [
+                        Lam {
+                            params: [
+                                Param {
+                                    name: "x",
+                                    ty: Var(
+                                        "u64",
+                                    ),
+                                },
+                            ],
+                            body: App {
+                                func: Add,
+                                args: [
+                                    Var(
+                                        "x",
+                                    ),
+                                    Lit(
+                                        1,
+                                    ),
+                                ],
+                            },
+                        },
+                        Lit(
+                            42,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test",
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

@@ -1,2 +1,161 @@
-ERROR
-in function `square_twice`: expected function body: parsing expression in block: parsing spliced expression: parsing function argument: expected parameter name in lambda: expected identifier, got Num(2)
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "repeat",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Lift(
+                                    Var(
+                                        "u64",
+                                    ),
+                                ),
+                            },
+                        ],
+                        ret_ty: Lift(
+                            Var(
+                                "u64",
+                            ),
+                        ),
+                    },
+                },
+                Param {
+                    name: "n",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+                Param {
+                    name: "x",
+                    ty: Lift(
+                        Var(
+                            "u64",
+                        ),
+                    ),
+                },
+            ],
+            ret_ty: Lift(
+                Var(
+                    "u64",
+                ),
+            ),
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: Var(
+                        "n",
+                    ),
+                    arms: [
+                        MatchArm {
+                            pat: Lit(
+                                0,
+                            ),
+                            body: Var(
+                                "x",
+                            ),
+                        },
+                        MatchArm {
+                            pat: Name(
+                                "n",
+                            ),
+                            body: App {
+                                func: "repeat",
+                                args: [
+                                    Var(
+                                        "f",
+                                    ),
+                                    App {
+                                        func: Sub,
+                                        args: [
+                                            Var(
+                                                "n",
+                                            ),
+                                            Lit(
+                                                1,
+                                            ),
+                                        ],
+                                    },
+                                    App {
+                                        func: "f",
+                                        args: [
+                                            Var(
+                                                "x",
+                                            ),
+                                        ],
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "square_twice",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "repeat",
+                        args: [
+                            Lam {
+                                params: [
+                                    Param {
+                                        name: "y",
+                                        ty: Lift(
+                                            Var(
+                                                "u64",
+                                            ),
+                                        ),
+                                    },
+                                ],
+                                body: Quote(
+                                    App {
+                                        func: Mul,
+                                        args: [
+                                            Splice(
+                                                Var(
+                                                    "y",
+                                                ),
+                                            ),
+                                            Splice(
+                                                Var(
+                                                    "y",
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                            Lit(
+                                2,
+                            ),
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+    ],
+}

@@ -1,2 +1,35 @@
-ERROR
-in function `test`: expected function body: parsing expression in block: expected '|' after lambda parameters: expected Bar, got RBrace
+Program {
+    functions: [
+        Function {
+            phase: Object,
+            name: "test",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Lam {
+                    params: [
+                        Param {
+                            name: "y",
+                            ty: Var(
+                                "u64",
+                            ),
+                        },
+                    ],
+                    body: Var(
+                        "y",
+                    ),
+                },
+            },
+        },
+    ],
+}

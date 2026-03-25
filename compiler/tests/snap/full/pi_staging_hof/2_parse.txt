@@ -1,2 +1,113 @@
-ERROR
-in function `double`: expected function body: parsing expression in block: parsing spliced expression: parsing function argument: expected parameter name in lambda: expected identifier, got HashLParen
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "map_code",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Lift(
+                                    Var(
+                                        "u64",
+                                    ),
+                                ),
+                            },
+                        ],
+                        ret_ty: Lift(
+                            Var(
+                                "u64",
+                            ),
+                        ),
+                    },
+                },
+                Param {
+                    name: "x",
+                    ty: Lift(
+                        Var(
+                            "u64",
+                        ),
+                    ),
+                },
+            ],
+            ret_ty: Lift(
+                Var(
+                    "u64",
+                ),
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "f",
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "double",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "map_code",
+                        args: [
+                            Lam {
+                                params: [
+                                    Param {
+                                        name: "y",
+                                        ty: Lift(
+                                            Var(
+                                                "u64",
+                                            ),
+                                        ),
+                                    },
+                                ],
+                                body: Quote(
+                                    App {
+                                        func: Add,
+                                        args: [
+                                            Splice(
+                                                Var(
+                                                    "y",
+                                                ),
+                                            ),
+                                            Splice(
+                                                Var(
+                                                    "y",
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+    ],
+}

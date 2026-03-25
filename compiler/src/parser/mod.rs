@@ -375,7 +375,7 @@ where
             parser
                 .take(Token::Colon)
                 .context("expected ':' in lambda parameter (type annotations are required)")?;
-            let ty = parser.parse_expr().context("expected parameter type")?;
+            let ty = parser.parse_atom_owned().context("expected parameter type")?;
             let ty = parser.arena.alloc(ty);
             Ok(Param { name, ty })
         })?;
