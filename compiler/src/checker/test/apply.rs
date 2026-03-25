@@ -12,7 +12,7 @@ fn infer_global_call_no_args_returns_ret_ty() {
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
     let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
@@ -34,7 +34,7 @@ fn infer_global_call_unknown_name_fails() {
     let mut ctx = test_ctx(&core_arena);
 
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("unknown")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("unknown")))),
         args: &[],
     });
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
@@ -52,7 +52,7 @@ fn infer_global_call_wrong_arity_fails() {
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args,
     });
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
@@ -79,7 +79,7 @@ fn infer_global_call_phase_mismatch_fails() {
 
     // Call `f()` from meta phase — should be rejected.
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
@@ -98,7 +98,7 @@ fn infer_global_call_with_arg_checks_arg_type() {
     let arg = src_arena.alloc(ast::Term::Lit(42));
     let args = src_arena.alloc_slice_fill_iter([arg as &ast::Term]);
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args,
     });
     let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");

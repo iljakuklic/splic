@@ -33,7 +33,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "f",
+                    func: Var(
+                        "f",
+                    ),
                     args: [
                         Var(
                             "x",
@@ -81,7 +83,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "apply",
+                    func: Var(
+                        "apply",
+                    ),
                     args: [
                         Var(
                             "inc",
@@ -104,7 +108,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "test",
+                        func: Var(
+                            "test",
+                        ),
                         args: [],
                     },
                 ),

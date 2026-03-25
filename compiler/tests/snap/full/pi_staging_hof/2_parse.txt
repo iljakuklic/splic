@@ -41,7 +41,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "f",
+                    func: Var(
+                        "f",
+                    ),
                     args: [
                         Var(
                             "x",
@@ -68,7 +70,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "map_code",
+                        func: Var(
+                            "map_code",
+                        ),
                         args: [
                             Lam {
                                 params: [

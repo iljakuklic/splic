@@ -24,11 +24,11 @@ fn check_match_all_arms_same_type_succeeds() {
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k32")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k32")))),
         args: &[],
     });
     let arm1_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k32")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k32")))),
         args: &[],
     });
     let arms = src_arena.alloc_slice_fill_iter([
@@ -67,11 +67,11 @@ fn check_match_u1_fully_covered_succeeds() {
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k1")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k1")))),
         args: &[],
     });
     let arm1_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k1")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k1")))),
         args: &[],
     });
     // Both values of u1 are covered — exhaustive without a wildcard.
@@ -111,7 +111,7 @@ fn infer_match_u1_partially_covered_fails() {
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k1")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k1")))),
         args: &[],
     });
     // Only 0 covered, 1 is missing — not exhaustive.
@@ -146,11 +146,11 @@ fn infer_match_no_catch_all_fails() {
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k32")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k32")))),
         args: &[],
     });
     let arm1_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k32")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k32")))),
         args: &[],
     });
     // Only literal arms, no wildcard/bind — not exhaustive.
@@ -200,11 +200,11 @@ fn infer_match_arms_type_mismatch_fails() {
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k32")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k32")))),
         args: &[],
     });
     let arm1_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k64")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k64")))),
         args: &[],
     });
     let arms = src_arena.alloc_slice_fill_iter([

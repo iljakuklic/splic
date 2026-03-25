@@ -256,7 +256,7 @@ fn elaborate_program_code_fn_with_splice() {
 
     // pow0's body: $(k())
     let k_call = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k")))),
         args: &[],
     });
     let pow0_body = src_arena.alloc(ast::Term::Splice(k_call));
@@ -296,7 +296,7 @@ fn elaborate_program_forward_reference_succeeds() {
 
     // fn a() -> u32 { b() }
     let a_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("b")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("b")))),
         args: &[],
     });
     // fn b() -> u32 { 42 }

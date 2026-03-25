@@ -1,9 +1,9 @@
 pub use crate::common::{Assoc, BinOp, Name, Phase, UnOp};
 
 /// Function or operator reference
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy)]
 pub enum FunName<'a> {
-    Name(Name<'a>),
+    Term(&'a Term<'a>),
     BinOp(BinOp),
     UnOp(UnOp),
 }
@@ -11,7 +11,7 @@ pub enum FunName<'a> {
 impl std::fmt::Debug for FunName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Name(n) => n.fmt(f),
+            Self::Term(t) => t.fmt(f),
             Self::BinOp(o) => o.fmt(f),
             Self::UnOp(o) => o.fmt(f),
         }

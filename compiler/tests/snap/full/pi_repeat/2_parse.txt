@@ -64,7 +64,9 @@ Program {
                                 "n",
                             ),
                             body: App {
-                                func: "repeat",
+                                func: Var(
+                                    "repeat",
+                                ),
                                 args: [
                                     Var(
                                         "f",
@@ -81,7 +83,9 @@ Program {
                                         ],
                                     },
                                     App {
-                                        func: "f",
+                                        func: Var(
+                                            "f",
+                                        ),
                                         args: [
                                             Var(
                                                 "x",
@@ -113,7 +117,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "repeat",
+                        func: Var(
+                            "repeat",
+                        ),
                         args: [
                             Lam {
                                 params: [

@@ -21,7 +21,9 @@ App {
             func: Not,
             args: [
                 App {
-                    func: "foo",
+                    func: Var(
+                        "foo",
+                    ),
                     args: [
                         Var(
                             "z",

@@ -75,7 +75,7 @@ fn infer_quote_of_global_call_returns_lifted_type() {
 
     // Surface: `#(f())`
     let inner = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
     let term = src_arena.alloc(ast::Term::Quote(inner));
@@ -107,7 +107,7 @@ fn infer_quote_at_object_phase_fails() {
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let inner = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
     let term = src_arena.alloc(ast::Term::Quote(inner));

@@ -1,0 +1,20 @@
+fn compose(f@0: fn(u64) -> u64, g@1: fn(u64) -> u64) -> fn(u64) -> u64 {
+    |x@2: u64| f@0(g@1(x@2))
+}
+
+fn double(x@0: u64) -> u64 {
+    @add_u64(x@0, x@0)
+}
+
+fn inc(x@0: u64) -> u64 {
+    @add_u64(x@0, 1_u64)
+}
+
+fn test() -> u64 {
+    compose(double, inc, 5_u64)
+}
+
+code fn result() -> u64 {
+    $(@embed_u64(test))
+}
+

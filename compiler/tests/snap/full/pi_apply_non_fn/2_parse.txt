@@ -22,7 +22,9 @@ Program {
                     },
                 ],
                 expr: App {
-                    func: "x",
+                    func: Var(
+                        "x",
+                    ),
                     args: [
                         Lit(
                             1,

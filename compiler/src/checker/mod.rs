@@ -479,11 +479,11 @@ pub fn infer<'src, 'core>(
         // ------------------------------------------------------------------ App { Global or local }
         // Function calls: look up callee, elaborate as curried FunApp chain.
         ast::Term::App {
-            func: ast::FunName::Name(name),
+            func: ast::FunName::Term(func_term),
             args,
         } => {
             // Elaborate the callee
-            let callee = infer(ctx, phase, &ast::Term::Var(*name))?;
+            let callee = infer(ctx, phase, func_term)?;
             let mut callee_ty = ctx.type_of(callee);
 
             // For globals, verify phase matches.
@@ -494,7 +494,7 @@ pub fn infer<'src, 'core>(
                     .expect("Global must be in globals table");
                 ensure!(
                     sig.phase == phase,
-                    "function `{name}` is a {}-phase function, but called in {phase}-phase context",
+                    "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
                     sig.phase
                 );
             }
@@ -516,13 +516,13 @@ pub fn infer<'src, 'core>(
                     | core::Term::Splice(_)
                     | core::Term::Let(_)
                     | core::Term::Match(_) => bail!(
-                        "too many arguments: function `{name}` expects {i} argument(s), got {}",
+                        "too many arguments: callee expects {i} argument(s), got {}",
                         args.len()
                     ),
                 };
 
                 let core_arg = check(ctx, phase, arg, pi.param_ty)
-                    .with_context(|| format!("in argument {i} of call to `{name}`"))?;
+                    .with_context(|| format!("in argument {i} of function call"))?;
 
                 // The return type may depend on the argument (dependent types).
                 // Global function signatures are elaborated in an empty context,

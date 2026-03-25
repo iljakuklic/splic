@@ -256,6 +256,21 @@ where
         };
 
         loop {
+            if self.peek() == Some(Token::LParen) {
+                self.next();
+                let args = self.parse_separated_list(Token::RParen, |parser| {
+                    parser.parse_expr().context("parsing function argument")
+                })?;
+                self.take(Token::RParen)
+                    .context("expected ')' after function arguments")?;
+                let args = self.arena.alloc_slice_fill_iter(args);
+                lhs = Term::App {
+                    func: FunName::Term(self.arena.alloc(lhs)),
+                    args,
+                };
+                continue;
+            }
+
             let Some(op) = self.match_binop() else {
                 break;
             };
@@ -320,7 +335,7 @@ where
             .context("expected ')' after function arguments")?;
         let args = self.arena.alloc_slice_fill_iter(args);
         Ok(Term::App {
-            func: FunName::Name(name),
+            func: FunName::Term(self.arena.alloc(Term::Var(name))),
             args,
         })
     }

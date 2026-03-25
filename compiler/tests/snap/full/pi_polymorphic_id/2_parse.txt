@@ -37,7 +37,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "id",
+                    func: Var(
+                        "id",
+                    ),
                     args: [
                         Var(
                             "u64",
@@ -59,7 +61,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "id",
+                    func: Var(
+                        "id",
+                    ),
                     args: [
                         Var(
                             "u8",
@@ -82,7 +86,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "test_u64",
+                        func: Var(
+                            "test_u64",
+                        ),
                         args: [],
                     },
                 ),
@@ -99,7 +105,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "test_u8",
+                        func: Var(
+                            "test_u8",
+                        ),
                         args: [],
                     },
                 ),

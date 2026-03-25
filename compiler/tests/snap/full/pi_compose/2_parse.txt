@@ -1,2 +1,193 @@
-ERROR
-in function `test`: expected function body: expected '}': expected RBrace, got LParen
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "compose",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Var(
+                                    "u64",
+                                ),
+                            },
+                        ],
+                        ret_ty: Var(
+                            "u64",
+                        ),
+                    },
+                },
+                Param {
+                    name: "g",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Var(
+                                    "u64",
+                                ),
+                            },
+                        ],
+                        ret_ty: Var(
+                            "u64",
+                        ),
+                    },
+                },
+            ],
+            ret_ty: Pi {
+                params: [
+                    Param {
+                        name: "_",
+                        ty: Var(
+                            "u64",
+                        ),
+                    },
+                ],
+                ret_ty: Var(
+                    "u64",
+                ),
+            },
+            body: Block {
+                stmts: [],
+                expr: Lam {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: Var(
+                                "u64",
+                            ),
+                        },
+                    ],
+                    body: App {
+                        func: Var(
+                            "f",
+                        ),
+                        args: [
+                            App {
+                                func: Var(
+                                    "g",
+                                ),
+                                args: [
+                                    Var(
+                                        "x",
+                                    ),
+                                ],
+                            },
+                        ],
+                    },
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "double",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "inc",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                        Lit(
+                            1,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: App {
+                        func: Var(
+                            "compose",
+                        ),
+                        args: [
+                            Var(
+                                "double",
+                            ),
+                            Var(
+                                "inc",
+                            ),
+                        ],
+                    },
+                    args: [
+                        Lit(
+                            5,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: Var(
+                            "test",
+                        ),
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

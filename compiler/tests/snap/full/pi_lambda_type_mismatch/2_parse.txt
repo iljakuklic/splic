@@ -33,7 +33,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "f",
+                    func: Var(
+                        "f",
+                    ),
                     args: [
                         Var(
                             "x",
@@ -52,7 +54,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "apply",
+                    func: Var(
+                        "apply",
+                    ),
                     args: [
                         Lam {
                             params: [
