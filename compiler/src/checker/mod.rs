@@ -110,7 +110,9 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
             // Primitive types inhabit the relevant universe.
             core::Term::Prim(Prim::IntTy(it)) => core::Term::universe(it.phase),
             // Type, VmType, and [[T]] all inhabit Type (meta universe).
-            core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) | core::Term::Pi(_) => &core::Term::TYPE,
+            core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) | core::Term::Pi(_) => {
+                &core::Term::TYPE
+            }
 
             // Comparison ops return u1 at the operand phase.
             core::Term::Prim(

@@ -245,7 +245,7 @@ fn apply_closure<'out>(
                 obj_next,
             };
             callee_env.push_meta(arg_val);
-            
+
             // Restore env for the caller (bindings are consumed by the callee).
             eval_meta(arena, globals, &mut callee_env, body)
         }
