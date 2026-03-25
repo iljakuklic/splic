@@ -50,13 +50,13 @@ Identifiers matching `u[0-9]+` are reserved for primitive types.
 Function types use the `fn` keyword with parenthesized parameters:
 
 ```
-fn(u64) -> u64                    // non-dependent function type
+fn(_: u64) -> u64                // non-dependent function type (wildcard name required)
 fn(x: u64) -> u64                // dependent: return type may mention x
 fn(A: Type, x: A) -> A           // polymorphic: type parameter used in value positions
-fn(fn(u64) -> u64) -> u64        // higher-order: function taking a function
+fn(_: fn(_: u64) -> u64) -> u64  // higher-order: function taking a function
 ```
 
-Function types are right-associative: `fn(A) -> fn(B) -> C` means `fn(A) -> (fn(B) -> C)`.
+Function types are right-associative: `fn(_: A) -> fn(_: B) -> C` means `fn(_: A) -> (fn(_: B) -> C)`.
 
 Multi-parameter function types desugar to nested single-parameter types:
 
