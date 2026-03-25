@@ -1,8 +1,12 @@
 pub mod pretty;
 mod prim;
+mod subst;
 
+pub mod alpha_eq;
 pub use crate::common::{Name, Phase};
+pub use alpha_eq::alpha_eq;
 pub use prim::{IntType, IntWidth, Prim};
+pub use subst::subst;
 
 /// De Bruijn level (counts from the outermost binder)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -16,20 +20,6 @@ impl Lvl {
     #[must_use]
     pub const fn succ(self) -> Self {
         Self(self.0 + 1)
-    }
-}
-
-/// Head of an application: either a top-level function or a primitive op
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Head<'a> {
-    Global(Name<'a>), // resolved top-level function name
-    Prim(Prim),       // built-in operation with resolved width
-}
-
-impl Head<'_> {
-    /// Returns `true` if this head is a binary infix primitive operator.
-    pub const fn is_binop(&self) -> bool {
-        matches!(self, Self::Prim(p) if p.is_binop())
     }
 }
 
@@ -66,6 +56,22 @@ pub struct FunSig<'a> {
     pub phase: Phase,
 }
 
+impl<'a> FunSig<'a> {
+    /// Construct a nested Pi type from this signature:
+    /// `fn(x: A, y: B) -> C` becomes `Pi(x, A, Pi(y, B, C))`.
+    pub fn to_pi_type(&self, arena: &'a bumpalo::Bump) -> &'a Term<'a> {
+        let mut result = self.ret_ty;
+        for &(name, ty) in self.params.iter().rev() {
+            result = arena.alloc(Term::Pi(Pi {
+                param_name: name,
+                param_ty: ty,
+                body_ty: result,
+            }));
+        }
+        result
+    }
+}
+
 /// Elaborated top-level function definition
 #[derive(Debug)]
 pub struct Function<'a> {
@@ -80,30 +86,54 @@ pub struct Program<'a> {
     pub functions: &'a [Function<'a>],
 }
 
-/// Application of a global function or primitive operation to arguments.
+/// Primitive operation application (always fully applied, carries resolved `IntType`)
 #[derive(Debug, PartialEq, Eq)]
-pub struct App<'a> {
-    pub head: Head<'a>,
+pub struct PrimApp<'a> {
+    pub prim: Prim,
     pub args: &'a [&'a Term<'a>],
 }
 
-impl App<'_> {
+impl PrimApp<'_> {
     /// Returns the number of arguments.
     pub const fn arity(&self) -> usize {
         self.args.len()
     }
 
-    /// Returns `true` if this application is a binary infix primitive operator.
-    ///
-    /// Asserts that the argument count is exactly 2, which is an invariant
-    /// enforced by the elaborator for all binop applications.
+    /// Returns `true` if this is a binary infix primitive operator.
     pub fn is_binop(&self) -> bool {
-        let result = self.head.is_binop();
+        let result = self.prim.is_binop();
         if result {
-            assert_eq!(self.arity(), 2, "binop App must have exactly 2 arguments");
+            assert_eq!(
+                self.arity(),
+                2,
+                "binop PrimApp must have exactly 2 arguments"
+            );
         }
         result
     }
+}
+
+/// Dependent function type: fn(x: A) -> B
+#[derive(Debug, PartialEq, Eq)]
+pub struct Pi<'a> {
+    pub param_name: &'a str,
+    pub param_ty: &'a Term<'a>,
+    pub body_ty: &'a Term<'a>,
+}
+
+/// Lambda abstraction: |x: A| body
+#[derive(Debug, PartialEq, Eq)]
+pub struct Lam<'a> {
+    pub param_name: &'a str,
+    pub param_ty: &'a Term<'a>,
+    pub body: &'a Term<'a>,
+}
+
+/// Function application (single-arg, curried): f(x)
+#[derive(Debug, PartialEq, Eq)]
+pub struct FunApp<'a> {
+    pub func: &'a Term<'a>,
+    pub arg: &'a Term<'a>,
 }
 
 /// Let binding with explicit type annotation and a body.
@@ -127,12 +157,20 @@ pub struct Match<'a> {
 pub enum Term<'a> {
     /// Local variable, identified by De Bruijn level
     Var(Lvl),
-    /// Built-in type or operation
+    /// Built-in type or operation (not applied)
     Prim(Prim),
     /// Numeric literal with its integer type
     Lit(u64, IntType),
-    /// Application of a global function or primitive operation to arguments
-    App(App<'a>),
+    /// Global function reference
+    Global(Name<'a>),
+    /// Primitive operation application (always fully applied, carries resolved `IntType`)
+    PrimApp(PrimApp<'a>),
+    /// Dependent function type: fn(x: A) -> B
+    Pi(Pi<'a>),
+    /// Lambda abstraction: |x: A| body
+    Lam(Lam<'a>),
+    /// Function application (single-arg, curried): f(x)
+    FunApp(FunApp<'a>),
     /// Lift: [[T]] — meta type representing object-level code of type T
     Lift(&'a Self),
     /// Quotation: #(t) — produce object-level code from a meta expression
@@ -202,8 +240,8 @@ impl Term<'static> {
 }
 
 impl<'a> Term<'a> {
-    pub const fn new_app(head: Head<'a>, args: &'a [&'a Self]) -> Self {
-        Self::App(App { head, args })
+    pub const fn new_prim_app(prim: Prim, args: &'a [&'a Self]) -> Self {
+        Self::PrimApp(PrimApp { prim, args })
     }
 
     pub const fn new_let(name: &'a str, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
@@ -220,9 +258,9 @@ impl<'a> Term<'a> {
     }
 }
 
-impl<'a> From<App<'a>> for Term<'a> {
-    fn from(app: App<'a>) -> Self {
-        Self::App(app)
+impl<'a> From<PrimApp<'a>> for Term<'a> {
+    fn from(app: PrimApp<'a>) -> Self {
+        Self::PrimApp(app)
     }
 }
 

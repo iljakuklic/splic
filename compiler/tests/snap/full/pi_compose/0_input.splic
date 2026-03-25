@@ -1,5 +1,5 @@
 // Function composition (monomorphic)
-fn compose(f: fn(u64) -> u64, g: fn(u64) -> u64) -> fn(u64) -> u64 {
+fn compose(f: fn(_: u64) -> u64, g: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
     |x: u64| f(g(x))
 }
 

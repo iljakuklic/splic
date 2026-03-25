@@ -4,26 +4,28 @@ use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
 use crate::core::{
-    App, Arm, FunSig, Function, Head, IntType, IntWidth, Lvl, Name, Pat, Prim, Program, Term,
+    Arm, FunApp, FunSig, Function, IntType, IntWidth, Lam, Lvl, Name, Pat, Prim, Program, Term,
 };
 use crate::parser::ast::Phase;
 
 // ── Value types ───────────────────────────────────────────────────────────────
 
 /// A value produced by meta-level evaluation.
-///
-/// In this substitution-based prototype there are only two kinds of meta
-/// values: integer literals and quoted object-level code.  Meta-level
-/// lambdas / closures are not yet supported (the current surface language
-/// has no meta-level lambda syntax; only top-level `fn` definitions).
 #[derive(Clone, Debug)]
 enum MetaVal<'out> {
     /// A concrete integer value computed at meta (compile) time.
-    VLit(u64),
-    /// Quoted object-level code: the result of evaluating `#(t)` or of
-    /// wrapping a literal via `Embed`.  The inner term is a splice-free
-    /// object term produced by `unstage_obj`.
-    VCode(&'out Term<'out>),
+    Lit(u64),
+    /// Quoted object-level code.
+    Code(&'out Term<'out>),
+    /// A type term passed as a type argument (dependent types: types are values).
+    /// The type term itself is not inspected during evaluation.
+    Ty,
+    /// A closure: a lambda body captured with its environment.
+    Closure {
+        body: &'out Term<'out>,
+        env: Vec<Binding<'out>>,
+        obj_next: Lvl,
+    },
 }
 
 // ── Environment ───────────────────────────────────────────────────────────────
@@ -33,18 +35,11 @@ enum MetaVal<'out> {
 enum Binding<'out> {
     /// A meta-level variable bound to a concrete `MetaVal`.
     Meta(MetaVal<'out>),
-    /// An object-level variable.  Object variables are opaque during
-    /// meta-level evaluation and remain as `Var(lvl)` in the output.
-    /// The Lvl inside signifies the level in the generated output
-    /// rather than in the original program where bindings for the
-    /// object level and meta level may be interwoven.
+    /// An object-level variable.
     Obj(Lvl),
 }
 
 /// Evaluation environment: a stack of bindings indexed by De Bruijn level.
-///
-/// Level 0 is the outermost binding (first function parameter); new bindings
-/// are pushed onto the end and accessed by their index.
 #[derive(Debug)]
 struct Env<'out> {
     bindings: Vec<Binding<'out>>,
@@ -66,8 +61,7 @@ impl<'out> Env<'out> {
             .expect("De Bruijn level in env bounds")
     }
 
-    /// Push an object-level binding.  Assigns the next consecutive object-level
-    /// De Bruijn level and advances `obj_next`.
+    /// Push an object-level binding.
     fn push_obj(&mut self) {
         let lvl = self.obj_next;
         self.obj_next = lvl.succ();
@@ -79,7 +73,7 @@ impl<'out> Env<'out> {
         self.bindings.push(Binding::Meta(val));
     }
 
-    /// Pop the last binding (used to restore the environment after a let / arm).
+    /// Pop the last binding.
     fn pop(&mut self) {
         match self.bindings.pop().expect("pop on empty environment") {
             Binding::Obj(_) => {
@@ -98,30 +92,21 @@ impl<'out> Env<'out> {
 // ── Globals table ─────────────────────────────────────────────────────────────
 
 /// Everything the evaluator needs to know about a top-level function.
-struct GlobalDef<'core> {
-    sig: &'core FunSig<'core>,
-    body: &'core Term<'core>,
+struct GlobalDef<'a> {
+    sig: &'a FunSig<'a>,
+    body: &'a Term<'a>,
 }
 
-type Globals<'core> = HashMap<Name<'core>, GlobalDef<'core>>;
+type Globals<'a> = HashMap<Name<'a>, GlobalDef<'a>>;
 
 // ── Meta-level evaluator ──────────────────────────────────────────────────────
 
 /// Evaluate a meta-level `term` to a `MetaVal`.
-///
-/// `env` maps De Bruijn levels to their current values.  `globals` provides
-/// the definitions of all top-level functions.  `arena` is used when
-/// allocating object terms inside `VCode` values (via `unstage_obj`).
-///
-/// Invariants enforced by the typechecker (violations panic via `unreachable!`):
-/// - `Splice` nodes never appear at meta level.
-/// - `Lift` and type-level `Prim` nodes never appear in term positions.
-/// - Object variables (`Binding::Obj`) are never referenced at meta level.
-fn eval_meta<'out, 'core>(
+fn eval_meta<'out>(
     arena: &'out Bump,
-    globals: &Globals<'core>,
+    globals: &Globals<'out>,
     env: &mut Env<'out>,
-    term: &'core Term<'core>,
+    term: &'out Term<'out>,
 ) -> Result<MetaVal<'out>> {
     match term {
         // ── Variable ─────────────────────────────────────────────────────────
@@ -134,20 +119,51 @@ fn eval_meta<'out, 'core>(
         },
 
         // ── Literal ──────────────────────────────────────────────────────────
-        Term::Lit(n, _) => Ok(MetaVal::VLit(*n)),
+        Term::Lit(n, _) => Ok(MetaVal::Lit(*n)),
 
-        // ── Application ──────────────────────────────────────────────────────
-        Term::App(app) => eval_meta_app(arena, globals, env, app),
-
-        // ── Quote: #(t) ───────────────────────────────────────────────────────
-        // Unstage the enclosed object term (eliminating any splices inside it)
-        // and wrap the result as object code.
-        Term::Quote(inner) => {
-            let obj_term = unstage_obj(arena, globals, env, inner)?;
-            Ok(MetaVal::VCode(obj_term))
+        // ── Global reference ─────────────────────────────────────────────────
+        Term::Global(name) => {
+            let def = globals
+                .get(name)
+                .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
+            if def.sig.params.is_empty() {
+                // Zero-param global: evaluate the body immediately in a fresh env.
+                // (Zero-param Pi types don't exist, so zero-param globals are always
+                // called, never passed as values.)
+                let mut callee_env = Env::new(env.obj_next);
+                eval_meta(arena, globals, &mut callee_env, def.body)
+            } else {
+                // Multi-param global: produce a closure, capturing the caller's
+                // obj_next so object-level let bindings inside quotes don't clash
+                // with output levels already in use at the call site.
+                Ok(global_to_closure(arena, def, env.obj_next))
+            }
         }
 
-        // ── Let binding ───────────────────────────────────────────────────────
+        // ── Lambda ───────────────────────────────────────────────────────────
+        Term::Lam(lam) => Ok(MetaVal::Closure {
+            body: lam.body,
+            env: env.bindings.clone(),
+            obj_next: env.obj_next,
+        }),
+
+        // ── Function application ─────────────────────────────────────────────
+        Term::FunApp(app) => {
+            let func_val = eval_meta(arena, globals, env, app.func)?;
+            let arg_val = eval_meta(arena, globals, env, app.arg)?;
+            apply_closure(arena, globals, func_val, arg_val)
+        }
+
+        // ── PrimApp ──────────────────────────────────────────────────────────
+        Term::PrimApp(app) => eval_meta_prim(arena, globals, env, app.prim, app.args),
+
+        // ── Quote: #(t) ──────────────────────────────────────────────────────
+        Term::Quote(inner) => {
+            let obj_term = unstage_obj(arena, globals, env, inner)?;
+            Ok(MetaVal::Code(obj_term))
+        }
+
+        // ── Let binding ──────────────────────────────────────────────────────
         Term::Let(let_) => {
             let val = eval_meta(arena, globals, env, let_.expr)?;
             env.push_meta(val);
@@ -156,87 +172,106 @@ fn eval_meta<'out, 'core>(
             result
         }
 
-        // ── Match ─────────────────────────────────────────────────────────────
+        // ── Match ────────────────────────────────────────────────────────────
         Term::Match(match_) => {
             let scrut_val = eval_meta(arena, globals, env, match_.scrutinee)?;
             let n = match scrut_val {
-                MetaVal::VLit(n) => n,
-                MetaVal::VCode(_) => unreachable!(
-                    "cannot match on object code at meta level (typechecker invariant)"
+                MetaVal::Lit(n) => n,
+                MetaVal::Code(_) | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
+                    "cannot match on non-integer at meta level (typechecker invariant)"
                 ),
             };
             eval_meta_match(arena, globals, env, n, match_.arms)
         }
 
-        // ── Unreachable in well-typed meta terms ──────────────────────────────
+        // ── Unreachable in well-typed meta terms ─────────────────────────────
         Term::Splice(_) => unreachable!("Splice in meta context (typechecker invariant)"),
-        Term::Lift(_) | Term::Prim(_) => {
-            unreachable!("type-level term in evaluation position (typechecker invariant)")
+        // Type-level terms evaluate to themselves when passed as type arguments
+        // in a dependently-typed function call (e.g. `id(u64, x)` passes `u64 : Type`).
+        Term::Lift(_) | Term::Prim(_) | Term::Pi(_) => Ok(MetaVal::Ty),
+    }
+}
+
+/// Convert a global function definition into a closure value.
+///
+/// For a multi-parameter function, we build nested closures. E.g., `fn f(x, y) = body`
+/// becomes a closure whose body is a lambda `|y| body`.
+fn global_to_closure<'out>(
+    arena: &'out Bump,
+    def: &GlobalDef<'out>,
+    obj_next: Lvl,
+) -> MetaVal<'out> {
+    let params = def.sig.params;
+    if params.is_empty() {
+        MetaVal::Closure {
+            body: def.body,
+            env: Vec::new(),
+            obj_next,
+        }
+    } else {
+        // Build nested lambdas for params[1..], then wrap in a closure for params[0].
+        let mut body: &Term = def.body;
+        for &(name, ty) in params.iter().rev().skip(1) {
+            body = arena.alloc(Term::Lam(Lam {
+                param_name: name,
+                param_ty: ty,
+                body,
+            }));
+        }
+        MetaVal::Closure {
+            body,
+            env: Vec::new(),
+            obj_next,
         }
     }
 }
 
-/// Evaluate a function application at meta level.
-fn eval_meta_app<'out, 'core>(
+/// Apply a closure value to an argument value.
+fn apply_closure<'out>(
     arena: &'out Bump,
-    globals: &Globals<'core>,
-    env: &mut Env<'out>,
-    app: &'core App<'core>,
+    globals: &Globals<'out>,
+    func_val: MetaVal<'out>,
+    arg_val: MetaVal<'out>,
 ) -> Result<MetaVal<'out>> {
-    match &app.head {
-        // ── Global function call ──────────────────────────────────────────────
-        Head::Global(name) => {
-            let def = globals
-                .get(name)
-                .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
-
-            assert_eq!(
-                def.sig.phase,
-                Phase::Meta,
-                "object-phase function `{name}` called in meta context during staging"
-            );
-
-            // Evaluate each argument in the *caller's* environment.
-            let mut arg_vals: Vec<MetaVal<'out>> = Vec::with_capacity(app.args.len());
-            for arg in app.args {
-                arg_vals.push(eval_meta(arena, globals, env, arg)?);
-            }
-
-            // Build a fresh environment for the callee: one binding per parameter.
-            let mut callee_env = Env::new(env.obj_next);
-            for val in arg_vals {
-                callee_env.push_meta(val);
-            }
-
-            eval_meta(arena, globals, &mut callee_env, def.body)
+    match func_val {
+        MetaVal::Closure {
+            body,
+            env,
+            obj_next,
+            ..
+        } => {
+            let mut callee_env = Env {
+                bindings: env,
+                obj_next,
+            };
+            callee_env.push_meta(arg_val);
+            
+            // Restore env for the caller (bindings are consumed by the callee).
+            eval_meta(arena, globals, &mut callee_env, body)
         }
-
-        // ── Primitive operations ──────────────────────────────────────────────
-        Head::Prim(prim) => eval_meta_prim(arena, globals, env, *prim, app.args),
+        MetaVal::Lit(_) | MetaVal::Code(_) | MetaVal::Ty => {
+            unreachable!("applying a non-function value (typechecker invariant)")
+        }
     }
 }
 
 /// Evaluate a primitive operation at meta level.
-fn eval_meta_prim<'out, 'core>(
+fn eval_meta_prim<'out>(
     arena: &'out Bump,
-    globals: &Globals<'core>,
+    globals: &Globals<'out>,
     env: &mut Env<'out>,
     prim: Prim,
-    args: &'core [&'core Term<'core>],
+    args: &'out [&'out Term<'out>],
 ) -> Result<MetaVal<'out>> {
-    // Evaluate args[i] and extract its integer value.
-    // Panics if the value is `VCode` — the typechecker guarantees integer operands.
-    let eval_lit = |arena: &'out Bump,
-                    globals: &Globals<'core>,
-                    env: &mut Env<'out>,
-                    arg: &'core Term<'core>| {
-        eval_meta(arena, globals, env, arg).map(|v| match v {
-            MetaVal::VLit(n) => n,
-            MetaVal::VCode(_) => unreachable!(
-                "expected integer meta value for primitive operand, got code (typechecker invariant)"
-            ),
-        })
-    };
+    let eval_lit =
+        |arena: &'out Bump, globals: &Globals<'out>, env: &mut Env<'out>, arg: &'out Term<'out>| {
+            eval_meta(arena, globals, env, arg).map(|v| match v {
+                MetaVal::Lit(n) => n,
+                MetaVal::Code(_) | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
+                    "expected integer meta value for primitive operand (typechecker invariant)"
+                ),
+            })
+        };
 
     #[expect(clippy::indexing_slicing)]
     match prim {
@@ -255,7 +290,7 @@ fn eval_meta_prim<'out, 'core>(
                         width.max_value()
                     )
                 })?;
-            Ok(MetaVal::VLit(result))
+            Ok(MetaVal::Lit(result))
         }
         Prim::Sub(IntType { width, .. }) => {
             let a = eval_lit(arena, globals, env, args[0])?;
@@ -266,7 +301,7 @@ fn eval_meta_prim<'out, 'core>(
                      {a} - {b} underflows {width}"
                 )
             })?;
-            Ok(MetaVal::VLit(result))
+            Ok(MetaVal::Lit(result))
         }
         Prim::Mul(IntType { width, .. }) => {
             let a = eval_lit(arena, globals, env, args[0])?;
@@ -282,72 +317,69 @@ fn eval_meta_prim<'out, 'core>(
                         width.max_value()
                     )
                 })?;
-            Ok(MetaVal::VLit(result))
+            Ok(MetaVal::Lit(result))
         }
         Prim::Div(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
             ensure!(b != 0, "division by zero during staging");
-            Ok(MetaVal::VLit(a / b))
+            Ok(MetaVal::Lit(a / b))
         }
 
         // ── Bitwise ───────────────────────────────────────────────────────────
         Prim::BitAnd(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(a & b))
+            Ok(MetaVal::Lit(a & b))
         }
         Prim::BitOr(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(a | b))
+            Ok(MetaVal::Lit(a | b))
         }
         Prim::BitNot(IntType { width, .. }) => {
             let a = eval_lit(arena, globals, env, args[0])?;
-            Ok(MetaVal::VLit(mask_to_width(width, !a)))
+            Ok(MetaVal::Lit(mask_to_width(width, !a)))
         }
 
         // ── Comparison ────────────────────────────────────────────────────────
         Prim::Eq(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(u64::from(a == b)))
+            Ok(MetaVal::Lit(u64::from(a == b)))
         }
         Prim::Ne(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(u64::from(a != b)))
+            Ok(MetaVal::Lit(u64::from(a != b)))
         }
         Prim::Lt(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(u64::from(a < b)))
+            Ok(MetaVal::Lit(u64::from(a < b)))
         }
         Prim::Gt(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(u64::from(a > b)))
+            Ok(MetaVal::Lit(u64::from(a > b)))
         }
         Prim::Le(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(u64::from(a <= b)))
+            Ok(MetaVal::Lit(u64::from(a <= b)))
         }
         Prim::Ge(_) => {
             let a = eval_lit(arena, globals, env, args[0])?;
             let b = eval_lit(arena, globals, env, args[1])?;
-            Ok(MetaVal::VLit(u64::from(a >= b)))
+            Ok(MetaVal::Lit(u64::from(a >= b)))
         }
 
         // ── Embed: meta integer → object code ─────────────────────────────────
-        // `Embed(w)` applied to a meta integer `n` produces object-level code
-        // consisting of the literal `n`.  This is how a compile-time integer
-        // constant is embedded into the generated object program.
         Prim::Embed(width) => {
             let n = eval_lit(arena, globals, env, args[0])?;
             let phase = Phase::Object;
             let lit_term = arena.alloc(Term::Lit(n, IntType { width, phase }));
-            Ok(MetaVal::VCode(lit_term))
+            Ok(MetaVal::Code(lit_term))
         }
 
         // ── Type-level prims are unreachable ──────────────────────────────────
@@ -370,15 +402,12 @@ const fn mask_to_width(width: IntWidth, val: u64) -> u64 {
 }
 
 /// Evaluate a meta-level `match` expression.
-///
-/// `n` is the already-evaluated scrutinee value.
-/// Arms are checked in order; the first matching arm wins.
-fn eval_meta_match<'out, 'core>(
+fn eval_meta_match<'out>(
     arena: &'out Bump,
-    globals: &Globals<'core>,
+    globals: &Globals<'out>,
     env: &mut Env<'out>,
     n: u64,
-    arms: &'core [Arm<'core>],
+    arms: &'out [Arm<'out>],
 ) -> Result<MetaVal<'out>> {
     for arm in arms {
         match &arm.pat {
@@ -388,18 +417,13 @@ fn eval_meta_match<'out, 'core>(
                 }
             }
             Pat::Bind(_) | Pat::Wildcard => {
-                // Catch-all: bind the scrutinee value and evaluate the body.
-                env.push_meta(MetaVal::VLit(n));
+                env.push_meta(MetaVal::Lit(n));
                 let result = eval_meta(arena, globals, env, arm.body);
                 env.pop();
                 return result;
             }
         }
     }
-    // The typechecker enforces exhaustiveness, so this should not be reachable
-    // for well-typed programs.  It can happen if the meta computation produces
-    // a value outside the covered range (e.g. a u64 with no wildcard arm), which
-    // is a user-visible runtime staging error rather than an internal bug.
     Err(anyhow!(
         "non-exhaustive match during staging (scrutinee = {n})"
     ))
@@ -408,36 +432,30 @@ fn eval_meta_match<'out, 'core>(
 // ── Object-level unstager ─────────────────────────────────────────────────────
 
 /// Unstage an object-level `term`, eliminating all `Splice` nodes.
-///
-/// Object variables (`Var`), operations (`App`), `Let`, and `Match` are left
-/// structurally intact; only `Splice` nodes are reduced by running the
-/// enclosed meta computation.
-///
-/// `env` is shared with the meta evaluator so that meta variables that are in
-/// scope at a splice point (e.g. from an enclosing `Quote`) remain accessible.
-fn unstage_obj<'out, 'core>(
+fn unstage_obj<'out>(
     arena: &'out Bump,
-    globals: &Globals<'core>,
+    globals: &Globals<'out>,
     env: &mut Env<'out>,
-    term: &'core Term<'core>,
+    term: &'out Term<'out>,
 ) -> Result<&'out Term<'out>> {
     match term {
         // ── Variable ─────────────────────────────────────────────────────────
         Term::Var(lvl) => match env.get(*lvl) {
-            // A plain object variable (e.g. a `code fn` parameter) passes
-            // through as-is — it will be a free variable in the output.
             Binding::Obj(out_lvl) => Ok(arena.alloc(Term::Var(*out_lvl))),
-            // A meta variable of type `[[T]]` is referenced inside a quoted
-            // object term.  Its value is object code.  `VCode` is always
-            // fully staged (produced by `unstage_obj` at quote time), so we
-            // return it directly without recursing — that would be unsound
-            // because the levels inside the VCode term are relative to the
-            // environment at the *quoting site*, not the current env.
-            // This implements the ∼⟨t⟩ ≡ t definitional equality.
-            Binding::Meta(MetaVal::VCode(obj)) => Ok(obj),
-            Binding::Meta(MetaVal::VLit(_)) => unreachable!(
+            Binding::Meta(MetaVal::Code(obj)) => Ok(obj),
+            Binding::Meta(MetaVal::Lit(_)) => unreachable!(
                 "integer meta variable at level {} referenced in object context \
-                 (typechecker invariant: only [[T]]-typed meta vars can appear in object terms)",
+                 (typechecker invariant)",
+                lvl.0
+            ),
+            Binding::Meta(MetaVal::Closure { .. }) => unreachable!(
+                "closure meta variable at level {} referenced in object context \
+                 (typechecker invariant)",
+                lvl.0
+            ),
+            Binding::Meta(MetaVal::Ty) => unreachable!(
+                "type meta variable at level {} referenced in object context \
+                 (typechecker invariant)",
                 lvl.0
             ),
         },
@@ -448,41 +466,46 @@ fn unstage_obj<'out, 'core>(
         // ── Primitive ────────────────────────────────────────────────────────
         Term::Prim(p) => Ok(arena.alloc(Term::Prim(*p))),
 
-        // ── Application ──────────────────────────────────────────────────────
-        Term::App(app) => {
-            let staged_head = match &app.head {
-                Head::Global(name) => Head::Global(Name::new(arena.alloc_str(name.as_str()))),
-                Head::Prim(p) => Head::Prim(*p),
-            };
+        // ── Global reference (in object terms, e.g. object-level function call) ──
+        Term::Global(name) => {
+            Ok(arena.alloc(Term::Global(Name::new(arena.alloc_str(name.as_str())))))
+        }
+
+        // ── PrimApp ──────────────────────────────────────────────────────────
+        Term::PrimApp(app) => {
             let staged_args: &'out [&'out Term<'out>] = arena.alloc_slice_try_fill_iter(
                 app.args
                     .iter()
                     .map(|arg| unstage_obj(arena, globals, env, arg)),
             )?;
-            Ok(arena.alloc(Term::new_app(staged_head, staged_args)))
+            Ok(arena.alloc(Term::new_prim_app(app.prim, staged_args)))
         }
 
-        // ── Splice: $(t) — the key staging step ───────────────────────────────
-        // Evaluate the meta term `t` to a `VCode(obj)`.  `VCode` values are
-        // always fully staged (produced by `unstage_obj` at quote time), so
-        // we return the inner term directly.
+        // ── FunApp (in object terms) ─────────────────────────────────────────
+        Term::FunApp(app) => {
+            let staged_func = unstage_obj(arena, globals, env, app.func)?;
+            let staged_arg = unstage_obj(arena, globals, env, app.arg)?;
+            Ok(arena.alloc(Term::FunApp(FunApp {
+                func: staged_func,
+                arg: staged_arg,
+            })))
+        }
+
+        // ── Splice: $(t) — the key staging step ──────────────────────────────
         Term::Splice(inner) => {
             let meta_val = eval_meta(arena, globals, env, inner)?;
             match meta_val {
-                MetaVal::VCode(obj_term) => Ok(obj_term),
-                MetaVal::VLit(_) => unreachable!(
-                    "splice evaluated to an integer literal (typechecker invariant: \
-                     splice argument must have type [[T]])"
-                ),
+                MetaVal::Code(obj_term) => Ok(obj_term),
+                MetaVal::Lit(_) | MetaVal::Ty | MetaVal::Closure { .. } => {
+                    unreachable!("splice evaluated to non-code value (typechecker invariant)")
+                }
             }
         }
 
-        // ── Let binding ───────────────────────────────────────────────────────
+        // ── Let binding ──────────────────────────────────────────────────────
         Term::Let(let_) => {
             let staged_ty = unstage_obj(arena, globals, env, let_.ty)?;
             let staged_expr = unstage_obj(arena, globals, env, let_.expr)?;
-            // Push an object binding so that subsequent Var references by
-            // De Bruijn level resolve to the correct slot.
             env.push_obj();
             let staged_body = unstage_obj(arena, globals, env, let_.body);
             env.pop();
@@ -494,7 +517,7 @@ fn unstage_obj<'out, 'core>(
             )))
         }
 
-        // ── Match ─────────────────────────────────────────────────────────────
+        // ── Match ────────────────────────────────────────────────────────────
         Term::Match(match_) => {
             let staged_scrutinee = unstage_obj(arena, globals, env, match_.scrutinee)?;
             let staged_arms: &'out [Arm<'out>] =
@@ -520,32 +543,22 @@ fn unstage_obj<'out, 'core>(
             Ok(arena.alloc(Term::new_match(staged_scrutinee, staged_arms)))
         }
 
-        // ── Unreachable in well-typed object terms ────────────────────────────
+        // ── Unreachable in well-typed object terms ───────────────────────────
         Term::Quote(_) => unreachable!("Quote in object context (typechecker invariant)"),
-        Term::Lift(_) => unreachable!("Lift in object context (typechecker invariant)"),
+        Term::Lift(_) | Term::Pi(_) | Term::Lam(_) => {
+            unreachable!("meta-only term in object context (typechecker invariant)")
+        }
     }
 }
 
 // ── Public entry point ────────────────────────────────────────────────────────
 
-/// Unstage an elaborated program, eliminating all meta-level functions and
-/// splices to produce a splice-free object-level program.
-///
-/// The output `Program` contains only `Phase::Object` functions.  All
-/// `Phase::Meta` functions are erased (they served only as compile-time
-/// helpers).  Every `Splice` node in object-function bodies is replaced by
-/// the object code it produces when the enclosing meta computation runs.
-///
-/// # Errors
-///
-/// Returns an error for genuine runtime staging errors: division by zero,
-/// or a non-exhaustive match on a value not covered by any arm.
-pub fn unstage_program<'out, 'core>(
+/// Unstage an elaborated program.
+pub fn unstage_program<'out>(
     arena: &'out Bump,
-    program: &'core Program<'core>,
+    program: &'out Program<'out>,
 ) -> Result<Program<'out>> {
-    // Build the globals table from all functions in the program.
-    let globals: Globals<'core> = program
+    let globals: Globals<'out> = program
         .functions
         .iter()
         .map(|f| {
@@ -559,15 +572,11 @@ pub fn unstage_program<'out, 'core>(
         })
         .collect();
 
-    // Unstage each object-level function; discard meta-level functions.
     let staged_fns: Vec<Function<'out>> = program
         .functions
         .iter()
         .filter(|f| f.sig.phase == Phase::Object)
         .map(|f| -> Result<_> {
-            // Build an initial environment: one Obj binding per parameter,
-            // processing each parameter's type term before pushing the binding
-            // so that the env is correct for dependent types.
             let mut env = Env::new(Lvl::new(0));
 
             let staged_params = arena.alloc_slice_try_fill_iter(f.sig.params.iter().map(

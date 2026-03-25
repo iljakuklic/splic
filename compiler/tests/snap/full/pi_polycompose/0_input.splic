@@ -1,5 +1,5 @@
 // Polymorphic function composition
-fn compose(A: Type, B: Type, C: Type, f: fn(B) -> C, g: fn(A) -> B) -> fn(A) -> C {
+fn compose(A: Type, B: Type, C: Type, f: fn(_: B) -> C, g: fn(_: A) -> B) -> fn(_: A) -> C {
     |x: A| f(g(x))
 }
 

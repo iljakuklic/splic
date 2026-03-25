@@ -1,5 +1,5 @@
 // Const combinator: returns a function that ignores its argument
-fn const_(A: Type, B: Type) -> fn(A) -> fn(B) -> A {
+fn const_(A: Type, B: Type) -> fn(_: A) -> fn(_: B) -> A {
     |a: A| |b: B| a
 }
 

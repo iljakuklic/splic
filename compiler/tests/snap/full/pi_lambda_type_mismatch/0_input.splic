@@ -1,5 +1,5 @@
 // ERROR: lambda parameter type doesn't match expected function type
-fn apply(f: fn(u64) -> u64, x: u64) -> u64 {
+fn apply(f: fn(_: u64) -> u64, x: u64) -> u64 {
     f(x)
 }
 

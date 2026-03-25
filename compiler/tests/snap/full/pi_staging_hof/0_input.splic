@@ -1,5 +1,5 @@
 // Higher-order staging: meta function that transforms code via a lambda
-fn map_code(f: fn([[u64]]) -> [[u64]], x: [[u64]]) -> [[u64]] {
+fn map_code(f: fn(_: [[u64]]) -> [[u64]], x: [[u64]]) -> [[u64]] {
     f(x)
 }
 

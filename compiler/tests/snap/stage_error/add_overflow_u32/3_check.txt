@@ -3,6 +3,6 @@ fn f() -> u32 {
 }
 
 code fn g() -> u32 {
-    $(@embed_u32(f()))
+    $(@embed_u32(f))
 }
 

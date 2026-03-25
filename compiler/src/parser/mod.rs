@@ -294,6 +294,7 @@ where
     #[expect(clippy::wildcard_enum_match_arm)]
     fn match_binop(&mut self) -> Option<BinOp> {
         match self.peek()? {
+            // `|` after an expression is bitwise OR (never lambda — lambdas are atoms)
             Token::Bar => Some(BinOp::BitOr),
             Token::Ampersand => Some(BinOp::BitAnd),
             Token::EqEq => Some(BinOp::Eq),
@@ -346,6 +347,46 @@ where
         Ok(Term::Match { scrutinee, arms })
     }
 
+    /// Parse a function type: `fn(params) -> ret_ty`
+    ///
+    /// Called after consuming the `fn` token. Each param is `name: type`.
+    fn parse_fn_type(&mut self) -> Result<Term<'a>> {
+        self.take(Token::LParen)
+            .context("expected '(' in function type")?;
+        let params = self.parse_params()?;
+        self.take(Token::RParen)
+            .context("expected ')' in function type")?;
+        self.take(Token::Arrow)
+            .context("expected '->' in function type")?;
+        let ret_ty = self
+            .parse_expr()
+            .context("expected return type in function type")?;
+        Ok(Term::Pi { params, ret_ty })
+    }
+
+    /// Parse a lambda expression: `|params| body`
+    ///
+    /// Called after consuming the `|` token. Each param is `name: type`.
+    fn parse_lambda(&mut self) -> Result<Term<'a>> {
+        let params_vec = self.parse_separated_list(Token::Bar, |parser| {
+            let name = parser
+                .take_ident()
+                .context("expected parameter name in lambda")?;
+            parser
+                .take(Token::Colon)
+                .context("expected ':' in lambda parameter (type annotations are required)")?;
+            let ty = parser.parse_expr().context("expected parameter type")?;
+            let ty = parser.arena.alloc(ty);
+            Ok(Param { name, ty })
+        })?;
+        self.take(Token::Bar)
+            .context("expected '|' after lambda parameters")?;
+
+        let body = self.parse_expr().context("expected lambda body")?;
+        let params = self.arena.alloc_slice_fill_iter(params_vec);
+        Ok(Term::Lam { params, body })
+    }
+
     #[expect(clippy::wildcard_enum_match_arm)]
     fn parse_atom_owned(&mut self) -> Result<Term<'a>> {
         let token = self.next().context("expected expression")??;
@@ -358,6 +399,10 @@ where
                     Ok(Term::Var(name))
                 }
             }
+            // `fn` not followed by ident → function type expression
+            Token::Fn => self.parse_fn_type(),
+            // `|` in atom position → lambda (not bitwise OR, which is infix)
+            Token::Bar => self.parse_lambda(),
             Token::LParen => self.parse_paren_expr(),
             Token::HashLParen => self.parse_quoted_expr(),
             Token::HashLBrace => self.parse_quoted_block(),

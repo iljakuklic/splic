@@ -49,11 +49,9 @@ fn stage(file: &PathBuf) -> Result<()> {
         checker::elaborate_program(&core_arena, &program).context("failed to elaborate program")?;
     drop(src_arena);
 
-    // Unstage into out_arena; src_arena and core_arena are no longer needed.
-    let out_arena = bumpalo::Bump::new();
+    // Unstage: the core_arena must remain alive since closures reference core terms.
     let staged =
-        eval::unstage_program(&out_arena, &core_program).context("failed to stage program")?;
-    drop(core_arena);
+        eval::unstage_program(&core_arena, &core_program).context("failed to stage program")?;
 
     // Print the staged result, then out_arena is dropped at end of scope.
     println!("{staged}");

@@ -168,15 +168,9 @@ fn arithmetic_requires_expected_type() {
 fn global_call_is_inferable() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(1, IntType::U64_META));
-    let args = &*arena.alloc_slice_fill_iter([&*arg]);
-    let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
-    assert!(matches!(
-        app,
-        core::Term::App(core::App {
-            head: Head::Global(Name("foo")),
-            ..
-        })
-    ));
+    let global = arena.alloc(core::Term::Global(Name::new("foo")));
+    let app = arena.alloc(core::Term::FunApp(core::FunApp { func: global, arg }));
+    assert!(matches!(app, core::Term::FunApp(_)));
 }
 
 #[test]
@@ -203,10 +197,7 @@ fn lift_type_structure() {
 #[test]
 fn quote_inference_mirrors_inner() {
     let arena = bumpalo::Bump::new();
-    let inner = arena.alloc(core::Term::new_app(
-        Head::Global(Name::new("foo")),
-        arena.alloc_slice_fill_iter([] as [&core::Term; 0]),
-    ));
+    let inner = arena.alloc(core::Term::Global(Name::new("foo")));
     let quoted = arena.alloc(core::Term::Quote(inner));
     assert!(matches!(quoted, core::Term::Quote(_)));
 }
@@ -276,16 +267,10 @@ fn match_with_binding_pattern() {
 fn function_call_to_global() {
     let arena = bumpalo::Bump::new();
     let arg = arena.alloc(core::Term::Lit(42, IntType::U64_META));
-    let args = &*arena.alloc_slice_fill_iter([&*arg]);
-    let app = arena.alloc(core::Term::new_app(Head::Global(Name::new("foo")), args));
+    let global = arena.alloc(core::Term::Global(Name::new("foo")));
+    let app = arena.alloc(core::Term::FunApp(core::FunApp { func: global, arg }));
 
-    assert!(matches!(
-        app,
-        core::Term::App(core::App {
-            head: Head::Global(Name("foo")),
-            ..
-        })
-    ));
+    assert!(matches!(app, core::Term::FunApp(_)));
 }
 
 #[test]
@@ -294,18 +279,15 @@ fn builtin_operation_call() {
     let arg1 = arena.alloc(core::Term::Lit(1, IntType::U64_OBJ));
     let arg2 = arena.alloc(core::Term::Lit(2, IntType::U64_OBJ));
     let args = &*arena.alloc_slice_fill_iter([&*arg1, &*arg2]);
-    let app = arena.alloc(core::Term::new_app(
-        Head::Prim(Prim::Add(IntType::U64_OBJ)),
-        args,
-    ));
+    let app = arena.alloc(core::Term::new_prim_app(Prim::Add(IntType::U64_OBJ), args));
 
     assert!(matches!(
         app,
-        core::Term::App(core::App {
-            head: Head::Prim(Prim::Add(IntType {
+        core::Term::PrimApp(core::PrimApp {
+            prim: Prim::Add(IntType {
                 width: IntWidth::U64,
                 ..
-            })),
+            }),
             ..
         })
     ));

@@ -139,11 +139,11 @@ fn check_binop_add_against_u32_succeeds() {
     let result = check(&mut ctx, Phase::Object, term, expected).expect("should check");
     assert!(matches!(
         result,
-        core::Term::App(core::App {
-            head: Head::Prim(Prim::Add(IntType {
+        core::Term::PrimApp(core::PrimApp {
+            prim: Prim::Add(IntType {
                 width: IntWidth::U32,
                 ..
-            })),
+            }),
             ..
         })
     ));
@@ -172,11 +172,11 @@ fn infer_comparison_op_returns_u1() {
     let ty = ctx.type_of(core_term);
     assert!(matches!(
         core_term,
-        core::Term::App(core::App {
-            head: Head::Prim(Prim::Eq(IntType {
+        core::Term::PrimApp(core::PrimApp {
+            prim: Prim::Eq(IntType {
                 width: IntWidth::U64,
                 ..
-            })),
+            }),
             ..
         })
     ));
@@ -282,11 +282,11 @@ fn check_eq_op_produces_u1() {
     // The prim carries the operand type (u64), not u1.
     assert!(matches!(
         result,
-        core::Term::App(core::App {
-            head: Head::Prim(Prim::Eq(IntType {
+        core::Term::PrimApp(core::PrimApp {
+            prim: Prim::Eq(IntType {
                 width: IntWidth::U64,
                 ..
-            })),
+            }),
             ..
         })
     ));

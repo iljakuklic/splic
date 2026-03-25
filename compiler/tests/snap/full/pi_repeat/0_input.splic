@@ -1,5 +1,5 @@
 // The motivating example: pass a code-generating lambda, unroll at compile time
-fn repeat(f: fn([[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
+fn repeat(f: fn(_: [[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
     match n {
         0 => x,
         n => repeat(f, n - 1, f(x)),

@@ -65,6 +65,16 @@ pub enum Term<'a> {
         func: FunName<'a>,
         args: &'a [&'a Self],
     },
+    /// Function type: `fn(name: ty, ...) -> ret_ty`
+    Pi {
+        params: &'a [Param<'a>],
+        ret_ty: &'a Self,
+    },
+    /// Lambda: `|params| body`
+    Lam {
+        params: &'a [Param<'a>],
+        body: &'a Self,
+    },
     Quote(&'a Self),
     Splice(&'a Self),
     Lift(&'a Self),
