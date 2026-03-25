@@ -1,0 +1,2 @@
+ERROR
+in function `compose`: expected function body: parsing expression in block: expected '|' after lambda parameters: expected Bar, got RBrace

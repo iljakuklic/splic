@@ -1,0 +1,133 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "const_",
+            params: [
+                Param {
+                    name: "A",
+                    ty: Var(
+                        "Type",
+                    ),
+                },
+                Param {
+                    name: "B",
+                    ty: Var(
+                        "Type",
+                    ),
+                },
+                Param {
+                    name: "a",
+                    ty: Var(
+                        "A",
+                    ),
+                },
+                Param {
+                    name: "b",
+                    ty: Var(
+                        "B",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "A",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Var(
+                    "a",
+                ),
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test_u64",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "const_",
+                    args: [
+                        Var(
+                            "u64",
+                        ),
+                        Var(
+                            "u8",
+                        ),
+                        Lit(
+                            10,
+                        ),
+                        Lit(
+                            7,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test_u8",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "const_",
+                    args: [
+                        Var(
+                            "u8",
+                        ),
+                        Var(
+                            "u64",
+                        ),
+                        Lit(
+                            7,
+                        ),
+                        Lit(
+                            10,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result_u64",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test_u64",
+                        args: [],
+                    },
+                ),
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result_u8",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test_u8",
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

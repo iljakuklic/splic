@@ -1,0 +1,2 @@
+ERROR
+in function `apply`: too many arguments: function `f` expects 1 argument(s), got 2

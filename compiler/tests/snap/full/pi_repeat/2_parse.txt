@@ -1,0 +1,2 @@
+ERROR
+in function `square_twice`: expected function body: parsing expression in block: parsing spliced expression: parsing function argument: expected parameter name in lambda: expected identifier, got Num(2)

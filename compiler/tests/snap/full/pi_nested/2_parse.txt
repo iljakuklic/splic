@@ -1,0 +1,119 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "apply_twice",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Var(
+                                    "u64",
+                                ),
+                            },
+                        ],
+                        ret_ty: Var(
+                            "u64",
+                        ),
+                    },
+                },
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "f",
+                    args: [
+                        App {
+                            func: "f",
+                            args: [
+                                Var(
+                                    "x",
+                                ),
+                            ],
+                        },
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "inc",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                        Lit(
+                            1,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "apply_twice",
+                    args: [
+                        Var(
+                            "inc",
+                        ),
+                        Lit(
+                            0,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test",
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}
