@@ -1,0 +1,7 @@
+fn let_type() -> u32 {
+    let ty: Type = u32;
+    let x: ty = 1337;
+    x
+}
+
+code fn test() -> u32 { $(let_type()) }

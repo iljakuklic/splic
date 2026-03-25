@@ -1,0 +1,2 @@
+ERROR
+in function `let_type`: in let binding `x`: literal `1337` cannot have a non-integer type
