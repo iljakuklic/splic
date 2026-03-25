@@ -11,8 +11,14 @@ use crate::parser::ast::Phase;
 // ── Value types ───────────────────────────────────────────────────────────────
 
 /// A value produced by meta-level evaluation.
+///
+/// Two lifetime parameters:
+/// - `'out`: lifetime of the output arena (for `Code` values that appear in the result).
+/// - `'eval`: lifetime of the evaluation phase — covers both the input program data (`'core`)
+///   and any temporary terms allocated in the local eval arena.  Since `Term` is covariant
+///   in its lifetime, `'core` data can be coerced to `'eval` at call sites.
 #[derive(Clone, Debug)]
-enum MetaVal<'out> {
+enum MetaVal<'out, 'eval> {
     /// A concrete integer value computed at meta (compile) time.
     Lit(u64),
     /// Quoted object-level code.
@@ -22,8 +28,8 @@ enum MetaVal<'out> {
     Ty,
     /// A closure: a lambda body captured with its environment.
     Closure {
-        body: &'out Term<'out>,
-        env: Vec<Binding<'out>>,
+        body: &'eval Term<'eval>,
+        env: Vec<Binding<'out, 'eval>>,
         obj_next: Lvl,
     },
 }
@@ -32,21 +38,21 @@ enum MetaVal<'out> {
 
 /// A binding stored in the evaluation environment, indexed by De Bruijn level.
 #[derive(Clone, Debug)]
-enum Binding<'out> {
+enum Binding<'out, 'eval> {
     /// A meta-level variable bound to a concrete `MetaVal`.
-    Meta(MetaVal<'out>),
+    Meta(MetaVal<'out, 'eval>),
     /// An object-level variable.
     Obj(Lvl),
 }
 
 /// Evaluation environment: a stack of bindings indexed by De Bruijn level.
 #[derive(Debug)]
-struct Env<'out> {
-    bindings: Vec<Binding<'out>>,
+struct Env<'out, 'eval> {
+    bindings: Vec<Binding<'out, 'eval>>,
     obj_next: Lvl,
 }
 
-impl<'out> Env<'out> {
+impl<'out, 'eval> Env<'out, 'eval> {
     const fn new(obj_next: Lvl) -> Self {
         Env {
             bindings: Vec::new(),
@@ -55,7 +61,7 @@ impl<'out> Env<'out> {
     }
 
     /// Look up the binding at level `lvl`.
-    fn get(&self, lvl: Lvl) -> &Binding<'out> {
+    fn get(&self, lvl: Lvl) -> &Binding<'out, 'eval> {
         self.bindings
             .get(lvl.0)
             .expect("De Bruijn level in env bounds")
@@ -69,7 +75,7 @@ impl<'out> Env<'out> {
     }
 
     /// Push a meta-level binding bound to the given value.
-    fn push_meta(&mut self, val: MetaVal<'out>) {
+    fn push_meta(&mut self, val: MetaVal<'out, 'eval>) {
         self.bindings.push(Binding::Meta(val));
     }
 
@@ -102,12 +108,13 @@ type Globals<'a> = HashMap<Name<'a>, GlobalDef<'a>>;
 // ── Meta-level evaluator ──────────────────────────────────────────────────────
 
 /// Evaluate a meta-level `term` to a `MetaVal`.
-fn eval_meta<'out>(
+fn eval_meta<'out, 'eval>(
     arena: &'out Bump,
-    globals: &Globals<'out>,
-    env: &mut Env<'out>,
-    term: &'out Term<'out>,
-) -> Result<MetaVal<'out>> {
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    env: &mut Env<'out, 'eval>,
+    term: &'eval Term<'eval>,
+) -> Result<MetaVal<'out, 'eval>> {
     match term {
         // ── Variable ─────────────────────────────────────────────────────────
         Term::Var(lvl) => match env.get(*lvl) {
@@ -128,15 +135,11 @@ fn eval_meta<'out>(
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
             if def.sig.params.is_empty() {
                 // Zero-param global: evaluate the body immediately in a fresh env.
-                // (Zero-param Pi types don't exist, so zero-param globals are always
-                // called, never passed as values.)
                 let mut callee_env = Env::new(env.obj_next);
-                eval_meta(arena, globals, &mut callee_env, def.body)
+                eval_meta(arena, eval_arena, globals, &mut callee_env, def.body)
             } else {
-                // Multi-param global: produce a closure, capturing the caller's
-                // obj_next so object-level let bindings inside quotes don't clash
-                // with output levels already in use at the call site.
-                Ok(global_to_closure(arena, def, env.obj_next))
+                // Multi-param global: produce a closure.
+                Ok(global_to_closure(eval_arena, def, env.obj_next))
             }
         }
 
@@ -149,39 +152,39 @@ fn eval_meta<'out>(
 
         // ── Function application ─────────────────────────────────────────────
         Term::FunApp(app) => {
-            let func_val = eval_meta(arena, globals, env, app.func)?;
-            let arg_val = eval_meta(arena, globals, env, app.arg)?;
-            apply_closure(arena, globals, func_val, arg_val)
+            let func_val = eval_meta(arena, eval_arena, globals, env, app.func)?;
+            let arg_val = eval_meta(arena, eval_arena, globals, env, app.arg)?;
+            apply_closure(arena, eval_arena, globals, func_val, arg_val)
         }
 
         // ── PrimApp ──────────────────────────────────────────────────────────
-        Term::PrimApp(app) => eval_meta_prim(arena, globals, env, app.prim, app.args),
+        Term::PrimApp(app) => eval_meta_prim(arena, eval_arena, globals, env, app.prim, app.args),
 
         // ── Quote: #(t) ──────────────────────────────────────────────────────
         Term::Quote(inner) => {
-            let obj_term = unstage_obj(arena, globals, env, inner)?;
+            let obj_term = unstage_obj(arena, eval_arena, globals, env, inner)?;
             Ok(MetaVal::Code(obj_term))
         }
 
         // ── Let binding ──────────────────────────────────────────────────────
         Term::Let(let_) => {
-            let val = eval_meta(arena, globals, env, let_.expr)?;
+            let val = eval_meta(arena, eval_arena, globals, env, let_.expr)?;
             env.push_meta(val);
-            let result = eval_meta(arena, globals, env, let_.body);
+            let result = eval_meta(arena, eval_arena, globals, env, let_.body);
             env.pop();
             result
         }
 
         // ── Match ────────────────────────────────────────────────────────────
         Term::Match(match_) => {
-            let scrut_val = eval_meta(arena, globals, env, match_.scrutinee)?;
+            let scrut_val = eval_meta(arena, eval_arena, globals, env, match_.scrutinee)?;
             let n = match scrut_val {
                 MetaVal::Lit(n) => n,
                 MetaVal::Code(_) | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
                     "cannot match on non-integer at meta level (typechecker invariant)"
                 ),
             };
-            eval_meta_match(arena, globals, env, n, match_.arms)
+            eval_meta_match(arena, eval_arena, globals, env, n, match_.arms)
         }
 
         // ── Unreachable in well-typed meta terms ─────────────────────────────
@@ -194,13 +197,15 @@ fn eval_meta<'out>(
 
 /// Convert a global function definition into a closure value.
 ///
-/// For a multi-parameter function, we build nested closures. E.g., `fn f(x, y) = body`
-/// becomes a closure whose body is a lambda `|y| body`.
-fn global_to_closure<'out>(
-    arena: &'out Bump,
-    def: &GlobalDef<'out>,
+/// For a multi-parameter function, we build nested closures.  E.g., `fn f(x, y) = body`
+/// becomes a closure whose body is a lambda `|y| body`.  The synthetic `Lam` wrapper nodes
+/// are allocated in `eval_arena`, which is local to `unstage_program` and lives for the
+/// duration of staging — long enough to outlive any closure values.
+fn global_to_closure<'out, 'eval>(
+    eval_arena: &'eval Bump,
+    def: &GlobalDef<'eval>,
     obj_next: Lvl,
-) -> MetaVal<'out> {
+) -> MetaVal<'out, 'eval> {
     let params = def.sig.params;
     if params.is_empty() {
         MetaVal::Closure {
@@ -210,9 +215,9 @@ fn global_to_closure<'out>(
         }
     } else {
         // Build nested lambdas for params[1..], then wrap in a closure for params[0].
-        let mut body: &Term = def.body;
+        let mut body: &'eval Term<'eval> = def.body;
         for &(name, ty) in params.iter().rev().skip(1) {
-            body = arena.alloc(Term::Lam(Lam {
+            body = eval_arena.alloc(Term::Lam(Lam {
                 param_name: name,
                 param_ty: ty,
                 body,
@@ -227,12 +232,13 @@ fn global_to_closure<'out>(
 }
 
 /// Apply a closure value to an argument value.
-fn apply_closure<'out>(
+fn apply_closure<'out, 'eval>(
     arena: &'out Bump,
-    globals: &Globals<'out>,
-    func_val: MetaVal<'out>,
-    arg_val: MetaVal<'out>,
-) -> Result<MetaVal<'out>> {
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    func_val: MetaVal<'out, 'eval>,
+    arg_val: MetaVal<'out, 'eval>,
+) -> Result<MetaVal<'out, 'eval>> {
     match func_val {
         MetaVal::Closure {
             body,
@@ -246,8 +252,7 @@ fn apply_closure<'out>(
             };
             callee_env.push_meta(arg_val);
 
-            // Restore env for the caller (bindings are consumed by the callee).
-            eval_meta(arena, globals, &mut callee_env, body)
+            eval_meta(arena, eval_arena, globals, &mut callee_env, body)
         }
         MetaVal::Lit(_) | MetaVal::Code(_) | MetaVal::Ty => {
             unreachable!("applying a non-function value (typechecker invariant)")
@@ -256,29 +261,33 @@ fn apply_closure<'out>(
 }
 
 /// Evaluate a primitive operation at meta level.
-fn eval_meta_prim<'out>(
+fn eval_meta_prim<'out, 'eval>(
     arena: &'out Bump,
-    globals: &Globals<'out>,
-    env: &mut Env<'out>,
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    env: &mut Env<'out, 'eval>,
     prim: Prim,
-    args: &'out [&'out Term<'out>],
-) -> Result<MetaVal<'out>> {
-    let eval_lit =
-        |arena: &'out Bump, globals: &Globals<'out>, env: &mut Env<'out>, arg: &'out Term<'out>| {
-            eval_meta(arena, globals, env, arg).map(|v| match v {
-                MetaVal::Lit(n) => n,
-                MetaVal::Code(_) | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
-                    "expected integer meta value for primitive operand (typechecker invariant)"
-                ),
-            })
-        };
+    args: &'eval [&'eval Term<'eval>],
+) -> Result<MetaVal<'out, 'eval>> {
+    let eval_lit = |arena: &'out Bump,
+                    eval_arena: &'eval Bump,
+                    globals: &Globals<'eval>,
+                    env: &mut Env<'out, 'eval>,
+                    arg: &'eval Term<'eval>| {
+        eval_meta(arena, eval_arena, globals, env, arg).map(|v| match v {
+            MetaVal::Lit(n) => n,
+            MetaVal::Code(_) | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
+                "expected integer meta value for primitive operand (typechecker invariant)"
+            ),
+        })
+    };
 
     #[expect(clippy::indexing_slicing)]
     match prim {
         // ── Arithmetic ────────────────────────────────────────────────────────
         Prim::Add(IntType { width, .. }) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             let result = a
                 .checked_add(b)
                 .filter(|&r| r <= width.max_value())
@@ -293,8 +302,8 @@ fn eval_meta_prim<'out>(
             Ok(MetaVal::Lit(result))
         }
         Prim::Sub(IntType { width, .. }) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             let result = a.checked_sub(b).ok_or_else(|| {
                 anyhow!(
                     "arithmetic overflow during staging: \
@@ -304,8 +313,8 @@ fn eval_meta_prim<'out>(
             Ok(MetaVal::Lit(result))
         }
         Prim::Mul(IntType { width, .. }) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             let result = a
                 .checked_mul(b)
                 .filter(|&r| r <= width.max_value())
@@ -320,63 +329,63 @@ fn eval_meta_prim<'out>(
             Ok(MetaVal::Lit(result))
         }
         Prim::Div(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             ensure!(b != 0, "division by zero during staging");
             Ok(MetaVal::Lit(a / b))
         }
 
         // ── Bitwise ───────────────────────────────────────────────────────────
         Prim::BitAnd(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(a & b))
         }
         Prim::BitOr(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(a | b))
         }
         Prim::BitNot(IntType { width, .. }) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
             Ok(MetaVal::Lit(mask_to_width(width, !a)))
         }
 
         // ── Comparison ────────────────────────────────────────────────────────
         Prim::Eq(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(u64::from(a == b)))
         }
         Prim::Ne(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(u64::from(a != b)))
         }
         Prim::Lt(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(u64::from(a < b)))
         }
         Prim::Gt(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(u64::from(a > b)))
         }
         Prim::Le(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(u64::from(a <= b)))
         }
         Prim::Ge(_) => {
-            let a = eval_lit(arena, globals, env, args[0])?;
-            let b = eval_lit(arena, globals, env, args[1])?;
+            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
             Ok(MetaVal::Lit(u64::from(a >= b)))
         }
 
         // ── Embed: meta integer → object code ─────────────────────────────────
         Prim::Embed(width) => {
-            let n = eval_lit(arena, globals, env, args[0])?;
+            let n = eval_lit(arena, eval_arena, globals, env, args[0])?;
             let phase = Phase::Object;
             let lit_term = arena.alloc(Term::Lit(n, IntType { width, phase }));
             Ok(MetaVal::Code(lit_term))
@@ -402,23 +411,24 @@ const fn mask_to_width(width: IntWidth, val: u64) -> u64 {
 }
 
 /// Evaluate a meta-level `match` expression.
-fn eval_meta_match<'out>(
+fn eval_meta_match<'out, 'eval>(
     arena: &'out Bump,
-    globals: &Globals<'out>,
-    env: &mut Env<'out>,
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    env: &mut Env<'out, 'eval>,
     n: u64,
-    arms: &'out [Arm<'out>],
-) -> Result<MetaVal<'out>> {
+    arms: &'eval [Arm<'eval>],
+) -> Result<MetaVal<'out, 'eval>> {
     for arm in arms {
         match &arm.pat {
             Pat::Lit(m) => {
                 if n == *m {
-                    return eval_meta(arena, globals, env, arm.body);
+                    return eval_meta(arena, eval_arena, globals, env, arm.body);
                 }
             }
             Pat::Bind(_) | Pat::Wildcard => {
                 env.push_meta(MetaVal::Lit(n));
-                let result = eval_meta(arena, globals, env, arm.body);
+                let result = eval_meta(arena, eval_arena, globals, env, arm.body);
                 env.pop();
                 return result;
             }
@@ -432,11 +442,12 @@ fn eval_meta_match<'out>(
 // ── Object-level unstager ─────────────────────────────────────────────────────
 
 /// Unstage an object-level `term`, eliminating all `Splice` nodes.
-fn unstage_obj<'out>(
+fn unstage_obj<'out, 'eval>(
     arena: &'out Bump,
-    globals: &Globals<'out>,
-    env: &mut Env<'out>,
-    term: &'out Term<'out>,
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    env: &mut Env<'out, 'eval>,
+    term: &'eval Term<'eval>,
 ) -> Result<&'out Term<'out>> {
     match term {
         // ── Variable ─────────────────────────────────────────────────────────
@@ -476,15 +487,15 @@ fn unstage_obj<'out>(
             let staged_args: &'out [&'out Term<'out>] = arena.alloc_slice_try_fill_iter(
                 app.args
                     .iter()
-                    .map(|arg| unstage_obj(arena, globals, env, arg)),
+                    .map(|arg| unstage_obj(arena, eval_arena, globals, env, arg)),
             )?;
             Ok(arena.alloc(Term::new_prim_app(app.prim, staged_args)))
         }
 
         // ── FunApp (in object terms) ─────────────────────────────────────────
         Term::FunApp(app) => {
-            let staged_func = unstage_obj(arena, globals, env, app.func)?;
-            let staged_arg = unstage_obj(arena, globals, env, app.arg)?;
+            let staged_func = unstage_obj(arena, eval_arena, globals, env, app.func)?;
+            let staged_arg = unstage_obj(arena, eval_arena, globals, env, app.arg)?;
             Ok(arena.alloc(Term::FunApp(FunApp {
                 func: staged_func,
                 arg: staged_arg,
@@ -493,7 +504,7 @@ fn unstage_obj<'out>(
 
         // ── Splice: $(t) — the key staging step ──────────────────────────────
         Term::Splice(inner) => {
-            let meta_val = eval_meta(arena, globals, env, inner)?;
+            let meta_val = eval_meta(arena, eval_arena, globals, env, inner)?;
             match meta_val {
                 MetaVal::Code(obj_term) => Ok(obj_term),
                 MetaVal::Lit(_) | MetaVal::Ty | MetaVal::Closure { .. } => {
@@ -504,10 +515,10 @@ fn unstage_obj<'out>(
 
         // ── Let binding ──────────────────────────────────────────────────────
         Term::Let(let_) => {
-            let staged_ty = unstage_obj(arena, globals, env, let_.ty)?;
-            let staged_expr = unstage_obj(arena, globals, env, let_.expr)?;
+            let staged_ty = unstage_obj(arena, eval_arena, globals, env, let_.ty)?;
+            let staged_expr = unstage_obj(arena, eval_arena, globals, env, let_.expr)?;
             env.push_obj();
-            let staged_body = unstage_obj(arena, globals, env, let_.body);
+            let staged_body = unstage_obj(arena, eval_arena, globals, env, let_.body);
             env.pop();
             Ok(arena.alloc(Term::new_let(
                 arena.alloc_str(let_.name),
@@ -519,7 +530,7 @@ fn unstage_obj<'out>(
 
         // ── Match ────────────────────────────────────────────────────────────
         Term::Match(match_) => {
-            let staged_scrutinee = unstage_obj(arena, globals, env, match_.scrutinee)?;
+            let staged_scrutinee = unstage_obj(arena, eval_arena, globals, env, match_.scrutinee)?;
             let staged_arms: &'out [Arm<'out>] =
                 arena.alloc_slice_try_fill_iter(match_.arms.iter().map(|arm| -> Result<_> {
                     let staged_pat = match &arm.pat {
@@ -531,7 +542,7 @@ fn unstage_obj<'out>(
                     if has_binding {
                         env.push_obj();
                     }
-                    let staged_body = unstage_obj(arena, globals, env, arm.body);
+                    let staged_body = unstage_obj(arena, eval_arena, globals, env, arm.body);
                     if has_binding {
                         env.pop();
                     }
@@ -554,11 +565,20 @@ fn unstage_obj<'out>(
 // ── Public entry point ────────────────────────────────────────────────────────
 
 /// Unstage an elaborated program.
-pub fn unstage_program<'out>(
+///
+/// - `arena`: output arena; the returned `Program<'out>` is allocated here.
+/// - `program`: input core program; may be dropped once this function returns.
+pub fn unstage_program<'out, 'core>(
     arena: &'out Bump,
-    program: &'out Program<'out>,
+    program: &'core Program<'core>,
 ) -> Result<Program<'out>> {
-    let globals: Globals<'out> = program
+    // A temporary arena for intermediate values (synthetic Lam wrappers for closures, etc.)
+    // that exist only during evaluation and must not appear in the output.  Its lifetime
+    // `'eval` is shorter than `'core`, so `'core` data is coercible to `'eval` via the
+    // covariance of `Term`.
+    let eval_bump = Bump::new();
+
+    let globals: Globals<'_> = program
         .functions
         .iter()
         .map(|f| {
@@ -581,15 +601,15 @@ pub fn unstage_program<'out>(
 
             let staged_params = arena.alloc_slice_try_fill_iter(f.sig.params.iter().map(
                 |(n, ty)| -> Result<(&'out str, &'out Term<'out>)> {
-                    let staged_ty = unstage_obj(arena, &globals, &mut env, ty)?;
+                    let staged_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, ty)?;
                     env.push_obj();
                     Ok((arena.alloc_str(n), staged_ty))
                 },
             ))?;
 
-            let staged_ret_ty = unstage_obj(arena, &globals, &mut env, f.sig.ret_ty)?;
+            let staged_ret_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, f.sig.ret_ty)?;
 
-            let staged_body = unstage_obj(arena, &globals, &mut env, f.body)?;
+            let staged_body = unstage_obj(arena, &eval_bump, &globals, &mut env, f.body)?;
 
             Ok(Function {
                 name: Name::new(arena.alloc_str(f.name.as_str())),
