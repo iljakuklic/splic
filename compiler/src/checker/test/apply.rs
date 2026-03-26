@@ -8,7 +8,7 @@ fn infer_global_call_no_args_returns_ret_ty() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut globals = HashMap::new();
-    globals.insert(Name::new("f"), sig_no_params_returns_u64());
+    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
@@ -48,7 +48,7 @@ fn infer_global_call_wrong_arity_fails() {
     let extra_arg = src_arena.alloc(ast::Term::Lit(99));
     let args = src_arena.alloc_slice_fill_iter([extra_arg as &ast::Term]);
     let mut globals = HashMap::new();
-    globals.insert(Name::new("f"), sig_no_params_returns_u64());
+    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
@@ -67,14 +67,8 @@ fn infer_global_call_phase_mismatch_fails() {
     // `code fn f() -> u64` — object-phase function
     let u64_obj = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::U64_OBJ)));
     let mut globals = HashMap::new();
-    globals.insert(
-        Name::new("f"),
-        FunSig {
-            params: &[],
-            ret_ty: u64_obj,
-            phase: Phase::Object,
-        },
-    );
+    let f_ty: &core::Term = core_arena.alloc(core::Term::Pi(Pi { params: &[], body_ty: u64_obj, phase: Phase::Object }));
+    globals.insert(Name::new("f"), f_ty);
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     // Call `f()` from meta phase — should be rejected.

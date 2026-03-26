@@ -239,11 +239,13 @@ impl fmt::Display for Program<'_> {
 
 impl fmt::Display for Function<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pi = self.pi();
+
         // Build the name environment for the body: one entry per parameter.
-        let mut env: Vec<&str> = Vec::with_capacity(self.sig.params.len());
+        let mut env: Vec<&str> = Vec::with_capacity(pi.params.len());
 
         // Phase prefix.
-        match self.sig.phase {
+        match pi.phase {
             Phase::Object => write!(f, "code ")?,
             Phase::Meta => {}
         }
@@ -251,7 +253,7 @@ impl fmt::Display for Function<'_> {
 
         // Parameters: types are printed with the env as built so far (dependent
         // function types: earlier params are in scope for later param types).
-        for (i, (name, ty)) in self.sig.params.iter().enumerate() {
+        for (i, (name, ty)) in pi.params.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
@@ -261,7 +263,7 @@ impl fmt::Display for Function<'_> {
         }
 
         write!(f, ") -> ")?;
-        self.sig.ret_ty.fmt_expr(&mut env, 1, f)?;
+        pi.body_ty.fmt_expr(&mut env, 1, f)?;
         writeln!(f, " {{")?;
 
         // Body in statement position at indent depth 1.

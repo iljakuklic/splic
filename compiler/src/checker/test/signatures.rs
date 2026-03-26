@@ -50,42 +50,40 @@ fn collect_signatures_two_functions() {
 
     assert_eq!(globals.len(), 2);
 
-    let id_sig = globals
-        .get(&Name::new("id"))
-        .expect("id should be in globals");
-    assert_eq!(id_sig.phase, Phase::Meta);
-    assert_eq!(id_sig.params.len(), 1);
-    assert_eq!(id_sig.params[0].0, "x");
+    let id_ty = globals.get(&Name::new("id")).expect("id should be in globals");
+    let core::Term::Pi(id_pi) = id_ty else { panic!("expected Pi") };
+    assert_eq!(id_pi.phase, Phase::Meta);
+    assert_eq!(id_pi.params.len(), 1);
+    assert_eq!(id_pi.params[0].0, "x");
     assert!(matches!(
-        id_sig.params[0].1,
+        id_pi.params[0].1,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
     ));
     assert!(matches!(
-        id_sig.ret_ty,
+        id_pi.body_ty,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
     ));
 
-    let add_sig = globals
-        .get(&Name::new("add_one"))
-        .expect("add_one should be in globals");
-    assert_eq!(add_sig.phase, Phase::Object);
-    assert_eq!(add_sig.params.len(), 1);
-    assert_eq!(add_sig.params[0].0, "y");
+    let add_ty = globals.get(&Name::new("add_one")).expect("add_one should be in globals");
+    let core::Term::Pi(add_pi) = add_ty else { panic!("expected Pi") };
+    assert_eq!(add_pi.phase, Phase::Object);
+    assert_eq!(add_pi.params.len(), 1);
+    assert_eq!(add_pi.params[0].0, "y");
     assert!(matches!(
-        add_sig.params[0].1,
+        add_pi.params[0].1,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
     ));
     assert!(matches!(
-        add_sig.ret_ty,
+        add_pi.body_ty,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..

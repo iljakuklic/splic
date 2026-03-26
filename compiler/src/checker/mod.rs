@@ -19,15 +19,16 @@ pub struct Ctx<'core, 'globals> {
     /// Local variables: (source name, core type)
     /// Indexed by De Bruijn level (0 = outermost in current scope, len-1 = most recent)
     locals: Vec<(&'core str, &'core core::Term<'core>)>,
-    /// Global function signatures: name -> signature.
+    /// Global function types: name -> Pi term.
+    /// Storing `&Term` (always a Pi) unifies type lookup for globals and locals.
     /// Borrowed independently of the arena so the map can live on the stack.
-    globals: &'globals HashMap<core::Name<'core>, core::FunSig<'core>>,
+    globals: &'globals HashMap<core::Name<'core>, &'core core::Term<'core>>,
 }
 
 impl<'core, 'globals> Ctx<'core, 'globals> {
     pub const fn new(
         arena: &'core bumpalo::Bump,
-        globals: &'globals HashMap<core::Name<'core>, core::FunSig<'core>>,
+        globals: &'globals HashMap<core::Name<'core>, &'core core::Term<'core>>,
     ) -> Self {
         Ctx {
             arena,
@@ -129,14 +130,12 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                 self.alloc(core::Term::Lift(core::Term::int_ty(*w, Phase::Object)))
             }
 
-            // Global reference: type is the Pi type of the signature.
-            core::Term::Global(name) => {
-                let sig = self
-                    .globals
-                    .get(name)
-                    .expect("Global with unknown name (typechecker invariant)");
-                sig.to_pi_type(self.arena)
-            }
+            // Global reference: look up its Pi type directly from the globals table.
+            core::Term::Global(name) => self
+                .globals
+                .get(name)
+                .copied()
+                .expect("Global with unknown name (typechecker invariant)"),
 
             // App: dispatch on func.
             // - Prim callee: return type is determined by the primitive.
@@ -195,7 +194,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                     self.pop_local();
                 }
                 let params = self.alloc_slice(lam.params.iter().copied());
-                self.alloc(core::Term::Pi(Pi { params, body_ty }))
+                self.alloc(core::Term::Pi(Pi { params, body_ty, phase: Phase::Meta }))
             }
 
             // #(t) : [[type_of(t)]]
@@ -269,10 +268,11 @@ fn builtin_prim_ty(name: &str, phase: Phase) -> Option<&'static core::Term<'stat
     })
 }
 
+/// Elaborate one function's signature into a `Term::Pi` (the globals table entry).
 fn elaborate_sig<'src, 'core>(
     arena: &'core bumpalo::Bump,
     func: &ast::Function<'src>,
-) -> Result<core::FunSig<'core>> {
+) -> Result<&'core core::Term<'core>> {
     let empty_globals = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
@@ -284,25 +284,20 @@ fn elaborate_sig<'src, 'core>(
             Ok((param_name, param_ty))
         }))?;
 
-    let ret_ty = infer(&mut ctx, func.phase, func.ret_ty)?;
+    let body_ty = infer(&mut ctx, func.phase, func.ret_ty)?;
 
-    Ok(core::FunSig {
-        params,
-        ret_ty,
-        phase: func.phase,
-    })
+    Ok(arena.alloc(core::Term::Pi(Pi { params, body_ty, phase: func.phase })))
 }
 
 /// Pass 1: collect all top-level function signatures into a globals table.
 ///
-/// Type annotations on parameters and return types are elaborated here so that
-/// pass 2 (body elaboration) has fully-typed signatures available for all
-/// functions, including forward references.
+/// Each entry is a `Term::Pi` carrying the function's phase, param types, and return type.
+/// This allows pass 2 to look up a global's type the same way it looks up a local's type.
 pub(crate) fn collect_signatures<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-) -> Result<HashMap<core::Name<'core>, core::FunSig<'core>>> {
-    let mut globals: HashMap<core::Name<'core>, core::FunSig<'core>> = HashMap::new();
+) -> Result<HashMap<core::Name<'core>, &'core core::Term<'core>>> {
+    let mut globals: HashMap<core::Name<'core>, &'core core::Term<'core>> = HashMap::new();
 
     for func in program.functions {
         let name = core::Name::new(arena.alloc_str(func.name.as_str()));
@@ -312,9 +307,9 @@ pub(crate) fn collect_signatures<'src, 'core>(
             "duplicate function name `{name}`"
         );
 
-        let sig = elaborate_sig(arena, func).with_context(|| format!("in function `{name}`"))?;
+        let ty = elaborate_sig(arena, func).with_context(|| format!("in function `{name}`"))?;
 
-        globals.insert(name, sig);
+        globals.insert(name, ty);
     }
 
     Ok(globals)
@@ -324,34 +319,30 @@ pub(crate) fn collect_signatures<'src, 'core>(
 fn elaborate_bodies<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-    globals: &HashMap<core::Name<'core>, core::FunSig<'core>>,
+    globals: &HashMap<core::Name<'core>, &'core core::Term<'core>>,
 ) -> Result<core::Program<'core>> {
     let functions: &'core [core::Function<'core>] =
         arena.alloc_slice_try_fill_iter(program.functions.iter().map(|func| -> Result<_> {
             let name = core::Name::new(arena.alloc_str(func.name.as_str()));
-            let ast_sig = globals.get(&name).expect("signature missing from pass 1");
+            let ty = *globals.get(&name).expect("signature missing from pass 1");
+            let pi = match ty {
+                core::Term::Pi(pi) => pi,
+                _ => unreachable!("globals table must contain Pi types"),
+            };
 
             // Build a fresh context borrowing the stack-owned globals map.
             let mut ctx = Ctx::new(arena, globals);
 
             // Push parameters as locals so the body can reference them.
-            for (pname, pty) in ast_sig.params {
+            for (pname, pty) in pi.params {
                 ctx.push_local(pname, pty);
             }
 
             // Elaborate the body, checking it against the declared return type.
-            let body = check(&mut ctx, ast_sig.phase, func.body, ast_sig.ret_ty)
+            let body = check(&mut ctx, pi.phase, func.body, pi.body_ty)
                 .with_context(|| format!("in function `{name}`"))?;
 
-            // Re-borrow sig from globals (ctx was consumed in the check above).
-            // We need the sig fields for the Function; collect them before moving ctx.
-            let sig = core::FunSig {
-                params: ast_sig.params,
-                ret_ty: ast_sig.ret_ty,
-                phase: ast_sig.phase,
-            };
-
-            Ok(core::Function { name, sig, body })
+            Ok(core::Function { name, ty, body })
         }))?;
 
     Ok(core::Program { functions })
@@ -479,24 +470,20 @@ pub fn infer<'src, 'core>(
             let callee = infer(ctx, phase, func_term)?;
             let callee_ty = ctx.type_of(callee);
 
-            // For globals, verify phase matches.
-            if let core::Term::Global(gname) = callee {
-                let sig = ctx
-                    .globals
-                    .get(gname)
-                    .expect("Global must be in globals table");
-                ensure!(
-                    sig.phase == phase,
-                    "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
-                    sig.phase
-                );
-            }
-
             // Callee type must be Pi; arity must match.
             let pi = match callee_ty {
                 core::Term::Pi(pi) => pi,
                 _ => bail!("callee is not a function type"),
             };
+
+            // For globals, verify phase matches (phase is now carried on the Pi itself).
+            if let core::Term::Global(gname) = callee {
+                ensure!(
+                    pi.phase == phase,
+                    "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
+                    pi.phase
+                );
+            }
             ensure!(
                 args.len() == pi.params.len(),
                 "wrong number of arguments: callee expects {}, got {}",
@@ -623,7 +610,7 @@ pub fn infer<'src, 'core>(
             }
             assert_eq!(ctx.depth(), depth_before, "Pi elaboration leaked locals");
             let params_slice = ctx.alloc_slice(elaborated_params);
-            Ok(ctx.alloc(core::Term::Pi(Pi { params: params_slice, body_ty: core_ret_ty })))
+            Ok(ctx.alloc(core::Term::Pi(Pi { params: params_slice, body_ty: core_ret_ty, phase: Phase::Meta })))
         }
 
         // ------------------------------------------------------------------ Lam (infer mode)

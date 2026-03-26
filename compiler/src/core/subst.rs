@@ -26,7 +26,7 @@ pub fn subst<'a>(
                 pi.params.iter().map(|&(name, ty)| (name, subst(arena, ty, target, replacement))),
             );
             let new_body_ty = subst(arena, pi.body_ty, target, replacement);
-            arena.alloc(Term::Pi(Pi { params: new_params, body_ty: new_body_ty }))
+            arena.alloc(Term::Pi(Pi { params: new_params, body_ty: new_body_ty, phase: pi.phase }))
         }
 
         Term::Lam(lam) => {

@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
 use crate::core::{
-    Arm, FunSig, Function, IntType, IntWidth, Lam, Lvl, Name, Pat, Prim, Program, Term,
+    Arm, Function, IntType, IntWidth, Lam, Lvl, Name, Pat, Pi, Prim, Program, Term,
 };
 use crate::parser::ast::Phase;
 
@@ -99,7 +99,7 @@ impl<'out, 'eval> Env<'out, 'eval> {
 
 /// Everything the evaluator needs to know about a top-level function.
 struct GlobalDef<'a> {
-    sig: &'a FunSig<'a>,
+    ty: &'a Term<'a>, // always Term::Pi
     body: &'a Term<'a>,
 }
 
@@ -133,7 +133,10 @@ fn eval_meta<'out, 'eval>(
             let def = globals
                 .get(name)
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
-            if def.sig.params.is_empty() {
+            let Term::Pi(pi) = def.ty else {
+                unreachable!("global `{name}` must have a Pi type (typechecker invariant)")
+            };
+            if pi.params.is_empty() {
                 // Zero-param global: evaluate the body immediately in a fresh env.
                 let mut callee_env = Env::new(env.obj_next);
                 eval_meta(arena, eval_arena, globals, &mut callee_env, def.body)
@@ -227,7 +230,10 @@ fn global_to_closure<'out, 'eval>(
     obj_next: Lvl,
 ) -> MetaVal<'out, 'eval> {
     // Called only when params is non-empty (zero-param globals are evaluated immediately).
-    let body = match def.sig.params {
+    let Term::Pi(pi) = def.ty else {
+        unreachable!("global must have a Pi type (typechecker invariant)")
+    };
+    let body = match pi.params {
         [_] | [] => def.body,
         [_, rest @ ..] => {
             eval_arena.alloc(Term::Lam(Lam { params: rest, body: def.body }))
@@ -595,25 +601,18 @@ pub fn unstage_program<'out, 'core>(
     let globals: Globals<'_> = program
         .functions
         .iter()
-        .map(|f| {
-            (
-                f.name,
-                GlobalDef {
-                    sig: &f.sig,
-                    body: f.body,
-                },
-            )
-        })
+        .map(|f| (f.name, GlobalDef { ty: f.ty, body: f.body }))
         .collect();
 
     let staged_fns: Vec<Function<'out>> = program
         .functions
         .iter()
-        .filter(|f| f.sig.phase == Phase::Object)
+        .filter(|f| f.pi().phase == Phase::Object)
         .map(|f| -> Result<_> {
+            let pi = f.pi();
             let mut env = Env::new(Lvl::new(0));
 
-            let staged_params = arena.alloc_slice_try_fill_iter(f.sig.params.iter().map(
+            let staged_params = arena.alloc_slice_try_fill_iter(pi.params.iter().map(
                 |(n, ty)| -> Result<(&'out str, &'out Term<'out>)> {
                     let staged_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, ty)?;
                     env.push_obj();
@@ -621,17 +620,18 @@ pub fn unstage_program<'out, 'core>(
                 },
             ))?;
 
-            let staged_ret_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, f.sig.ret_ty)?;
-
+            let staged_ret_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, pi.body_ty)?;
             let staged_body = unstage_obj(arena, &eval_bump, &globals, &mut env, f.body)?;
+
+            let staged_ty = arena.alloc(Term::Pi(Pi {
+                params: staged_params,
+                body_ty: staged_ret_ty,
+                phase: Phase::Object,
+            }));
 
             Ok(Function {
                 name: Name::new(arena.alloc_str(f.name.as_str())),
-                sig: FunSig {
-                    params: staged_params,
-                    ret_ty: staged_ret_ty,
-                    phase: f.sig.phase,
-                },
+                ty: staged_ty,
                 body: staged_body,
             })
         })

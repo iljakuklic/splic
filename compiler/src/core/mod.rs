@@ -48,30 +48,25 @@ pub struct Arm<'a> {
     pub body: &'a Term<'a>,
 }
 
-/// Top-level function signature (stored in the globals table during elaboration)
-#[derive(Debug)]
-pub struct FunSig<'a> {
-    pub params: &'a [(&'a str, &'a Term<'a>)], // (name, type) pairs
-    pub ret_ty: &'a Term<'a>,
-    pub phase: Phase,
-}
-
-impl<'a> FunSig<'a> {
-    /// Construct a Pi type from this signature.
-    pub fn to_pi_type(&self, arena: &'a bumpalo::Bump) -> &'a Term<'a> {
-        arena.alloc(Term::Pi(Pi {
-            params: self.params,
-            body_ty: self.ret_ty,
-        }))
-    }
-}
-
-/// Elaborated top-level function definition
+/// Elaborated top-level function definition.
+///
+/// `ty` is always a `Term::Pi`; use `Function::pi()` for convenient access.
 #[derive(Debug)]
 pub struct Function<'a> {
     pub name: Name<'a>,
-    pub sig: FunSig<'a>,
+    /// Function type (always `Term::Pi`). The Pi carries the phase, params, and return type.
+    pub ty: &'a Term<'a>,
     pub body: &'a Term<'a>,
+}
+
+impl<'a> Function<'a> {
+    /// Unwrap `self.ty` as a `Pi`. Panics if `ty` is not a `Pi` (typechecker invariant).
+    pub fn pi(&self) -> &Pi<'a> {
+        match self.ty {
+            Term::Pi(pi) => pi,
+            _ => unreachable!("Function::ty must be a Pi (typechecker invariant)"),
+        }
+    }
 }
 
 /// Elaborated program: a sequence of top-level function definitions
@@ -95,11 +90,16 @@ pub struct App<'a> {
     pub args: &'a [&'a Term<'a>],
 }
 
-/// Dependent function type: fn(params...) -> body_ty
+/// Dependent function type: `fn(params...) -> body_ty`
+///
+/// `phase` distinguishes meta-level (`fn`) from object-level (`code fn`) functions.
+/// This allows the globals table to store `&Term` directly, unifying type lookup
+/// for globals and locals.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Pi<'a> {
     pub params: &'a [(&'a str, &'a Term<'a>)], // (name, type) pairs
     pub body_ty: &'a Term<'a>,
+    pub phase: Phase,
 }
 
 /// Lambda abstraction: |params...| body
