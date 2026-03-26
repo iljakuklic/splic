@@ -39,15 +39,15 @@ Dependent function types use the `fn` keyword — the same keyword used for defi
 
 ```
 fn(x: A) -> B       // dependent: B may mention x
-fn(A) -> B           // non-dependent (sugar for fn(_: A) -> B)
+fn(_: A) -> B        // non-dependent: wildcard name required
 ```
 
-Right-associative: `fn(A) -> fn(B) -> C` means `fn(A) -> (fn(B) -> C)`.
+Right-associative: `fn(_: A) -> fn(_: B) -> C` means `fn(_: A) -> (fn(_: B) -> C)`.
 
-Multi-parameter function types desugar to nested Pi:
+Multi-parameter function types are **not** desugared to nested Pi — the arity is preserved to enable proper arity checking at call sites:
 
 ```
-fn(x: A, y: B) -> C   ≡   fn(x: A) -> fn(y: B) -> C
+fn(x: A, y: B) -> C   -- two-argument function, not sugar for nested Pi
 ```
 
 **Rationale.** Using `fn` for types mirrors its use for definitions — in Splic, `fn` introduces anything function-shaped. The parenthesized parameter syntax `fn(x: A)` is visually distinct from a definition `fn name(x: A)` (the presence of a name between `fn` and `(` distinguishes them). The `(x: A) -> B` Agda/Lean convention was considered but `fn(x: A) -> B` is more Rust-flavored.
@@ -67,7 +67,7 @@ Type annotations on lambda parameters are **mandatory**. This makes lambdas infe
 
 ### Scope
 
-Pi types and lambdas are **meta-level only**. Object-level functions remain top-level `code fn` definitions. A lambda cannot appear in object-level code, and `fn(A) -> B` cannot appear as an object-level type. This matches the 2LTT philosophy: the meta level is a rich functional language; the object level is a simple low-level language.
+Pi types and lambdas are **meta-level only**. Object-level functions remain top-level `code fn` definitions. A lambda cannot appear in object-level code, and `fn(_: A) -> B` cannot appear as an object-level type. This matches the 2LTT philosophy: the meta level is a rich functional language; the object level is a simple low-level language.
 
 ## Typing Rules
 

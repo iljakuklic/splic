@@ -1,4 +1,4 @@
-fn compose(f@0: fn(u64) -> u64, g@1: fn(u64) -> u64) -> fn(u64) -> u64 {
+fn compose(f@0: fn(_: u64) -> u64, g@1: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
     |x@2: u64| f@0(g@1(x@2))
 }
 

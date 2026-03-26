@@ -73,7 +73,7 @@ Lambdas use Rust's closure syntax with mandatory type annotations:
 ```
 |x: u64| x + 1                   // single parameter
 |x: u64, y: u64| x + y           // multi-parameter (desugars to nested lambdas)
-|f: fn(u64) -> u64, x: u64| f(x) // higher-order
+|f: fn(_: u64) -> u64, x: u64| f(x) // higher-order
 ```
 
 Type annotations on lambda parameters are required. This makes lambdas inferable — the typechecker can synthesise the full function type from the annotations and the body.
@@ -136,8 +136,7 @@ expr        ::= literal
 
 fn_type     ::= "fn" "(" fn_params ")" "->" expr
 fn_params   ::= (fn_param ("," fn_param)*)?
-fn_param    ::= identifier ":" expr             -- dependent: fn(x: A) -> B
-             | expr                              -- non-dependent: fn(A) -> B
+fn_param    ::= identifier ":" expr             -- name required; use "_" for non-dependent
 
 lambda      ::= "|" param ("," param)* "|" expr
 

@@ -1,9 +1,6 @@
 use super::{Arm, Lam, Lvl, Pi, Term};
 
 /// Substitute `replacement` for `Var(target)` in `term`.
-///
-/// Used for dependent return types: when applying `f : Pi(x, A, B)` to `arg`,
-/// the result type is `subst(arena, B, target_lvl, arg)`.
 pub fn subst<'a>(
     arena: &'a bumpalo::Bump,
     term: &'a Term<'a>,

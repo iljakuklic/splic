@@ -144,9 +144,45 @@ Program {
             ),
             body: Block {
                 stmts: [],
-                expr: Var(
-                    "x",
-                ),
+                expr: Match {
+                    scrutinee: Var(
+                        "x",
+                    ),
+                    arms: [
+                        MatchArm {
+                            pat: Lit(
+                                0,
+                            ),
+                            body: Lit(
+                                0,
+                            ),
+                        },
+                        MatchArm {
+                            pat: Lit(
+                                1,
+                            ),
+                            body: Lit(
+                                1,
+                            ),
+                        },
+                        MatchArm {
+                            pat: Lit(
+                                2,
+                            ),
+                            body: Lit(
+                                2,
+                            ),
+                        },
+                        MatchArm {
+                            pat: Name(
+                                "_",
+                            ),
+                            body: Lit(
+                                3,
+                            ),
+                        },
+                    ],
+                },
             },
         },
         Function {

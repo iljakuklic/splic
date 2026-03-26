@@ -85,19 +85,20 @@ impl<'a> Term<'a> {
             // ── Pi type ───────────────────────────────────────────────────────────
             Term::Pi(pi) => {
                 if pi.param_name == "_" {
-                    write!(f, "fn(")?;
-                    pi.param_ty.fmt_expr(env, indent, f)?;
-                    write!(f, ") -> ")?;
-                    pi.body_ty.fmt_expr(env, indent, f)
+                    write!(f, "fn(_: ")?;
                 } else {
                     write!(f, "fn({}@{}: ", pi.param_name, env.len())?;
-                    pi.param_ty.fmt_expr(env, indent, f)?;
-                    write!(f, ") -> ")?;
-                    env.push(pi.param_name);
-                    pi.body_ty.fmt_expr(env, indent, f)?;
-                    env.pop();
-                    Ok(())
                 }
+                pi.param_ty.fmt_expr(env, indent, f)?;
+                write!(f, ") -> ")?;
+                if pi.param_name != "_" {
+                    env.push(pi.param_name);
+                }
+                pi.body_ty.fmt_expr(env, indent, f)?;
+                if pi.param_name != "_" {
+                    env.pop();
+                }
+                Ok(())
             }
 
             // ── Lambda ────────────────────────────────────────────────────────────
