@@ -84,31 +84,37 @@ impl<'a> Term<'a> {
 
             // ── Pi type ───────────────────────────────────────────────────────────
             Term::Pi(pi) => {
-                if pi.param_name == "_" {
-                    write!(f, "fn(_: ")?;
-                } else {
-                    write!(f, "fn({}@{}: ", pi.param_name, env.len())?;
+                let env_before = env.len();
+                write!(f, "fn(")?;
+                for (i, &(name, ty)) in pi.params.iter().enumerate() {
+                    if i > 0 { write!(f, ", ")?; }
+                    if name == "_" {
+                        write!(f, "_: ")?;
+                    } else {
+                        write!(f, "{}@{}: ", name, env.len())?;
+                    }
+                    ty.fmt_expr(env, indent, f)?;
+                    env.push(name);
                 }
-                pi.param_ty.fmt_expr(env, indent, f)?;
                 write!(f, ") -> ")?;
-                if pi.param_name != "_" {
-                    env.push(pi.param_name);
-                }
                 pi.body_ty.fmt_expr(env, indent, f)?;
-                if pi.param_name != "_" {
-                    env.pop();
-                }
+                env.truncate(env_before);
                 Ok(())
             }
 
             // ── Lambda ────────────────────────────────────────────────────────────
             Term::Lam(lam) => {
-                write!(f, "|{}@{}: ", lam.param_name, env.len())?;
-                lam.param_ty.fmt_expr(env, indent, f)?;
+                let env_before = env.len();
+                write!(f, "|")?;
+                for (i, &(name, ty)) in lam.params.iter().enumerate() {
+                    if i > 0 { write!(f, ", ")?; }
+                    write!(f, "{}@{}: ", name, env.len())?;
+                    ty.fmt_expr(env, indent, f)?;
+                    env.push(name);
+                }
                 write!(f, "| ")?;
-                env.push(lam.param_name);
                 lam.body.fmt_expr(env, indent, f)?;
-                env.pop();
+                env.truncate(env_before);
                 Ok(())
             }
 

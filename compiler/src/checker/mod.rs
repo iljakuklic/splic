@@ -166,34 +166,36 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                 _ => {
                     // Global function signatures are elaborated in an empty context,
                     // so the i-th Pi binder is at De Bruijn level (base_depth + i)
-                    // where base_depth counts args already applied by an outer App.
+                    // where base_depth counts args already applied by outer Apps.
                     let base_depth = app_base_depth(app.func);
-                    let mut current_ty = self.type_of(app.func);
-                    for (i, arg) in app.args.iter().enumerate() {
-                        match current_ty {
-                            core::Term::Pi(pi) => {
-                                current_ty =
-                                    subst(self.arena, pi.body_ty, Lvl(base_depth + i), arg);
+                    let func_ty = self.type_of(app.func);
+                    match func_ty {
+                        core::Term::Pi(pi) => {
+                            // Substitute each arg for its corresponding Pi param.
+                            let mut result = pi.body_ty;
+                            for (i, arg) in app.args.iter().enumerate() {
+                                result = subst(self.arena, result, Lvl(base_depth + i), arg);
                             }
-                            _ => unreachable!(
-                                "App func must have Pi type for each arg (typechecker invariant)"
-                            ),
+                            result
                         }
+                        _ => unreachable!(
+                            "App func must have Pi type (typechecker invariant)"
+                        ),
                     }
-                    current_ty
                 }
             },
 
-            // Lam: synthesise Pi from param_ty and body type
+            // Lam: synthesise Pi from params and body type.
             core::Term::Lam(lam) => {
-                self.push_local(lam.param_name, lam.param_ty);
+                for &(name, ty) in lam.params {
+                    self.push_local(name, ty);
+                }
                 let body_ty = self.type_of(lam.body);
-                self.pop_local();
-                self.alloc(core::Term::Pi(Pi {
-                    param_name: lam.param_name,
-                    param_ty: lam.param_ty,
-                    body_ty,
-                }))
+                for _ in lam.params {
+                    self.pop_local();
+                }
+                let params = self.alloc_slice(lam.params.iter().copied());
+                self.alloc(core::Term::Pi(Pi { params, body_ty }))
             }
 
             // #(t) : [[type_of(t)]]
@@ -475,7 +477,7 @@ pub fn infer<'src, 'core>(
         } => {
             // Elaborate the callee
             let callee = infer(ctx, phase, func_term)?;
-            let mut callee_ty = ctx.type_of(callee);
+            let callee_ty = ctx.type_of(callee);
 
             // For globals, verify phase matches.
             if let core::Term::Global(gname) = callee {
@@ -490,34 +492,31 @@ pub fn infer<'src, 'core>(
                 );
             }
 
-            // Check each argument against the next Pi parameter type and collect.
+            // Callee type must be Pi; arity must match.
+            let pi = match callee_ty {
+                core::Term::Pi(pi) => pi,
+                _ => bail!("callee is not a function type"),
+            };
+            ensure!(
+                args.len() == pi.params.len(),
+                "wrong number of arguments: callee expects {}, got {}",
+                pi.params.len(),
+                args.len()
+            );
+
+            // Check each arg against its Pi param type.
+            // Global sigs are elaborated in an empty context, so param i is at De Bruijn level i.
+            // For dependent types, substitute earlier args into later param types.
+            let base = app_base_depth(callee);
             let mut core_args: Vec<&'core core::Term<'core>> = Vec::with_capacity(args.len());
-            for (i, arg) in args.iter().enumerate() {
-                let pi = match callee_ty {
-                    core::Term::Pi(pi) => pi,
-                    core::Term::Var(_)
-                    | core::Term::Prim(_)
-                    | core::Term::Lit(..)
-                    | core::Term::Global(_)
-                    | core::Term::App(_)
-                    | core::Term::Lam(_)
-                    | core::Term::Lift(_)
-                    | core::Term::Quote(_)
-                    | core::Term::Splice(_)
-                    | core::Term::Let(_)
-                    | core::Term::Match(_) => bail!(
-                        "too many arguments: callee expects {i} argument(s), got {}",
-                        args.len()
-                    ),
-                };
-
-                let core_arg = check(ctx, phase, arg, pi.param_ty)
+            for (i, (arg, &(_, mut param_ty))) in
+                args.iter().zip(pi.params.iter()).enumerate()
+            {
+                for (j, &earlier_arg) in core_args.iter().enumerate() {
+                    param_ty = subst(ctx.arena, param_ty, Lvl(base + j), earlier_arg);
+                }
+                let core_arg = check(ctx, phase, arg, param_ty)
                     .with_context(|| format!("in argument {i} of function call"))?;
-
-                // The return type may depend on the argument (dependent types).
-                // Global function signatures are elaborated in an empty context,
-                // so the i-th Pi binder corresponds to De Bruijn level i.
-                callee_ty = subst(ctx.arena, pi.body_ty, Lvl(i), core_arg);
                 core_args.push(core_arg);
             }
 
@@ -601,7 +600,6 @@ pub fn infer<'src, 'core>(
             );
             let depth_before = ctx.depth();
 
-            // Elaborate param types and push locals.
             let mut elaborated_params: Vec<(&'core str, &'core core::Term<'core>)> = Vec::new();
             for p in *params {
                 let param_name: &'core str = ctx.arena.alloc_str(p.name.as_str());
@@ -620,31 +618,20 @@ pub fn infer<'src, 'core>(
                 "return type must be a type"
             );
 
-            // Build nested Pi from inside out.
-            let mut result: &'core core::Term<'core> = core_ret_ty;
-            for &(param_name, param_ty) in elaborated_params.iter().rev() {
+            for _ in &elaborated_params {
                 ctx.pop_local();
-                result = ctx.alloc(core::Term::Pi(Pi {
-                    param_name,
-                    param_ty,
-                    body_ty: result,
-                }));
             }
-
             assert_eq!(ctx.depth(), depth_before, "Pi elaboration leaked locals");
-            Ok(result)
+            let params_slice = ctx.alloc_slice(elaborated_params);
+            Ok(ctx.alloc(core::Term::Pi(Pi { params: params_slice, body_ty: core_ret_ty })))
         }
 
-        // ------------------------------------------------------------------ Lam
+        // ------------------------------------------------------------------ Lam (infer mode)
         // Lambda with mandatory type annotations — inferable.
         ast::Term::Lam { params, body } => {
             ensure!(
                 phase == Phase::Meta,
                 "lambdas are only valid in meta-phase context"
-            );
-            ensure!(
-                !params.is_empty(),
-                "lambda must have at least one parameter"
             );
 
             let depth_before = ctx.depth();
@@ -659,19 +646,12 @@ pub fn infer<'src, 'core>(
 
             let core_body = infer(ctx, phase, body)?;
 
-            // Build nested Lam from inside out.
-            let mut result: &'core core::Term<'core> = core_body;
-            for &(param_name, param_ty) in elaborated_params.iter().rev() {
+            for _ in &elaborated_params {
                 ctx.pop_local();
-                result = ctx.alloc(core::Term::Lam(Lam {
-                    param_name,
-                    param_ty,
-                    body: result,
-                }));
             }
-
             assert_eq!(ctx.depth(), depth_before, "Lam elaboration leaked locals");
-            Ok(result)
+            let params_slice = ctx.alloc_slice(elaborated_params);
+            Ok(ctx.alloc(core::Term::Lam(Lam { params: params_slice, body: core_body })))
         }
 
         // ------------------------------------------------------------------ Lift
@@ -1088,64 +1068,42 @@ pub fn check<'src, 'core>(
                 phase == Phase::Meta,
                 "lambdas are only valid in meta-phase context"
             );
-            ensure!(
-                !params.is_empty(),
-                "lambda must have at least one parameter"
-            );
 
             let depth_before = ctx.depth();
 
-            // Peel off one Pi per lambda param, checking annotation matches.
-            let mut current_expected = expected;
+            // Expected type must be a Pi with matching arity.
+            let pi = match expected {
+                core::Term::Pi(pi) => pi,
+                _ => bail!("expected a function type for this lambda"),
+            };
+            ensure!(
+                params.len() == pi.params.len(),
+                "lambda has {} parameter(s) but expected type has {}",
+                params.len(),
+                pi.params.len()
+            );
+
             let mut elaborated_params: Vec<(&'core str, &'core core::Term<'core>)> = Vec::new();
-
-            for p in *params {
-                let pi = match current_expected {
-                    core::Term::Pi(pi) => pi,
-                    core::Term::Var(_)
-                    | core::Term::Prim(_)
-                    | core::Term::Lit(..)
-                    | core::Term::Global(_)
-                    | core::Term::App(_)
-                    | core::Term::Lam(_)
-                    | core::Term::Lift(_)
-                    | core::Term::Quote(_)
-                    | core::Term::Splice(_)
-                    | core::Term::Let(_)
-                    | core::Term::Match(_) => {
-                        bail!("lambda has more parameters than the expected function type")
-                    }
-                };
-
+            for (p, &(_, pi_param_ty)) in params.iter().zip(pi.params.iter()) {
                 let param_name: &'core str = ctx.arena.alloc_str(p.name.as_str());
                 let annotated_ty = infer(ctx, Phase::Meta, p.ty)?;
-
                 ensure!(
-                    types_equal(annotated_ty, pi.param_ty),
+                    types_equal(annotated_ty, pi_param_ty),
                     "lambda parameter type mismatch: annotation gives a different type \
                      than the expected function type"
                 );
-
-                elaborated_params.push((param_name, pi.param_ty));
-                ctx.push_local(param_name, pi.param_ty);
-                current_expected = pi.body_ty;
+                elaborated_params.push((param_name, pi_param_ty));
+                ctx.push_local(param_name, pi_param_ty);
             }
 
-            let core_body = check(ctx, phase, body, current_expected)?;
+            let core_body = check(ctx, phase, body, pi.body_ty)?;
 
-            // Build nested Lam from inside out.
-            let mut result: &'core core::Term<'core> = core_body;
-            for &(param_name, param_ty) in elaborated_params.iter().rev() {
+            for _ in &elaborated_params {
                 ctx.pop_local();
-                result = ctx.alloc(core::Term::Lam(Lam {
-                    param_name,
-                    param_ty,
-                    body: result,
-                }));
             }
-
             assert_eq!(ctx.depth(), depth_before, "Lam check leaked locals");
-            Ok(result)
+            let params_slice = ctx.alloc_slice(elaborated_params);
+            Ok(ctx.alloc(core::Term::Lam(Lam { params: params_slice, body: core_body })))
         }
 
         // ------------------------------------------------------------------ Match (check mode)

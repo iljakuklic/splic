@@ -21,10 +21,14 @@ pub fn alpha_eq(a: &Term<'_>, b: &Term<'_>) -> bool {
                     .all(|(x, y)| alpha_eq(x, y))
         }
         (Term::Pi(p1), Term::Pi(p2)) => {
-            alpha_eq(p1.param_ty, p2.param_ty) && alpha_eq(p1.body_ty, p2.body_ty)
+            p1.params.len() == p2.params.len()
+                && p1.params.iter().zip(p2.params.iter()).all(|((_, t1), (_, t2))| alpha_eq(t1, t2))
+                && alpha_eq(p1.body_ty, p2.body_ty)
         }
         (Term::Lam(l1), Term::Lam(l2)) => {
-            alpha_eq(l1.param_ty, l2.param_ty) && alpha_eq(l1.body, l2.body)
+            l1.params.len() == l2.params.len()
+                && l1.params.iter().zip(l2.params.iter()).all(|((_, t1), (_, t2))| alpha_eq(t1, t2))
+                && alpha_eq(l1.body, l2.body)
         }
         (Term::Lift(i1), Term::Lift(i2))
         | (Term::Quote(i1), Term::Quote(i2))

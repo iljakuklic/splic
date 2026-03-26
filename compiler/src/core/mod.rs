@@ -57,18 +57,12 @@ pub struct FunSig<'a> {
 }
 
 impl<'a> FunSig<'a> {
-    /// Construct a nested Pi type from this signature:
-    /// `fn(x: A, y: B) -> C` becomes `Pi(x, A, Pi(y, B, C))`.
+    /// Construct a Pi type from this signature.
     pub fn to_pi_type(&self, arena: &'a bumpalo::Bump) -> &'a Term<'a> {
-        let mut result = self.ret_ty;
-        for &(name, ty) in self.params.iter().rev() {
-            result = arena.alloc(Term::Pi(Pi {
-                param_name: name,
-                param_ty: ty,
-                body_ty: result,
-            }));
-        }
-        result
+        arena.alloc(Term::Pi(Pi {
+            params: self.params,
+            body_ty: self.ret_ty,
+        }))
     }
 }
 
@@ -101,19 +95,17 @@ pub struct App<'a> {
     pub args: &'a [&'a Term<'a>],
 }
 
-/// Dependent function type: fn(x: A) -> B
+/// Dependent function type: fn(params...) -> body_ty
 #[derive(Debug, PartialEq, Eq)]
 pub struct Pi<'a> {
-    pub param_name: &'a str,
-    pub param_ty: &'a Term<'a>,
+    pub params: &'a [(&'a str, &'a Term<'a>)], // (name, type) pairs
     pub body_ty: &'a Term<'a>,
 }
 
-/// Lambda abstraction: |x: A| body
+/// Lambda abstraction: |params...| body
 #[derive(Debug, PartialEq, Eq)]
 pub struct Lam<'a> {
-    pub param_name: &'a str,
-    pub param_ty: &'a Term<'a>,
+    pub params: &'a [(&'a str, &'a Term<'a>)], // (name, type) pairs
     pub body: &'a Term<'a>,
 }
 

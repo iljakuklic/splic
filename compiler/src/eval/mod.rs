@@ -144,20 +144,37 @@ fn eval_meta<'out, 'eval>(
         }
 
         // ── Lambda ───────────────────────────────────────────────────────────
-        Term::Lam(lam) => Ok(MetaVal::Closure {
-            body: lam.body,
-            env: env.bindings.clone(),
-            obj_next: env.obj_next,
-        }),
+        Term::Lam(lam) => {
+            // For a zero-param lambda (thunk), wrap in a Closure whose body IS the
+            // lambda body; force_thunk evaluates it when applied to zero args.
+            // For a multi-param lambda, wrap params[1..] in a synthetic Lam so that
+            // apply_closure can peel one param at a time.
+            let body = match lam.params {
+                [] | [_] => lam.body,
+                [_, rest @ ..] => {
+                    eval_arena.alloc(Term::Lam(Lam { params: rest, body: lam.body }))
+                }
+            };
+            Ok(MetaVal::Closure {
+                body,
+                env: env.bindings.clone(),
+                obj_next: env.obj_next,
+            })
+        }
 
         // ── Application ──────────────────────────────────────────────────────
         Term::App(app) => match app.func {
             Term::Prim(prim) => eval_meta_prim(arena, eval_arena, globals, env, *prim, app.args),
             _ => {
                 let mut val = eval_meta(arena, eval_arena, globals, env, app.func)?;
-                for arg in app.args {
-                    let arg_val = eval_meta(arena, eval_arena, globals, env, arg)?;
-                    val = apply_closure(arena, eval_arena, globals, val, arg_val)?;
+                if app.args.is_empty() {
+                    // Zero-arg call: force the thunk closure.
+                    val = force_thunk(arena, eval_arena, globals, val)?;
+                } else {
+                    for arg in app.args {
+                        let arg_val = eval_meta(arena, eval_arena, globals, env, arg)?;
+                        val = apply_closure(arena, eval_arena, globals, val, arg_val)?;
+                    }
                 }
                 Ok(val)
             }
@@ -209,29 +226,14 @@ fn global_to_closure<'out, 'eval>(
     def: &GlobalDef<'eval>,
     obj_next: Lvl,
 ) -> MetaVal<'out, 'eval> {
-    let params = def.sig.params;
-    if params.is_empty() {
-        MetaVal::Closure {
-            body: def.body,
-            env: Vec::new(),
-            obj_next,
+    // Called only when params is non-empty (zero-param globals are evaluated immediately).
+    let body = match def.sig.params {
+        [_] | [] => def.body,
+        [_, rest @ ..] => {
+            eval_arena.alloc(Term::Lam(Lam { params: rest, body: def.body }))
         }
-    } else {
-        // Build nested lambdas for params[1..], then wrap in a closure for params[0].
-        let mut body: &'eval Term<'eval> = def.body;
-        for &(name, ty) in params.iter().rev().skip(1) {
-            body = eval_arena.alloc(Term::Lam(Lam {
-                param_name: name,
-                param_ty: ty,
-                body,
-            }));
-        }
-        MetaVal::Closure {
-            body,
-            env: Vec::new(),
-            obj_next,
-        }
-    }
+    };
+    MetaVal::Closure { body, env: Vec::new(), obj_next }
 }
 
 /// Apply a closure value to an argument value.
@@ -260,6 +262,24 @@ fn apply_closure<'out, 'eval>(
         MetaVal::Lit(_) | MetaVal::Code(_) | MetaVal::Ty => {
             unreachable!("applying a non-function value (typechecker invariant)")
         }
+    }
+}
+
+/// Force a thunk closure: evaluate its body in the captured environment without pushing any arg.
+fn force_thunk<'out, 'eval>(
+    arena: &'out Bump,
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    val: MetaVal<'out, 'eval>,
+) -> Result<MetaVal<'out, 'eval>> {
+    match val {
+        MetaVal::Closure { body, env, obj_next, .. } => {
+            let mut callee_env = Env { bindings: env, obj_next };
+            eval_meta(arena, eval_arena, globals, &mut callee_env, body)
+        }
+        // Already-evaluated value (e.g. a zero-param global reduced to Lit/Code).
+        // A zero-arg call is a no-op in this case.
+        other => Ok(other),
     }
 }
 

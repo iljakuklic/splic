@@ -1,0 +1,74 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "make_thunk",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Pi {
+                params: [],
+                ret_ty: Var(
+                    "u64",
+                ),
+            },
+            body: Block {
+                stmts: [],
+                expr: Lam {
+                    params: [],
+                    body: Var(
+                        "x",
+                    ),
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: App {
+                        func: Var(
+                            "make_thunk",
+                        ),
+                        args: [
+                            Lit(
+                                42,
+                            ),
+                        ],
+                    },
+                    args: [],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: Var(
+                            "test",
+                        ),
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

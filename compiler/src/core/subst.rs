@@ -22,23 +22,19 @@ pub fn subst<'a>(
         }
 
         Term::Pi(pi) => {
-            let new_param_ty = subst(arena, pi.param_ty, target, replacement);
+            let new_params = arena.alloc_slice_fill_iter(
+                pi.params.iter().map(|&(name, ty)| (name, subst(arena, ty, target, replacement))),
+            );
             let new_body_ty = subst(arena, pi.body_ty, target, replacement);
-            arena.alloc(Term::Pi(Pi {
-                param_name: pi.param_name,
-                param_ty: new_param_ty,
-                body_ty: new_body_ty,
-            }))
+            arena.alloc(Term::Pi(Pi { params: new_params, body_ty: new_body_ty }))
         }
 
         Term::Lam(lam) => {
-            let new_param_ty = subst(arena, lam.param_ty, target, replacement);
+            let new_params = arena.alloc_slice_fill_iter(
+                lam.params.iter().map(|&(name, ty)| (name, subst(arena, ty, target, replacement))),
+            );
             let new_body = subst(arena, lam.body, target, replacement);
-            arena.alloc(Term::Lam(Lam {
-                param_name: lam.param_name,
-                param_ty: new_param_ty,
-                body: new_body,
-            }))
+            arena.alloc(Term::Lam(Lam { params: new_params, body: new_body }))
         }
 
         Term::Lift(inner) => {
