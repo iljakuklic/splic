@@ -23,12 +23,20 @@ pub fn alpha_eq(a: &Term<'_>, b: &Term<'_>) -> bool {
         (Term::Pi(p1), Term::Pi(p2)) => {
             p1.phase == p2.phase
                 && p1.params.len() == p2.params.len()
-                && p1.params.iter().zip(p2.params.iter()).all(|((_, t1), (_, t2))| alpha_eq(t1, t2))
+                && p1
+                    .params
+                    .iter()
+                    .zip(p2.params.iter())
+                    .all(|((_, t1), (_, t2))| alpha_eq(t1, t2))
                 && alpha_eq(p1.body_ty, p2.body_ty)
         }
         (Term::Lam(l1), Term::Lam(l2)) => {
             l1.params.len() == l2.params.len()
-                && l1.params.iter().zip(l2.params.iter()).all(|((_, t1), (_, t2))| alpha_eq(t1, t2))
+                && l1
+                    .params
+                    .iter()
+                    .zip(l2.params.iter())
+                    .all(|((_, t1), (_, t2))| alpha_eq(t1, t2))
                 && alpha_eq(l1.body, l2.body)
         }
         (Term::Lift(i1), Term::Lift(i2))

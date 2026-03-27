@@ -8,7 +8,7 @@ use std::collections::HashMap;
 
 use super::*;
 
-use crate::core::{self, IntType, IntWidth, Name, Pat, Pi, Prim};
+use crate::core::{self, IntType, IntWidth, Ix, Name, Pat, Pi, Prim, value};
 use crate::parser::ast::{self, BinOp, FunName, MatchArm, Phase};
 
 mod helpers;

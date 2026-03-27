@@ -1,14 +1,13 @@
 pub mod pretty;
 mod prim;
-mod subst;
+pub mod value;
 
 pub mod alpha_eq;
 pub use crate::common::{Name, Phase};
 pub use alpha_eq::alpha_eq;
 pub use prim::{IntType, IntWidth, Prim};
-pub use subst::subst;
 
-/// De Bruijn level (counts from the outermost binder)
+/// De Bruijn level (counts from the outermost binder, 0 = outermost)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Lvl(pub usize);
 
@@ -21,6 +20,31 @@ impl Lvl {
     pub const fn succ(self) -> Self {
         Self(self.0 + 1)
     }
+}
+
+/// De Bruijn index (counts from nearest enclosing binder, 0 = innermost)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Ix(pub usize);
+
+impl Ix {
+    pub const fn new(n: usize) -> Self {
+        Self(n)
+    }
+
+    #[must_use]
+    pub const fn succ(self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
+/// Convert a De Bruijn level to an index given the current depth.
+pub const fn lvl_to_ix(depth: Lvl, lvl: Lvl) -> Ix {
+    Ix(depth.0 - lvl.0 - 1)
+}
+
+/// Convert a De Bruijn index to a level given the current depth.
+pub const fn ix_to_lvl(depth: Lvl, ix: Ix) -> Lvl {
+    Lvl(depth.0 - ix.0 - 1)
 }
 
 /// Match pattern in the core IR
@@ -128,8 +152,8 @@ pub struct Match<'a> {
 /// Core term / type (terms and types are unified)
 #[derive(Debug, PartialEq, Eq)]
 pub enum Term<'a> {
-    /// Local variable, identified by De Bruijn level
-    Var(Lvl),
+    /// Local variable, identified by De Bruijn index (0 = innermost binder)
+    Var(Ix),
     /// Built-in type or operation (not applied)
     Prim(Prim),
     /// Numeric literal with its integer type

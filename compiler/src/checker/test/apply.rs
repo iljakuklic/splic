@@ -67,7 +67,11 @@ fn infer_global_call_phase_mismatch_fails() {
     // `code fn f() -> u64` — object-phase function
     let u64_obj = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::U64_OBJ)));
     let mut globals = HashMap::new();
-    let f_ty: &core::Term = core_arena.alloc(core::Term::Pi(Pi { params: &[], body_ty: u64_obj, phase: Phase::Object }));
+    let f_ty: &core::Term = core_arena.alloc(core::Term::Pi(Pi {
+        params: &[],
+        body_ty: u64_obj,
+        phase: Phase::Object,
+    }));
     globals.insert(Name::new("f"), f_ty);
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 

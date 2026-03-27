@@ -30,7 +30,7 @@ pub fn sig_no_params_returns_u64(arena: &bumpalo::Bump) -> &core::Term<'_> {
 }
 
 /// Helper: build a Pi term for `fn f(x: u32) -> u64`.
-pub fn sig_one_param_returns_u64<'a>(arena: &'a bumpalo::Bump) -> &'a core::Term<'a> {
+pub fn sig_one_param_returns_u64(arena: &bumpalo::Bump) -> &core::Term<'_> {
     let params = arena.alloc_slice_fill_iter([("x", &core::Term::U32_META as &core::Term)]);
     arena.alloc(core::Term::Pi(Pi {
         params,

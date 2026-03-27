@@ -25,7 +25,7 @@ fn literal_checks_against_int_type() {
 fn variable_lookup_in_empty_context() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
-    assert_eq!(ctx.lookup_local("x"), None);
+    assert!(ctx.lookup_local("x").is_none());
 }
 
 #[test]
@@ -35,11 +35,11 @@ fn variable_lookup_after_push() {
     let u64_term = &core::Term::U64_META;
     ctx.push_local("x", u64_term);
 
-    let (lvl, ty) = ctx.lookup_local("x").expect("x should be in scope");
-    assert_eq!(lvl, Lvl(0));
+    let (ix, ty) = ctx.lookup_local("x").expect("x should be in scope");
+    assert_eq!(ix, Ix(0));
     assert!(matches!(
         ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -56,21 +56,22 @@ fn variable_lookup_with_multiple_locals() {
     ctx.push_local("x", u64_term);
     ctx.push_local("y", u32_term);
 
-    let (lvl_y, ty_y) = ctx.lookup_local("y").expect("y should be in scope");
-    assert_eq!(lvl_y, Lvl(1));
+    // With two locals, "y" is innermost (index 0), "x" is outer (index 1).
+    let (ix_y, ty_y) = ctx.lookup_local("y").expect("y should be in scope");
+    assert_eq!(ix_y, Ix(0));
     assert!(matches!(
         ty_y,
-        core::Term::Prim(Prim::IntTy(IntType {
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
     ));
 
-    let (lvl_x, ty_x) = ctx.lookup_local("x").expect("x should be in scope");
-    assert_eq!(lvl_x, Lvl(0));
+    let (ix_x, ty_x) = ctx.lookup_local("x").expect("x should be in scope");
+    assert_eq!(ix_x, Ix(1));
     assert!(matches!(
         ty_x,
-        core::Term::Prim(Prim::IntTy(IntType {
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -87,11 +88,12 @@ fn variable_shadowing() {
     ctx.push_local("x", u64_term);
     ctx.push_local("x", u32_term);
 
-    let (lvl, ty) = ctx.lookup_local("x").expect("x should be in scope");
-    assert_eq!(lvl, Lvl(1));
+    // Innermost "x" shadows outer; it is at index 0.
+    let (ix, ty) = ctx.lookup_local("x").expect("x should be in scope");
+    assert_eq!(ix, Ix(0));
     assert!(matches!(
         ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
@@ -120,8 +122,8 @@ fn meta_variable_in_quote_is_ok() {
     let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
     ctx.push_local("x", lifted_u64);
-    let x_var = arena.alloc(core::Term::Var(Lvl(0)));
-    assert!(matches!(x_var, core::Term::Var(Lvl(0))));
+    let x_var = arena.alloc(core::Term::Var(Ix(0)));
+    assert!(matches!(x_var, core::Term::Var(Ix(0))));
 }
 
 #[test]
@@ -210,7 +212,7 @@ fn splice_inference_mirrors_inner() {
     let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
     ctx.push_local("x", lifted_u64);
-    let x_var = arena.alloc(core::Term::Var(Lvl(0)));
+    let x_var = arena.alloc(core::Term::Var(Ix(0)));
     let spliced = arena.alloc(core::Term::Splice(x_var));
     assert!(matches!(spliced, core::Term::Splice(_)));
 }
@@ -220,7 +222,7 @@ fn let_binding_structure() {
     let arena = bumpalo::Bump::new();
     let u64_term = &core::Term::U64_META;
     let expr = arena.alloc(core::Term::Lit(42, IntType::U64_META));
-    let body = arena.alloc(core::Term::Var(Lvl(0)));
+    let body = arena.alloc(core::Term::Var(Ix(0)));
     let let_term = arena.alloc(core::Term::new_let("x", u64_term, expr, body));
     assert!(matches!(let_term, core::Term::Let(_)));
 }
@@ -228,7 +230,7 @@ fn let_binding_structure() {
 #[test]
 fn match_with_literal_pattern() {
     let arena = bumpalo::Bump::new();
-    let scrutinee = arena.alloc(core::Term::Var(Lvl(0)));
+    let scrutinee = arena.alloc(core::Term::Var(Ix(0)));
     let body0 = arena.alloc(core::Term::Lit(0, IntType::U64_META));
     let body1 = arena.alloc(core::Term::Lit(1, IntType::U64_META));
 
@@ -250,8 +252,8 @@ fn match_with_literal_pattern() {
 #[test]
 fn match_with_binding_pattern() {
     let arena = bumpalo::Bump::new();
-    let scrutinee = arena.alloc(core::Term::Var(Lvl(0)));
-    let body = arena.alloc(core::Term::Var(Lvl(0)));
+    let scrutinee = arena.alloc(core::Term::Var(Ix(0)));
+    let body = arena.alloc(core::Term::Var(Ix(0)));
 
     let arm = core::Arm {
         pat: Pat::Bind("n"),

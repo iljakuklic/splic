@@ -55,9 +55,15 @@ impl<'a> Term<'a> {
     ) -> fmt::Result {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
-            Term::Var(lvl) => {
-                let name = *env.get(lvl.0).expect("De Bruijn level in env bounds");
-                write!(f, "{name}@{}", lvl.0)
+            Term::Var(ix) => {
+                let i = env
+                    .len()
+                    .checked_sub(1 + ix.0)
+                    .expect("De Bruijn index out of environment bounds");
+                let name = env
+                    .get(i)
+                    .expect("De Bruijn index out of environment bounds");
+                write!(f, "{name}@{i}")
             }
 
             // ── Literal ──────────────────────────────────────────────────────────
@@ -87,7 +93,9 @@ impl<'a> Term<'a> {
                 let env_before = env.len();
                 write!(f, "fn(")?;
                 for (i, &(name, ty)) in pi.params.iter().enumerate() {
-                    if i > 0 { write!(f, ", ")?; }
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
                     if name == "_" {
                         write!(f, "_: ")?;
                     } else {
@@ -107,7 +115,9 @@ impl<'a> Term<'a> {
                 let env_before = env.len();
                 write!(f, "|")?;
                 for (i, &(name, ty)) in lam.params.iter().enumerate() {
-                    if i > 0 { write!(f, ", ")?; }
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
                     write!(f, "{}@{}: ", name, env.len())?;
                     ty.fmt_expr(env, indent, f)?;
                     env.push(name);

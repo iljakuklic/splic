@@ -14,7 +14,8 @@ fn infer_var_in_scope_returns_its_type() {
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     let ty = ctx.type_of(core_term);
-    assert!(matches!(core_term, core::Term::Var(Lvl(0))));
+    // With one local "x", infer returns Var(Ix(0)) — innermost (only) binder.
+    assert!(matches!(core_term, core::Term::Var(Ix(0))));
     assert!(matches!(
         ty,
         core::Term::Prim(Prim::IntTy(IntType {
@@ -35,20 +36,21 @@ fn infer_var_out_of_scope_fails() {
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
 }
 
-// With two locals the correct De Bruijn level is returned.
+// With two locals the correct De Bruijn index is returned.
 #[test]
-fn infer_var_returns_correct_level() {
+fn infer_var_returns_correct_index() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("x", u64_ty); // level 0
-    ctx.push_local("y", u32_ty); // level 1
+    ctx.push_local("x", u64_ty); // outer: index 1
+    ctx.push_local("y", u32_ty); // inner: index 0
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("y")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    assert!(matches!(core_term, core::Term::Var(Lvl(1))));
+    // "y" is innermost, so Ix(0).
+    assert!(matches!(core_term, core::Term::Var(Ix(0))));
 }
 
 // Shadowing: the innermost binding wins.
@@ -59,13 +61,14 @@ fn infer_var_shadowed_returns_innermost() {
     let mut ctx = test_ctx(&core_arena);
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("x", u64_ty); // level 0, u64
-    ctx.push_local("x", u32_ty); // level 1, u32 — shadows
+    ctx.push_local("x", u64_ty); // outer x: u64, index 1
+    ctx.push_local("x", u32_ty); // inner x: u32 — shadows, index 0
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     let ty = ctx.type_of(core_term);
-    assert!(matches!(core_term, core::Term::Var(Lvl(1))));
+    // Innermost "x" is at Ix(0).
+    assert!(matches!(core_term, core::Term::Var(Ix(0))));
     assert!(matches!(
         ty,
         core::Term::Prim(Prim::IntTy(IntType {
