@@ -85,8 +85,7 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
 
         Term::App(app) => {
             let func_val = eval(arena, env, app.func);
-            let arg_vals: Vec<Value<'a>> =
-                app.args.iter().map(|a| eval(arena, env, a)).collect();
+            let arg_vals: Vec<Value<'a>> = app.args.iter().map(|a| eval(arena, env, a)).collect();
             apply_many(arena, func_val, &arg_vals)
         }
 

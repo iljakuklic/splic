@@ -35,7 +35,9 @@ fn variable_lookup_after_push() {
     let u64_term = &core::Term::U64_META;
     ctx.push_local(core::Name::new("x"), u64_term);
 
-    let (ix, ty) = ctx.lookup_local(core::Name::new("x")).expect("x should be in scope");
+    let (ix, ty) = ctx
+        .lookup_local(core::Name::new("x"))
+        .expect("x should be in scope");
     assert_eq!(ix, Ix(0));
     assert!(matches!(
         ty,
@@ -57,7 +59,9 @@ fn variable_lookup_with_multiple_locals() {
     ctx.push_local(core::Name::new("y"), u32_term);
 
     // With two locals, "y" is innermost (index 0), "x" is outer (index 1).
-    let (ix_y, ty_y) = ctx.lookup_local(core::Name::new("y")).expect("y should be in scope");
+    let (ix_y, ty_y) = ctx
+        .lookup_local(core::Name::new("y"))
+        .expect("y should be in scope");
     assert_eq!(ix_y, Ix(0));
     assert!(matches!(
         ty_y,
@@ -67,7 +71,9 @@ fn variable_lookup_with_multiple_locals() {
         }))
     ));
 
-    let (ix_x, ty_x) = ctx.lookup_local(core::Name::new("x")).expect("x should be in scope");
+    let (ix_x, ty_x) = ctx
+        .lookup_local(core::Name::new("x"))
+        .expect("x should be in scope");
     assert_eq!(ix_x, Ix(1));
     assert!(matches!(
         ty_x,
@@ -89,7 +95,9 @@ fn variable_shadowing() {
     ctx.push_local(core::Name::new("x"), u32_term);
 
     // Innermost "x" shadows outer; it is at index 0.
-    let (ix, ty) = ctx.lookup_local(core::Name::new("x")).expect("x should be in scope");
+    let (ix, ty) = ctx
+        .lookup_local(core::Name::new("x"))
+        .expect("x should be in scope");
     assert_eq!(ix, Ix(0));
     assert!(matches!(
         ty,
@@ -223,7 +231,12 @@ fn let_binding_structure() {
     let u64_term = &core::Term::U64_META;
     let expr = arena.alloc(core::Term::Lit(42, IntType::U64_META));
     let body = arena.alloc(core::Term::Var(Ix(0)));
-    let let_term = arena.alloc(core::Term::new_let(core::Name::new("x"), u64_term, expr, body));
+    let let_term = arena.alloc(core::Term::new_let(
+        core::Name::new("x"),
+        u64_term,
+        expr,
+        body,
+    ));
     assert!(matches!(let_term, core::Term::Let(_)));
 }
 

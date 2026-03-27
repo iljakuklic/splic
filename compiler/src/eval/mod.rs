@@ -679,9 +679,7 @@ fn unstage_obj<'out, 'eval>(
                 arena.alloc_slice_try_fill_iter(match_.arms.iter().map(|arm| -> Result<_> {
                     let staged_pat = match &arm.pat {
                         Pat::Lit(n) => Pat::Lit(*n),
-                        Pat::Bind(name) => {
-                            Pat::Bind(Name::new(arena.alloc_str(name.as_str())))
-                        }
+                        Pat::Bind(name) => Pat::Bind(Name::new(arena.alloc_str(name.as_str()))),
                         Pat::Wildcard => Pat::Wildcard,
                     };
                     let has_binding = arm.pat.bound_name().is_some();
