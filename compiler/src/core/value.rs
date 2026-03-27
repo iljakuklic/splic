@@ -71,10 +71,8 @@ pub struct Closure<'a> {
 pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value<'a> {
     match term {
         Term::Var(ix) => {
-            let i = env
-                .len()
-                .checked_sub(1 + ix.0)
-                .expect("De Bruijn index out of environment bounds");
+            let lvl = ix.lvl_at_depth(Lvl(env.len()));
+            let i = lvl.0;
             env.get(i)
                 .expect("De Bruijn index out of environment bounds")
                 .clone()
