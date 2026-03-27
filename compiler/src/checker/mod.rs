@@ -364,12 +364,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
             }
         }
     }
-
-    /// Recover the type of an already-elaborated core term as a `&Term` (quoted).
-    pub fn type_of(&self, term: &'core core::Term<'core>) -> &'core core::Term<'core> {
-        let val = self.val_type_of(term);
-        self.quote_val(&val)
-    }
 }
 
 /// Resolve a built-in type name to a static core term, using `phase` for integer types.

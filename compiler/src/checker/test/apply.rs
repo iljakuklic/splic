@@ -16,10 +16,10 @@ fn infer_global_call_no_args_returns_ret_ty() {
         args: &[],
     });
     let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(result);
+    let ty_val = ctx.val_type_of(result);
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -100,10 +100,10 @@ fn infer_global_call_with_arg_checks_arg_type() {
         args,
     });
     let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(result);
+    let ty_val = ctx.val_type_of(result);
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -167,7 +167,7 @@ fn infer_comparison_op_returns_u1() {
 
     // Eq is inferable: result is u1, prim carries the operand type (u64).
     let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let ty_val = ctx.val_type_of(core_term);
     assert!(matches!(
         core_term,
         core::Term::App(core::App {
@@ -179,8 +179,8 @@ fn infer_comparison_op_returns_u1() {
         })
     ));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U1,
             ..
         }))

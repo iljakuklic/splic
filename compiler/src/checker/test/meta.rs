@@ -15,8 +15,8 @@ fn infer_lift_of_object_type_returns_type_universe() {
 
     // Elaborated at meta phase: type of [[u64]] is Type (meta universe)
     let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(result);
-    assert!(matches!(ty, core::Term::Prim(Prim::U(Phase::Meta))));
+    let ty_val = ctx.val_type_of(result);
+    assert!(matches!(ty_val, value::Value::U(Phase::Meta)));
 }
 
 // `[[u64]]` is illegal at object phase — Lift is only meaningful in meta context.
@@ -82,10 +82,10 @@ fn infer_quote_of_global_call_returns_lifted_type() {
 
     // Checked at meta phase; result type should be [[u64]]
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let ty_val = ctx.val_type_of(core_term);
     assert!(matches!(core_term, core::Term::Quote(_)));
     // Type is Lift(u64)
-    assert!(matches!(ty, core::Term::Lift(_)));
+    assert!(matches!(ty_val, value::Value::Lift(_)));
 }
 
 // `#(...)` at object phase is illegal — Quote is only meaningful in meta context.
@@ -175,11 +175,11 @@ fn infer_splice_of_lifted_var_returns_inner_type() {
 
     // splice is checked at object phase
     let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let ty_val = ctx.val_type_of(core_term);
     assert!(matches!(core_term, core::Term::Splice(_)));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -220,11 +220,11 @@ fn infer_splice_of_meta_int_succeeds() {
 
     // $(x) at object phase: result type is u32 at object phase.
     let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let ty_val = ctx.val_type_of(core_term);
     assert!(matches!(core_term, core::Term::Splice(_)));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             phase: Phase::Object,
         }))

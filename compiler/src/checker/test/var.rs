@@ -13,12 +13,12 @@ fn infer_var_in_scope_returns_its_type() {
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let ty_val = ctx.val_type_of(core_term);
     // With one local "x", infer returns Var(Ix(0)) — innermost (only) binder.
     assert!(matches!(core_term, core::Term::Var(Ix(0))));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
@@ -66,12 +66,12 @@ fn infer_var_shadowed_returns_innermost() {
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let ty_val = ctx.val_type_of(core_term);
     // Innermost "x" is at Ix(0).
     assert!(matches!(core_term, core::Term::Var(Ix(0))));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))

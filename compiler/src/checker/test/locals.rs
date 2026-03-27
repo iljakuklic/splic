@@ -21,10 +21,10 @@ fn infer_let_annotated_infers_body_type() {
     let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
 
     let result = infer(&mut ctx, Phase::Meta, block).expect("should infer");
-    let ty = ctx.type_of(result);
+    let ty_val = ctx.val_type_of(result);
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
