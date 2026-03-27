@@ -17,7 +17,7 @@ pub struct Ctx<'core, 'globals> {
     /// Arena for allocating core terms
     arena: &'core bumpalo::Bump,
     /// Local variable names (oldest first), for error messages.
-    names: Vec<&'core str>,
+    names: Vec<core::Name<'core>>,
     /// Evaluation environment (oldest first): values of locals.
     /// `env[env.len() - 1 - ix]` = value of `Var(Ix(ix))`.
     env: value::Env<'core>,
@@ -62,7 +62,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Push a local variable onto the context, given its type as a term.
     /// Evaluates the type term in the current environment.
-    pub fn push_local(&mut self, name: &'core str, ty: &'core core::Term<'core>) {
+    pub fn push_local(&mut self, name: core::Name<'core>, ty: &'core core::Term<'core>) {
         let ty_val = value::eval(self.arena, &self.env, ty);
         self.env.push(value::Value::Rigid(self.lvl));
         self.types.push(ty_val);
@@ -72,7 +72,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Push a local variable onto the context, given its type as a Value.
     /// The variable itself is a fresh rigid (neutral) variable — use for lambda/pi params.
-    fn push_local_val(&mut self, name: &'core str, ty_val: value::Value<'core>) {
+    fn push_local_val(&mut self, name: core::Name<'core>, ty_val: value::Value<'core>) {
         self.env.push(value::Value::Rigid(self.lvl));
         self.types.push(ty_val);
         self.lvl = self.lvl.succ();
@@ -83,7 +83,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     /// Use for `let x = e` bindings so that dependent references to `x` evaluate correctly.
     fn push_let_binding(
         &mut self,
-        name: &'core str,
+        name: core::Name<'core>,
         ty_val: value::Value<'core>,
         expr_val: value::Value<'core>,
     ) {
@@ -103,9 +103,9 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Look up a variable by name, returning its (index, type as Value).
     /// Searches from the most recently pushed variable inward to handle shadowing.
-    pub fn lookup_local(&self, name: &str) -> Option<(Ix, &value::Value<'core>)> {
-        for (i, &local_name) in self.names.iter().enumerate().rev() {
-            if local_name == name {
+    pub fn lookup_local(&self, name: core::Name<'_>) -> Option<(Ix, &value::Value<'core>)> {
+        for (i, local_name) in self.names.iter().enumerate().rev() {
+            if *local_name == name {
                 let ix = Lvl(i).ix_at_depth(self.lvl);
                 let ty = self
                     .types
@@ -357,7 +357,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                             lvl: self.lvl,
                             globals: self.globals,
                         };
-                        fake_ctx.push_local(name, scrut_ty_term);
+                        fake_ctx.push_local(core::Name::new(name), scrut_ty_term);
                         fake_ctx.val_type_of(arm.body)
                     }
                 }
@@ -390,9 +390,9 @@ fn elaborate_sig<'src, 'core>(
     let empty_globals = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
-    let params: &'core [(&'core str, &'core core::Term<'core>)] =
+    let params: &'core [(core::Name<'core>, &'core core::Term<'core>)] =
         arena.alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
-            let param_name: &'core str = arena.alloc_str(p.name.as_str());
+            let param_name = core::Name::new(arena.alloc_str(p.name.as_str()));
             let param_ty = infer(&mut ctx, func.phase, p.ty)?;
             ctx.push_local(param_name, param_ty);
             Ok((param_name, param_ty))
@@ -446,7 +446,7 @@ fn elaborate_bodies<'src, 'core>(
 
             // Push parameters as locals so the body can reference them.
             for (pname, pty) in pi.params {
-                ctx.push_local(pname, pty);
+                ctx.push_local(core::Name::new(pname), pty);
             }
 
             // Elaborate the body, checking it against the declared return type.
@@ -677,9 +677,9 @@ pub fn infer<'src, 'core>(
             );
             let depth_before = ctx.depth();
 
-            let mut elaborated_params: Vec<(&'core str, &'core core::Term<'core>)> = Vec::new();
+            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> = Vec::new();
             for p in *params {
-                let param_name: &'core str = ctx.arena.alloc_str(p.name.as_str());
+                let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let param_ty = infer(ctx, Phase::Meta, p.ty)?;
                 ensure!(
                     value_type_universe_ctx(ctx, &ctx.eval(param_ty)).is_some(),
@@ -716,10 +716,10 @@ pub fn infer<'src, 'core>(
             );
 
             let depth_before = ctx.depth();
-            let mut elaborated_params: Vec<(&'core str, &'core core::Term<'core>)> = Vec::new();
+            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> = Vec::new();
 
             for p in *params {
-                let param_name: &'core str = ctx.arena.alloc_str(p.name.as_str());
+                let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let param_ty = infer(ctx, Phase::Meta, p.ty)?;
                 elaborated_params.push((param_name, param_ty));
                 ctx.push_local(param_name, param_ty);
@@ -910,7 +910,7 @@ fn elaborate_pat<'core>(ctx: &Ctx<'core, '_>, pat: &ast::Pat<'_>) -> core::Pat<'
             if s == "_" {
                 core::Pat::Wildcard
             } else {
-                let bound: &'core str = ctx.arena.alloc_str(s);
+                let bound = core::Name::new(ctx.arena.alloc_str(s));
                 core::Pat::Bind(bound)
             }
         }
@@ -947,7 +947,7 @@ where
     let bind_ty_term = ctx.quote_val(&bind_ty_val);
     // Evaluate the bound expression so dependent references to this binding work correctly.
     let expr_val = ctx.eval(core_expr);
-    let bind_name: &'core str = ctx.arena.alloc_str(stmt.name.as_str());
+    let bind_name = core::Name::new(ctx.arena.alloc_str(stmt.name.as_str()));
     ctx.push_let_binding(bind_name, bind_ty_val, expr_val);
     let cont_result = cont(ctx);
     ctx.pop_local();
@@ -1204,7 +1204,7 @@ pub fn check_val<'src, 'core>(
                      than the expected function type"
                 );
                 elaborated_params.push((param_name, annotated_ty));
-                ctx.push_local_val(param_name, pi_param_ty);
+                ctx.push_local_val(core::Name::new(param_name), pi_param_ty);
             }
 
             let core_body = check_val(ctx, phase, body, body_ty_val)?;
@@ -1233,7 +1233,7 @@ pub fn check_val<'src, 'core>(
                     .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
                         let core_pat = elaborate_pat(ctx, &arm.pat);
                         if let Some(bname) = core_pat.bound_name() {
-                            ctx.push_local(bname, scrut_ty_term);
+                            ctx.push_local(core::Name::new(bname), scrut_ty_term);
                         }
 
                         let arm_result = check_val(ctx, phase, arm.body, expected.clone());

@@ -33,7 +33,7 @@ fn variable_lookup_after_push() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
-    ctx.push_local("x", u64_term);
+    ctx.push_local(core::Name::new("x"), u64_term);
 
     let (ix, ty) = ctx.lookup_local("x").expect("x should be in scope");
     assert_eq!(ix, Ix(0));
@@ -53,8 +53,8 @@ fn variable_lookup_with_multiple_locals() {
     let u64_term = &core::Term::U64_META;
     let u32_term = &core::Term::U32_META;
 
-    ctx.push_local("x", u64_term);
-    ctx.push_local("y", u32_term);
+    ctx.push_local(core::Name::new("x"), u64_term);
+    ctx.push_local(core::Name::new("y"), u32_term);
 
     // With two locals, "y" is innermost (index 0), "x" is outer (index 1).
     let (ix_y, ty_y) = ctx.lookup_local("y").expect("y should be in scope");
@@ -85,8 +85,8 @@ fn variable_shadowing() {
     let u64_term = &core::Term::U64_META;
     let u32_term = &core::Term::U32_META;
 
-    ctx.push_local("x", u64_term);
-    ctx.push_local("x", u32_term);
+    ctx.push_local(core::Name::new("x"), u64_term);
+    ctx.push_local(core::Name::new("x"), u32_term);
 
     // Innermost "x" shadows outer; it is at index 0.
     let (ix, ty) = ctx.lookup_local("x").expect("x should be in scope");
@@ -107,9 +107,9 @@ fn context_depth() {
     let u64_term = &core::Term::U64_META;
 
     assert_eq!(ctx.depth(), 0);
-    ctx.push_local("x", u64_term);
+    ctx.push_local(core::Name::new("x"), u64_term);
     assert_eq!(ctx.depth(), 1);
-    ctx.push_local("y", u64_term);
+    ctx.push_local(core::Name::new("y"), u64_term);
     assert_eq!(ctx.depth(), 2);
     ctx.pop_local();
     assert_eq!(ctx.depth(), 1);
@@ -121,7 +121,7 @@ fn meta_variable_in_quote_is_ok() {
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
-    ctx.push_local("x", lifted_u64);
+    ctx.push_local(core::Name::new("x"), lifted_u64);
     let x_var = arena.alloc(core::Term::Var(Ix(0)));
     assert!(matches!(x_var, core::Term::Var(Ix(0))));
 }
@@ -131,7 +131,7 @@ fn object_variable_outside_quote_is_invalid() {
     let arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
-    ctx.push_local("x", u64_term);
+    ctx.push_local(core::Name::new("x"), u64_term);
     assert_eq!(ctx.depth(), 1);
 }
 
@@ -211,7 +211,7 @@ fn splice_inference_mirrors_inner() {
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
-    ctx.push_local("x", lifted_u64);
+    ctx.push_local(core::Name::new("x"), lifted_u64);
     let x_var = arena.alloc(core::Term::Var(Ix(0)));
     let spliced = arena.alloc(core::Term::Splice(x_var));
     assert!(matches!(spliced, core::Term::Splice(_)));

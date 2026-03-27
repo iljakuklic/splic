@@ -51,15 +51,15 @@ impl Ix {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pat<'a> {
     Lit(u64),
-    Bind(&'a str), // named binding
-    Wildcard,      // _ pattern
+    Bind(Name<'a>), // named binding
+    Wildcard,       // _ pattern
 }
 
 impl<'a> Pat<'a> {
     /// Return the name bound by this pattern, if any.
-    pub const fn bound_name(&self) -> Option<&'a str> {
+    pub const fn bound_name(&self) -> Option<Name<'a>> {
         match self {
-            Pat::Bind(name) => Some(name),
+            Pat::Bind(name) => Some(*name),
             Pat::Lit(_) | Pat::Wildcard => None,
         }
     }
@@ -116,7 +116,7 @@ pub struct App<'a> {
 /// for globals and locals.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Pi<'a> {
-    pub params: &'a [(&'a str, &'a Term<'a>)], // (name, type) pairs
+    pub params: &'a [(Name<'a>, &'a Term<'a>)], // (name, type) pairs
     pub body_ty: &'a Term<'a>,
     pub phase: Phase,
 }
@@ -124,14 +124,14 @@ pub struct Pi<'a> {
 /// Lambda abstraction: |params...| body
 #[derive(Debug, PartialEq, Eq)]
 pub struct Lam<'a> {
-    pub params: &'a [(&'a str, &'a Term<'a>)], // (name, type) pairs
+    pub params: &'a [(Name<'a>, &'a Term<'a>)], // (name, type) pairs
     pub body: &'a Term<'a>,
 }
 
 /// Let binding with explicit type annotation and a body.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Let<'a> {
-    pub name: &'a str,
+    pub name: Name<'a>,
     pub ty: &'a Term<'a>,
     pub expr: &'a Term<'a>,
     pub body: &'a Term<'a>,
@@ -234,7 +234,7 @@ impl<'a> Term<'a> {
         Self::App(App { func, args })
     }
 
-    pub const fn new_let(name: &'a str, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
+    pub const fn new_let(name: Name<'a>, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
         Self::Let(Let {
             name,
             ty,

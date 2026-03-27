@@ -9,7 +9,7 @@ fn infer_var_in_scope_returns_its_type() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("x", u32_ty);
+    ctx.push_local(core::Name::new("x"), u32_ty);
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
@@ -44,8 +44,8 @@ fn infer_var_returns_correct_index() {
     let mut ctx = test_ctx(&core_arena);
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("x", u64_ty); // outer: index 1
-    ctx.push_local("y", u32_ty); // inner: index 0
+    ctx.push_local(core::Name::new("x"), u64_ty); // outer: index 1
+    ctx.push_local(core::Name::new("y"), u32_ty); // inner: index 0
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("y")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
@@ -61,8 +61,8 @@ fn infer_var_shadowed_returns_innermost() {
     let mut ctx = test_ctx(&core_arena);
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("x", u64_ty); // outer x: u64, index 1
-    ctx.push_local("x", u32_ty); // inner x: u32 — shadows, index 0
+    ctx.push_local(core::Name::new("x"), u64_ty); // outer x: u64, index 1
+    ctx.push_local(core::Name::new("x"), u32_ty); // inner x: u32 — shadows, index 0
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");

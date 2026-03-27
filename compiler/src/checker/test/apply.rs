@@ -122,8 +122,8 @@ fn check_binop_add_against_u32_succeeds() {
     let mut ctx = test_ctx(&core_arena);
     let u32_obj = core::Term::int_ty(IntWidth::U32, Phase::Object);
     // push two object-phase u32 locals to use as operands
-    ctx.push_local("a", u32_obj);
-    ctx.push_local("b", u32_obj);
+    ctx.push_local(core::Name::new("a"), u32_obj);
+    ctx.push_local(core::Name::new("b"), u32_obj);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -154,8 +154,8 @@ fn infer_comparison_op_returns_u1() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     let u64_obj = core::Term::int_ty(IntWidth::U64, Phase::Object);
-    ctx.push_local("a", u64_obj);
-    ctx.push_local("b", u64_obj);
+    ctx.push_local(core::Name::new("a"), u64_obj);
+    ctx.push_local(core::Name::new("b"), u64_obj);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -195,8 +195,8 @@ fn infer_comparison_op_mismatched_operands_fails() {
     let mut ctx = test_ctx(&core_arena);
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("a", u64_ty);
-    ctx.push_local("b", u32_ty); // different type
+    ctx.push_local(core::Name::new("a"), u64_ty);
+    ctx.push_local(core::Name::new("b"), u32_ty); // different type
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -216,8 +216,8 @@ fn infer_binop_add_without_expected_type_fails() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("a", u32_ty);
-    ctx.push_local("b", u32_ty);
+    ctx.push_local(core::Name::new("a"), u32_ty);
+    ctx.push_local(core::Name::new("b"), u32_ty);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -239,8 +239,8 @@ fn check_binop_add_with_mismatched_operand_types_fails() {
     // push a (u64) and b (u32) — they don't match the expected u32 for 'a'
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("a", u64_ty); // u64, but op expects u32
-    ctx.push_local("b", u32_ty);
+    ctx.push_local(core::Name::new("a"), u64_ty); // u64, but op expects u32
+    ctx.push_local(core::Name::new("b"), u32_ty);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -263,8 +263,8 @@ fn check_eq_op_produces_u1() {
     let mut ctx = test_ctx(&core_arena);
     // Use meta-phase locals so the phase is consistent throughout.
     let u64_ty = &core::Term::U64_META; // u64 at meta phase
-    ctx.push_local("a", u64_ty);
-    ctx.push_local("b", u64_ty);
+    ctx.push_local(core::Name::new("a"), u64_ty);
+    ctx.push_local(core::Name::new("b"), u64_ty);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
