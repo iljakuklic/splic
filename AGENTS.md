@@ -84,6 +84,8 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 ### Memory Management
 - Use `bumpalo` arena allocator wherever practical
 - For arena-allocated structures, refer to other objects using plain references rather than `Box`
+- In NbE (semantic evaluation), use slices `&'a [Value<'a>]` for environment snapshots captured in closures, not vectors
+- Keep mutable working environments (`Vec<Value>`) on the stack; snapshot them to the arena only at closure creation time
 
 ### 2LTT Patterns
 - No syntactic separation between type-level and term-level expressions
@@ -98,3 +100,5 @@ Splic is built on **two-level type theory (2LTT)**:
 - Connected through quotations and splices for type-safe metaprogramming
 
 See `docs/CONCEPT.md` and `docs/SYNTAX.md` for detailed language specifications.
+
+For compiler architecture details (NbE, De Bruijn representation, dependent types), see `docs/bs/nbe_and_debruijn.md` and `docs/bs/pi_types.md`.

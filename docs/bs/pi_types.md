@@ -111,64 +111,121 @@ Multi-argument calls desugar to curried application: `f(a, b)` = `f(a)(b)`.
 
 ## Core IR Design
 
-### New Term variants
+### Term Representation
 
 ```rust
-Pi { param_name: &'a str, param_ty: &'a Term<'a>, body_ty: &'a Term<'a> }
-Lam { param_name: &'a str, param_ty: &'a Term<'a>, body: &'a Term<'a> }
-FunApp { func: &'a Term<'a>, arg: &'a Term<'a> }
+// Variables use De Bruijn indices (count from nearest binder, 0 = innermost)
+Term::Var(Ix)
+
+// Pi types support variadic (multi-parameter) syntax
+Pi { params: &'a [(&'a str, &'a Term<'a>)], body_ty: &'a Term<'a>, phase: Phase }
+
+// Lambdas similarly support variadic parameters
+Lam { params: &'a [(&'a str, &'a Term<'a>)], body: &'a Term<'a> }
+
+// Application handles variadic calls
+App { func: &'a Term<'a>, args: &'a [&'a Term<'a>] }
+
+// Global references are terms, not application heads
 Global(Name<'a>)
-PrimApp { prim: Prim, args: &'a [&'a Term<'a>] }
 ```
 
-### Refactoring App/Head
+**Variadic Design.** Pi and Lam now carry a parameter list rather than single parameter. This preserves arity information and enables proper multi-argument application:
+- `fn(x: u64, y: u64) -> u64` is a single Pi with 2 params, not nested Pi types.
+- Application checking evaluates the domain type, checks the argument, then advances to the next param (via closure instantiation).
 
-The current `App { head: Head, args }` where `Head` is `Global(Name) | Prim(Prim)` is replaced by:
+**Phase field.** The Pi carries a `phase: Phase` distinguishing meta-level (`Phase::Meta`, printed as `fn`) from object-level (`Phase::Object`, printed as `code fn`) function types.
 
-- **`Global(Name)`** — a term representing a reference to a top-level function. Now a first-class term rather than just an application head.
-- **`FunApp { func, arg }`** — single-argument curried application. Used for both global and local function calls. Multi-arg calls `foo(a, b)` elaborate to `FunApp(FunApp(Global("foo"), a), b)`.
-- **`PrimApp { prim, args }`** — primitive operation application. Kept separate because prims carry resolved `IntType` and are always fully applied. Eventually prims will become regular typed symbols, but the typechecker isn't ready for that yet.
+### Substitution → Normalization by Evaluation (NbE)
 
-**`FunSig` is preserved** as a convenience structure in the globals table. It stores the flat parameter list and return type for efficient lookup. A `FunSig::to_pi_type(arena)` method constructs the corresponding nested Pi type when needed (e.g., for `type_of(Global(name))`).
+**Removed:** Syntactic substitution (`fn subst(...)`) is **deleted**. It had a critical variable-capture bug when the replacement contained binders.
 
-### Substitution
+**New approach:** The type checker uses **Normalization by Evaluation** to handle dependent types. Instead of rewriting syntax, the checker maintains a **semantic domain** (`Value`) and evaluates types in context. Dependent function arguments are checked by:
 
-Dependent return types require substitution: `B[arg/x]`. Since the core IR uses De Bruijn levels, substitution replaces `Var(lvl)` with the argument term. Levels do not shift, making the implementation straightforward:
+1. Evaluating the Pi type in the current environment to obtain a semantic `VPi`.
+2. Checking the argument against the evaluated domain type.
+3. Instantiating the Pi's closure with the evaluated argument to get the return type.
 
-```rust
-fn subst<'a>(arena: &'a Bump, term: &'a Term<'a>, lvl: Lvl, replacement: &'a Term<'a>) -> &'a Term<'a>
-```
+See `docs/bs/nbe_and_debruijn.md` for complete details on the semantic domain and evaluation.
 
 ### Alpha-equivalence
 
-The current `PartialEq` on `Term` compares structurally, including `param_name` fields. Two Pi types that differ only in parameter names (`fn(x: A) -> B` vs `fn(y: A) -> B`) should be equal. A dedicated `alpha_eq` function ignores names and compares only structure (De Bruijn levels handle binding correctly).
+Two terms are alpha-equivalent if they are structurally identical under De Bruijn indices (parameter names are irrelevant). The `alpha_eq` function in `core/alpha_eq.rs` performs structural comparison. With De Bruijn indices, this is a straightforward recursive check — renaming machinery is unnecessary.
 
-## Evaluator Design
+## Type Checker NbE
 
-### Closures
+### Semantic Domain (core/value.rs)
 
-A new `MetaVal` variant captures the environment at lambda creation:
+The type checker maintains semantic values separate from syntax to enable normalization:
 
 ```rust
-VClosure {
-    param_name: &str,
-    body: &Term,
-    env: Vec<Binding>,
-    obj_next: Lvl,
+pub enum Value<'a> {
+    // Neutrals (cannot reduce)
+    Rigid(Lvl),                          // local variable (De Bruijn level)
+    Global(&'a str),                     // global function reference
+    Prim(Prim),                          // primitive operation
+    App(&'a Value<'a>, &'a [Value<'a>]), // application
+
+    // Canonical forms
+    Lit(u64),                            // literal
+    Lam(VLam<'a>),                       // lambda with closure
+    Pi(VPi<'a>),                         // Pi type with closure
+    Lift(&'a Value<'a>),                 // lifted type
+    Quote(&'a Value<'a>),                // quoted code
+}
+
+pub struct VLam<'a> {
+    pub name: &'a str,
+    pub param_ty: &'a Value<'a>,
+    pub closure: Closure<'a>,
+}
+
+pub struct VPi<'a> {
+    pub name: &'a str,
+    pub domain: &'a Value<'a>,
+    pub closure: Closure<'a>,
+    pub phase: Phase,
+}
+
+pub struct Closure<'a> {
+    pub env: &'a [Value<'a>],  // snapshot of evaluation environment
+    pub body: &'a Term<'a>,    // unevaluated body term
 }
 ```
 
-This follows the substitution-based approach already in use. Application extends the captured env with the argument value and evaluates the body.
+### Key Operations
 
-### Global function references
+**`eval(arena, globals, env, term) -> Value`:** Interpret a term in an environment.
+- `Var(Ix(i))`: index into `env[env.len() - 1 - i]` (convert index to stack position).
+- `Lam` / `Pi`: create a closure by snapshotting `env` to the arena and pairing it with the body.
+- Other forms: recursively evaluate or return as neutrals.
 
-When `eval_meta` encounters `Global(name)`, it constructs a closure from the global's body and parameters. When applied via `FunApp`, this closure behaves identically to a lambda — the argument extends the env and the body is evaluated.
+**`apply(arena, globals, closure, arg) -> Value`:** Instantiate a closure with an argument.
+- Clone the closure's environment, push the argument, evaluate the body.
 
-For multi-parameter globals, partial application produces a closure that awaits the remaining arguments. This falls out naturally from curried `FunApp` chains.
+**`quote(arena, depth, value) -> &'a Term`:** Convert a value back to term syntax.
+- `Rigid(lvl)`: convert level to index using `lvl_to_ix(depth, lvl)`.
+- For `Lam` / `Pi`: apply the closure to a fresh variable, recursively quote the result.
 
-### Pi types in evaluation
+### Dependent Type Checking
 
-`Pi` terms are type-level and never appear in evaluation position (the typechecker ensures this). They are unreachable in `eval_meta`.
+When checking a multi-argument application:
+
+1. Evaluate the function's type to get `Value::Pi(vpi)`.
+2. Check the first argument against `vpi.domain`.
+3. Evaluate the argument to a value.
+4. **Instantiate the Pi's closure** with the evaluated argument: `apply(closure, arg_value)` yields the type of remaining args or return type.
+5. Repeat for each argument.
+
+This replaces syntactic substitution and eliminates variable capture bugs.
+
+### Distinction from Staging Evaluator
+
+The type checker's NbE and the staging evaluator (`eval/mod.rs`) are separate:
+- **Type checker NbE** uses a unified `Value` domain to normalize types during elaboration.
+- **Staging evaluator** uses separate `Val0`/`Val1` domains to partition meta/object computation and produce object code.
+
+Both use `Closure { env, body }` pattern for closures, but serve different purposes and cannot be unified.
 
 ## Staging Interaction
 
