@@ -114,7 +114,7 @@ impl<'out, 'eval> Env<'out, 'eval> {
 
 /// Everything the evaluator needs to know about a top-level function.
 struct GlobalDef<'a> {
-    ty: &'a Term<'a>, // always Term::Pi
+    ty: &'a Pi<'a>,
     body: &'a Term<'a>,
 }
 
@@ -148,9 +148,7 @@ fn eval_meta<'out, 'eval>(
             let def = globals
                 .get(name)
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
-            let Term::Pi(pi) = def.ty else {
-                unreachable!("global `{name}` must have a Pi type (typechecker invariant)")
-            };
+            let pi = def.ty;
             if pi.params.is_empty() {
                 // Zero-param global: evaluate the body immediately in a fresh env.
                 let mut callee_env = Env::new(env.obj_next);
@@ -249,9 +247,7 @@ fn global_to_closure<'out, 'eval>(
     obj_next: Lvl,
 ) -> MetaVal<'out, 'eval> {
     // Called only when params is non-empty (zero-param globals are evaluated immediately).
-    let Term::Pi(pi) = def.ty else {
-        unreachable!("global must have a Pi type (typechecker invariant)")
-    };
+    let pi = def.ty;
     let body = match pi.params {
         [_] | [] => def.body,
         [_, rest @ ..] => eval_arena.alloc(Term::Lam(Lam {
@@ -759,15 +755,13 @@ pub fn unstage_program<'out, 'core>(
             let staged_ret_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, pi.body_ty)?;
             let staged_body = unstage_obj(arena, &eval_bump, &globals, &mut env, f.body)?;
 
-            let staged_ty = arena.alloc(Term::Pi(Pi {
-                params: staged_params,
-                body_ty: staged_ret_ty,
-                phase: Phase::Object,
-            }));
-
             Ok(Function {
                 name: Name::new(arena.alloc_str(f.name.as_str())),
-                ty: staged_ty,
+                ty: arena.alloc(Pi {
+                    params: staged_params,
+                    body_ty: staged_ret_ty,
+                    phase: Phase::Object,
+                }),
                 body: staged_body,
             })
         })

@@ -50,12 +50,9 @@ fn collect_signatures_two_functions() {
 
     assert_eq!(globals.len(), 2);
 
-    let id_ty = globals
+    let id_pi = globals
         .get(&Name::new("id"))
         .expect("id should be in globals");
-    let core::Term::Pi(id_pi) = id_ty else {
-        panic!("expected Pi")
-    };
     assert_eq!(id_pi.phase, Phase::Meta);
     assert_eq!(id_pi.params.len(), 1);
     assert_eq!(id_pi.params[0].0, "x");
@@ -74,12 +71,9 @@ fn collect_signatures_two_functions() {
         }))
     ));
 
-    let add_ty = globals
+    let add_pi = globals
         .get(&Name::new("add_one"))
         .expect("add_one should be in globals");
-    let core::Term::Pi(add_pi) = add_ty else {
-        panic!("expected Pi")
-    };
     assert_eq!(add_pi.phase, Phase::Object);
     assert_eq!(add_pi.params.len(), 1);
     assert_eq!(add_pi.params[0].0, "y");

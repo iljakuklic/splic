@@ -4,8 +4,6 @@
 //! environment extension + `eval`. `quote` converts values back to terms for
 //! error reporting and definitional equality checking.
 
-use std::collections::HashMap;
-
 use bumpalo::Bump;
 
 use super::prim::IntType;
@@ -70,12 +68,7 @@ pub struct Closure<'a> {
 /// Evaluate a term in an environment, producing a semantic value.
 ///
 /// `env[env.len() - 1 - ix]` gives the value for `Var(Ix(ix))`.
-pub fn eval<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    env: &[Value<'a>],
-    term: &'a Term<'a>,
-) -> Value<'a> {
+pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value<'a> {
     match term {
         Term::Var(ix) => {
             let i = env
@@ -91,46 +84,43 @@ pub fn eval<'a>(
         Term::Lit(n, it) => Value::Lit(*n, *it),
         Term::Global(name) => Value::Global(*name),
 
-        Term::Lam(lam) => eval_lam(arena, globals, env, lam),
-        Term::Pi(pi) => eval_pi(arena, globals, env, pi),
+        Term::Lam(lam) => eval_lam(arena, env, lam),
+        Term::Pi(pi) => eval_pi(arena, env, pi),
 
         Term::App(app) => {
-            let func_val = eval(arena, globals, env, app.func);
-            let arg_vals: Vec<Value<'a>> = app
-                .args
-                .iter()
-                .map(|a| eval(arena, globals, env, a))
-                .collect();
-            apply_many(arena, globals, func_val, &arg_vals)
+            let func_val = eval(arena, env, app.func);
+            let arg_vals: Vec<Value<'a>> =
+                app.args.iter().map(|a| eval(arena, env, a)).collect();
+            apply_many(arena, func_val, &arg_vals)
         }
 
         Term::Lift(inner) => {
-            let inner_val = eval(arena, globals, env, inner);
+            let inner_val = eval(arena, env, inner);
             Value::Lift(arena.alloc(inner_val))
         }
 
         Term::Quote(inner) => {
-            let inner_val = eval(arena, globals, env, inner);
+            let inner_val = eval(arena, env, inner);
             Value::Quote(arena.alloc(inner_val))
         }
 
         Term::Splice(inner) => {
             // In type-checking context: splice unwraps a Quote, otherwise propagates.
-            match eval(arena, globals, env, inner) {
+            match eval(arena, env, inner) {
                 Value::Quote(v) => (*v).clone(),
                 v => v,
             }
         }
 
         Term::Let(let_) => {
-            let val = eval(arena, globals, env, let_.expr);
+            let val = eval(arena, env, let_.expr);
             let mut env2: Vec<Value<'a>> = env.to_vec();
             env2.push(val);
-            eval(arena, globals, &env2, let_.body)
+            eval(arena, &env2, let_.body)
         }
 
         Term::Match(match_) => {
-            let scrut_val = eval(arena, globals, env, match_.scrutinee);
+            let scrut_val = eval(arena, env, match_.scrutinee);
             let n = match scrut_val {
                 Value::Lit(n, _) => n,
                 // Non-literal scrutinee: stuck, return neutral
@@ -141,7 +131,7 @@ pub fn eval<'a>(
             for arm in match_.arms {
                 match &arm.pat {
                     Pat::Lit(m) if n == *m => {
-                        return eval(arena, globals, env, arm.body);
+                        return eval(arena, env, arm.body);
                     }
                     Pat::Lit(_) => continue,
                     Pat::Bind(_) | Pat::Wildcard => {
@@ -153,7 +143,7 @@ pub fn eval<'a>(
                                 phase: Phase::Meta,
                             },
                         ));
-                        return eval(arena, globals, &env2, arm.body);
+                        return eval(arena, &env2, arm.body);
                     }
                 }
             }
@@ -164,16 +154,11 @@ pub fn eval<'a>(
 }
 
 /// Evaluate a multi-param Pi, currying by slicing.
-fn eval_pi<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    env: &[Value<'a>],
-    pi: &'a Pi<'a>,
-) -> Value<'a> {
+pub fn eval_pi<'a>(arena: &'a Bump, env: &[Value<'a>], pi: &'a Pi<'a>) -> Value<'a> {
     match pi.params {
-        [] => eval(arena, globals, env, pi.body_ty),
+        [] => eval(arena, env, pi.body_ty),
         [(name, ty), rest @ ..] => {
-            let domain = eval(arena, globals, env, ty);
+            let domain = eval(arena, env, ty);
             let rest_body: &'a Term<'a> = if rest.is_empty() {
                 pi.body_ty
             } else {
@@ -198,16 +183,11 @@ fn eval_pi<'a>(
 }
 
 /// Evaluate a multi-param Lam, currying by slicing.
-fn eval_lam<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    env: &[Value<'a>],
-    lam: &'a Lam<'a>,
-) -> Value<'a> {
+fn eval_lam<'a>(arena: &'a Bump, env: &[Value<'a>], lam: &'a Lam<'a>) -> Value<'a> {
     match lam.params {
-        [] => eval(arena, globals, env, lam.body),
+        [] => eval(arena, env, lam.body),
         [(name, ty), rest @ ..] => {
-            let param_ty = eval(arena, globals, env, ty);
+            let param_ty = eval(arena, env, ty);
             let rest_body: &'a Term<'a> = if rest.is_empty() {
                 lam.body
             } else {
@@ -230,15 +210,10 @@ fn eval_lam<'a>(
 }
 
 /// Apply a single argument to a value.
-pub fn apply<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    func: Value<'a>,
-    arg: Value<'a>,
-) -> Value<'a> {
+pub fn apply<'a>(arena: &'a Bump, func: Value<'a>, arg: Value<'a>) -> Value<'a> {
     match func {
-        Value::Lam(vlam) => inst(arena, globals, &vlam.closure, arg),
-        Value::Pi(vpi) => inst(arena, globals, &vpi.closure, arg),
+        Value::Lam(vlam) => inst(arena, &vlam.closure, arg),
+        Value::Pi(vpi) => inst(arena, &vpi.closure, arg),
         Value::Rigid(lvl) => Value::App(
             arena.alloc(Value::Rigid(lvl)),
             arena.alloc_slice_fill_iter([arg]),
@@ -264,26 +239,16 @@ pub fn apply<'a>(
 }
 
 /// Apply a value to multiple arguments in sequence.
-pub fn apply_many<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    func: Value<'a>,
-    args: &[Value<'a>],
-) -> Value<'a> {
+pub fn apply_many<'a>(arena: &'a Bump, func: Value<'a>, args: &[Value<'a>]) -> Value<'a> {
     args.iter()
-        .fold(func, |f, arg| apply(arena, globals, f, arg.clone()))
+        .fold(func, |f, arg| apply(arena, f, arg.clone()))
 }
 
 /// Instantiate a closure with one argument: extend env with arg, eval body.
-pub fn inst<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    closure: &Closure<'a>,
-    arg: Value<'a>,
-) -> Value<'a> {
+pub fn inst<'a>(arena: &'a Bump, closure: &Closure<'a>, arg: Value<'a>) -> Value<'a> {
     let mut env = closure.env.to_vec();
     env.push(arg);
-    eval(arena, globals, &env, closure.body)
+    eval(arena, &env, closure.body)
 }
 
 /// Convert a value back to a term (for error reporting and definitional equality).
@@ -313,9 +278,7 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
         Value::Lam(vlam) => {
             // Apply the closure to a fresh rigid variable, then quote the result.
             let fresh = Value::Rigid(depth);
-            // For quoting we don't need globals (fresh vars are neutral).
-            let empty_globals: HashMap<Name<'_>, &Term<'_>> = HashMap::new();
-            let body_val = inst(arena, &empty_globals, &vlam.closure, fresh);
+            let body_val = inst(arena, &vlam.closure, fresh);
             let body_term = quote(arena, depth.succ(), &body_val);
             let param_ty_term = quote(arena, depth, vlam.param_ty);
             let params = arena.alloc_slice_fill_iter([(vlam.name, param_ty_term as &'a _)]);
@@ -326,8 +289,7 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
         }
         Value::Pi(vpi) => {
             let fresh = Value::Rigid(depth);
-            let empty_globals: HashMap<Name<'_>, &Term<'_>> = HashMap::new();
-            let body_val = inst(arena, &empty_globals, &vpi.closure, fresh);
+            let body_val = inst(arena, &vpi.closure, fresh);
             let body_term = quote(arena, depth.succ(), &body_val);
             let domain_term = quote(arena, depth, vpi.domain);
             let params = arena.alloc_slice_fill_iter([(vpi.name, domain_term as &'a _)]);
@@ -356,12 +318,8 @@ pub fn val_eq<'a>(arena: &'a Bump, depth: Lvl, a: &Value<'a>, b: &Value<'a>) -> 
 }
 
 /// Evaluate a term in the empty environment.
-pub fn eval_closed<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    term: &'a Term<'a>,
-) -> Value<'a> {
-    eval(arena, globals, &[], term)
+pub fn eval_closed<'a>(arena: &'a Bump, term: &'a Term<'a>) -> Value<'a> {
+    eval(arena, &[], term)
 }
 
 /// Extract the Phase from a Value that represents a universe (Type or `VmType`),

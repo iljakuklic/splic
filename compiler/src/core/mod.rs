@@ -73,23 +73,18 @@ pub struct Arm<'a> {
 }
 
 /// Elaborated top-level function definition.
-///
-/// `ty` is always a `Term::Pi`; use `Function::pi()` for convenient access.
 #[derive(Debug)]
 pub struct Function<'a> {
     pub name: Name<'a>,
-    /// Function type (always `Term::Pi`). The Pi carries the phase, params, and return type.
-    pub ty: &'a Term<'a>,
+    /// Function type: phase, params, and return type.
+    pub ty: &'a Pi<'a>,
     pub body: &'a Term<'a>,
 }
 
 impl<'a> Function<'a> {
-    /// Unwrap `self.ty` as a `Pi`. Panics if `ty` is not a `Pi` (typechecker invariant).
-    pub fn pi(&self) -> &Pi<'a> {
-        match self.ty {
-            Term::Pi(pi) => pi,
-            _ => unreachable!("Function::ty must be a Pi (typechecker invariant)"),
-        }
+    /// Return the function's Pi type.
+    pub const fn pi(&self) -> &Pi<'a> {
+        self.ty
     }
 }
 

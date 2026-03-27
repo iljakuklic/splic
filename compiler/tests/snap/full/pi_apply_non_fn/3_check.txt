@@ -1,2 +1,2 @@
 ERROR
-in function `test`: callee is not a function type
+in function `test`: too many arguments at argument 0

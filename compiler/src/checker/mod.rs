@@ -29,13 +29,13 @@ pub struct Ctx<'core, 'globals> {
     /// Global function types: name -> Pi term.
     /// Storing `&Term` (always a Pi) unifies type lookup for globals and locals.
     /// Borrowed independently of the arena so the map can live on the stack.
-    globals: &'globals HashMap<core::Name<'core>, &'core core::Term<'core>>,
+    globals: &'globals HashMap<core::Name<'core>, &'core core::Pi<'core>>,
 }
 
 impl<'core, 'globals> Ctx<'core, 'globals> {
     pub const fn new(
         arena: &'core bumpalo::Bump,
-        globals: &'globals HashMap<core::Name<'core>, &'core core::Term<'core>>,
+        globals: &'globals HashMap<core::Name<'core>, &'core core::Pi<'core>>,
     ) -> Self {
         Ctx {
             arena,
@@ -63,7 +63,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     /// Push a local variable onto the context, given its type as a term.
     /// Evaluates the type term in the current environment.
     pub fn push_local(&mut self, name: &'core str, ty: &'core core::Term<'core>) {
-        let ty_val = value::eval(self.arena, self.globals, &self.env, ty);
+        let ty_val = value::eval(self.arena, &self.env, ty);
         self.env.push(value::Value::Rigid(self.lvl));
         self.types.push(ty_val);
         self.lvl = self.lvl.succ();
@@ -129,7 +129,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Evaluate a term in the current environment.
     fn eval(&self, term: &'core core::Term<'core>) -> value::Value<'core> {
-        value::eval(self.arena, self.globals, &self.env, term)
+        value::eval(self.arena, &self.env, term)
     }
 
     /// Quote a value back to a term at the current depth.
@@ -199,12 +199,12 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
             // Global reference: look up its Pi type and evaluate.
             core::Term::Global(name) => {
-                let pi_term = self
+                let pi = self
                     .globals
                     .get(name)
                     .copied()
                     .expect("Global with unknown name (typechecker invariant)");
-                self.eval(pi_term)
+                value::eval_pi(self.arena, &self.env, pi)
             }
 
             // App: compute return type via NbE.
@@ -245,7 +245,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                             value::Value::Pi(vpi) => {
                                 let arg_val = self.eval(arg);
                                 pi_val =
-                                    value::inst(self.arena, self.globals, &vpi.closure, arg_val);
+                                    value::inst(self.arena, &vpi.closure, arg_val);
                             }
                             _ => unreachable!("App func must have Pi type (typechecker invariant)"),
                         }
@@ -265,7 +265,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                 let mut names2 = self.names.clone();
                 let mut elaborated_param_types: Vec<value::Value<'core>> = Vec::new();
                 for &(pname, pty) in lam.params {
-                    let ty_val = value::eval(self.arena, self.globals, &env2, pty);
+                    let ty_val = value::eval(self.arena, &env2, pty);
                     elaborated_param_types.push(ty_val.clone());
                     env2.push(value::Value::Rigid(lvl2));
                     types2.push(ty_val);
@@ -382,11 +382,11 @@ fn builtin_prim_ty(name: &str, phase: Phase) -> Option<&'static core::Term<'stat
     })
 }
 
-/// Elaborate one function's signature into a `Term::Pi` (the globals table entry).
+/// Elaborate one function's signature into a `Pi` (the globals table entry).
 fn elaborate_sig<'src, 'core>(
     arena: &'core bumpalo::Bump,
     func: &ast::Function<'src>,
-) -> Result<&'core core::Term<'core>> {
+) -> Result<&'core core::Pi<'core>> {
     let empty_globals = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
@@ -400,22 +400,19 @@ fn elaborate_sig<'src, 'core>(
 
     let body_ty = infer(&mut ctx, func.phase, func.ret_ty)?;
 
-    Ok(arena.alloc(core::Term::Pi(Pi {
+    Ok(arena.alloc(Pi {
         params,
         body_ty,
         phase: func.phase,
-    })))
+    }))
 }
 
 /// Pass 1: collect all top-level function signatures into a globals table.
-///
-/// Each entry is a `Term::Pi` carrying the function's phase, param types, and return type.
-/// This allows pass 2 to look up a global's type the same way it looks up a local's type.
 pub(crate) fn collect_signatures<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-) -> Result<HashMap<core::Name<'core>, &'core core::Term<'core>>> {
-    let mut globals: HashMap<core::Name<'core>, &'core core::Term<'core>> = HashMap::new();
+) -> Result<HashMap<core::Name<'core>, &'core core::Pi<'core>>> {
+    let mut globals: HashMap<core::Name<'core>, &'core core::Pi<'core>> = HashMap::new();
 
     for func in program.functions {
         let name = core::Name::new(arena.alloc_str(func.name.as_str()));
@@ -437,16 +434,12 @@ pub(crate) fn collect_signatures<'src, 'core>(
 fn elaborate_bodies<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-    globals: &HashMap<core::Name<'core>, &'core core::Term<'core>>,
+    globals: &HashMap<core::Name<'core>, &'core core::Pi<'core>>,
 ) -> Result<core::Program<'core>> {
     let functions: &'core [core::Function<'core>] =
         arena.alloc_slice_try_fill_iter(program.functions.iter().map(|func| -> Result<_> {
             let name = core::Name::new(arena.alloc_str(func.name.as_str()));
-            let ty = *globals.get(&name).expect("signature missing from pass 1");
-            let pi = match ty {
-                core::Term::Pi(pi) => pi,
-                _ => unreachable!("globals table must contain Pi types"),
-            };
+            let pi = *globals.get(&name).expect("signature missing from pass 1");
 
             // Build a fresh context borrowing the stack-owned globals map.
             let mut ctx = Ctx::new(arena, globals);
@@ -461,7 +454,7 @@ fn elaborate_bodies<'src, 'core>(
             let body = check_val(&mut ctx, pi.phase, func.body, ret_ty_val)
                 .with_context(|| format!("in function `{name}`"))?;
 
-            Ok(core::Function { name, ty, body })
+            Ok(core::Function { name, ty: pi, body })
         }))?;
 
     Ok(core::Program { functions })
@@ -582,24 +575,21 @@ pub fn infer<'src, 'core>(
             // Elaborate the callee.
             let callee = infer(ctx, phase, func_term)?;
 
-            // Get the callee's Pi type from the globals table (for globals) or from context.
-            // For globals, we use the raw Pi term directly (in empty context).
-            // For locals/other, we use val_type_of which gives the Value::Pi.
-            let (pi_phase, pi_param_count) = callee_pi_info(ctx, callee)?;
-
-            // For globals, verify phase matches.
+            // For globals: verify phase and arity using the raw Pi term.
+            // Non-globals: Pi depth is indistinguishable from nested fn types at value level,
+            // so we skip the arity pre-check and let the arg loop catch mismatches.
             if let core::Term::Global(gname) = callee {
+                let (pi_phase, pi_param_count) = callee_pi_info(ctx, callee)?;
                 ensure!(
                     pi_phase == phase,
                     "function `{gname}` is a {pi_phase}-phase function, but called in {phase}-phase context",
                 );
+                ensure!(
+                    args.len() == pi_param_count,
+                    "wrong number of arguments: callee expects {pi_param_count}, got {}",
+                    args.len()
+                );
             }
-
-            ensure!(
-                args.len() == pi_param_count,
-                "wrong number of arguments: callee expects {pi_param_count}, got {}",
-                args.len()
-            );
 
             // Get the starting Pi value for arg checking.
             // For globals: evaluate the Pi term in empty env.
@@ -617,7 +607,7 @@ pub fn infer<'src, 'core>(
                 let arg_val = ctx.eval(core_arg);
                 core_args.push(core_arg);
                 // Advance Pi to the next type by applying closure to arg.
-                pi_val = value::inst(ctx.arena, ctx.globals, &vpi.closure, arg_val);
+                pi_val = value::inst(ctx.arena, &vpi.closure, arg_val);
             }
 
             let args_slice = ctx.alloc_slice(core_args);
@@ -824,15 +814,12 @@ pub fn infer<'src, 'core>(
 fn callee_pi_info(ctx: &Ctx<'_, '_>, callee: &core::Term<'_>) -> Result<(Phase, usize)> {
     match callee {
         core::Term::Global(name) => {
-            let pi_term = ctx
+            let pi = ctx
                 .globals
                 .get(name)
                 .copied()
                 .ok_or_else(|| anyhow!("unknown global `{name}`"))?;
-            match pi_term {
-                core::Term::Pi(pi) => Ok((pi.phase, pi.params.len())),
-                _ => bail!("global `{name}` is not a function"),
-            }
+            Ok((pi.phase, pi.params.len()))
         }
         _ => {
             let mut ty = ctx.val_type_of(callee);
@@ -845,9 +832,12 @@ fn callee_pi_info(ctx: &Ctx<'_, '_>, callee: &core::Term<'_>) -> Result<(Phase, 
                 count += 1;
                 // Advance with a fresh rigid to get the next Pi layer.
                 let fresh = value::Value::Rigid(Lvl(ctx.depth() + count - 1));
-                ty = value::inst(ctx.arena, ctx.globals, &vpi.closure, fresh);
+                ty = value::inst(ctx.arena, &vpi.closure, fresh);
             }
-            let phase = phase_opt.ok_or_else(|| anyhow!("callee is not a function type"))?;
+            // If no Pi layers were found (count == 0), the callee's type reduces to
+            // a non-Pi value. In this design fn() -> T ≅ T, so zero-arg calls are
+            // valid for any callee. Phase is unused for non-global callees.
+            let phase = phase_opt.unwrap_or(Phase::Meta);
             Ok((phase, count))
         }
     }
@@ -863,13 +853,13 @@ fn callee_pi_val<'core>(
 ) -> value::Value<'core> {
     match callee {
         core::Term::Global(name) => {
-            let pi_term = ctx
+            let pi = ctx
                 .globals
                 .get(name)
                 .copied()
                 .expect("callee_pi_val called with unknown global (invariant)");
             // Global Pi terms are closed (elaborated in empty context) — safe to eval in current env.
-            value::eval(ctx.arena, ctx.globals, &[], pi_term)
+            value::eval_pi(ctx.arena, &[], pi)
         }
         _ => ctx.val_type_of(callee),
     }
@@ -1182,25 +1172,27 @@ pub fn check_val<'src, 'core>(
 
             let depth_before = ctx.depth();
 
-            // Expected type must be a Pi with matching arity.
-            // We need to peel Pi layers to get all params.
-            // Collect all Pi params from the expected value.
+            // Peel exactly `params.len()` Pi layers from the expected type.
+            // This allows nested lambdas: `|a: A| |b: B| body` checks against
+            // `fn(_: A) -> fn(_: B) -> R` by covering one Pi layer per lambda.
             let mut pi_params: Vec<(&str, value::Value<'core>)> = Vec::new();
             let mut cur_pi = expected.clone();
-            while let value::Value::Pi(vpi) = cur_pi {
-                pi_params.push((vpi.name, (*vpi.domain).clone()));
-                // Advance with a fresh variable for the closure
-                let fresh = value::Value::Rigid(Lvl(ctx.depth() + pi_params.len() - 1));
-                cur_pi = value::inst(ctx.arena, ctx.globals, &vpi.closure, fresh);
+            for _ in 0..params.len() {
+                match cur_pi {
+                    value::Value::Pi(vpi) => {
+                        pi_params.push((vpi.name, (*vpi.domain).clone()));
+                        let fresh =
+                            value::Value::Rigid(Lvl(ctx.depth() + pi_params.len() - 1));
+                        cur_pi = value::inst(ctx.arena, &vpi.closure, fresh);
+                    }
+                    _ => bail!(
+                        "lambda has {} parameter(s) but expected type has {}",
+                        params.len(),
+                        pi_params.len()
+                    ),
+                }
             }
             let body_ty_val = cur_pi;
-
-            ensure!(
-                params.len() == pi_params.len(),
-                "lambda has {} parameter(s) but expected type has {}",
-                params.len(),
-                pi_params.len()
-            );
 
             let mut elaborated_params: Vec<(&'core str, &'core core::Term<'core>)> = Vec::new();
             for (p, (_, pi_param_ty)) in params.iter().zip(pi_params.into_iter()) {

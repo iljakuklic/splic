@@ -65,11 +65,11 @@ fn infer_quote_of_global_call_returns_lifted_type() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("f"),
-        core_arena.alloc(core::Term::Pi(Pi {
+        core_arena.alloc(Pi {
             params: &[],
             body_ty: u64_ty_core,
             phase: Phase::Object,
-        })) as &_,
+        }) as &_,
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
@@ -98,11 +98,11 @@ fn infer_quote_at_object_phase_fails() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("f"),
-        core_arena.alloc(core::Term::Pi(Pi {
+        core_arena.alloc(Pi {
             params: &[],
             body_ty: u64_ty_core,
             phase: Phase::Object,
-        })) as &_,
+        }) as &_,
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
