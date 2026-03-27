@@ -113,119 +113,19 @@ Multi-argument calls desugar to curried application: `f(a, b)` = `f(a)(b)`.
 
 ### Term Representation
 
-```rust
-// Variables use De Bruijn indices (count from nearest binder, 0 = innermost)
-Term::Var(Ix)
-
-// Pi types support variadic (multi-parameter) syntax
-Pi { params: &'a [(&'a str, &'a Term<'a>)], body_ty: &'a Term<'a>, phase: Phase }
-
-// Lambdas similarly support variadic parameters
-Lam { params: &'a [(&'a str, &'a Term<'a>)], body: &'a Term<'a> }
-
-// Application handles variadic calls
-App { func: &'a Term<'a>, args: &'a [&'a Term<'a>] }
-
-// Global references are terms, not application heads
-Global(Name<'a>)
-```
-
-**Variadic Design.** Pi and Lam now carry a parameter list rather than single parameter. This preserves arity information and enables proper multi-argument application:
+**Variadic Design.** Pi and Lam carry a parameter list rather than a single parameter. This preserves arity information:
 - `fn(x: u64, y: u64) -> u64` is a single Pi with 2 params, not nested Pi types.
-- Application checking evaluates the domain type, checks the argument, then advances to the next param (via closure instantiation).
+- Application checking evaluates the domain, checks the argument, then advances via closure instantiation.
 
-**Phase field.** The Pi carries a `phase: Phase` distinguishing meta-level (`Phase::Meta`, printed as `fn`) from object-level (`Phase::Object`, printed as `code fn`) function types.
+**Phase field.** Pi types carry a phase distinguishing meta-level (printed as `fn`) from object-level (printed as `code fn`) function types.
 
 ### Substitution → Normalization by Evaluation (NbE)
 
-**Removed:** Syntactic substitution (`fn subst(...)`) is **deleted**. It had a critical variable-capture bug when the replacement contained binders.
-
-**New approach:** The type checker uses **Normalization by Evaluation** to handle dependent types. Instead of rewriting syntax, the checker maintains a **semantic domain** (`Value`) and evaluates types in context. Dependent function arguments are checked by:
-
-1. Evaluating the Pi type in the current environment to obtain a semantic `VPi`.
-2. Checking the argument against the evaluated domain type.
-3. Instantiating the Pi's closure with the evaluated argument to get the return type.
-
-See `docs/bs/nbe_and_debruijn.md` for complete details on the semantic domain and evaluation.
+Syntactic substitution is avoided due to capture bugs. Instead, the type checker uses **Normalization by Evaluation**: it evaluates types in a semantic domain (environment of values) and handles dependent type checking via closure instantiation. See `nbe_and_debruijn.md` for details.
 
 ### Alpha-equivalence
 
-Two terms are alpha-equivalent if they are structurally identical under De Bruijn indices (parameter names are irrelevant). The `alpha_eq` function in `core/alpha_eq.rs` performs structural comparison. With De Bruijn indices, this is a straightforward recursive check — renaming machinery is unnecessary.
-
-## Type Checker NbE
-
-### Semantic Domain (core/value.rs)
-
-The type checker maintains semantic values separate from syntax to enable normalization:
-
-```rust
-pub enum Value<'a> {
-    // Neutrals (cannot reduce)
-    Rigid(Lvl),                          // local variable (De Bruijn level)
-    Global(&'a str),                     // global function reference
-    Prim(Prim),                          // primitive operation
-    App(&'a Value<'a>, &'a [Value<'a>]), // application
-
-    // Canonical forms
-    Lit(u64),                            // literal
-    Lam(VLam<'a>),                       // lambda with closure
-    Pi(VPi<'a>),                         // Pi type with closure
-    Lift(&'a Value<'a>),                 // lifted type
-    Quote(&'a Value<'a>),                // quoted code
-}
-
-pub struct VLam<'a> {
-    pub name: &'a str,
-    pub param_ty: &'a Value<'a>,
-    pub closure: Closure<'a>,
-}
-
-pub struct VPi<'a> {
-    pub name: &'a str,
-    pub domain: &'a Value<'a>,
-    pub closure: Closure<'a>,
-    pub phase: Phase,
-}
-
-pub struct Closure<'a> {
-    pub env: &'a [Value<'a>],  // snapshot of evaluation environment
-    pub body: &'a Term<'a>,    // unevaluated body term
-}
-```
-
-### Key Operations
-
-**`eval(arena, globals, env, term) -> Value`:** Interpret a term in an environment.
-- `Var(Ix(i))`: index into `env[env.len() - 1 - i]` (convert index to stack position).
-- `Lam` / `Pi`: create a closure by snapshotting `env` to the arena and pairing it with the body.
-- Other forms: recursively evaluate or return as neutrals.
-
-**`apply(arena, globals, closure, arg) -> Value`:** Instantiate a closure with an argument.
-- Clone the closure's environment, push the argument, evaluate the body.
-
-**`quote(arena, depth, value) -> &'a Term`:** Convert a value back to term syntax.
-- `Rigid(lvl)`: convert level to index using `lvl_to_ix(depth, lvl)`.
-- For `Lam` / `Pi`: apply the closure to a fresh variable, recursively quote the result.
-
-### Dependent Type Checking
-
-When checking a multi-argument application:
-
-1. Evaluate the function's type to get `Value::Pi(vpi)`.
-2. Check the first argument against `vpi.domain`.
-3. Evaluate the argument to a value.
-4. **Instantiate the Pi's closure** with the evaluated argument: `apply(closure, arg_value)` yields the type of remaining args or return type.
-5. Repeat for each argument.
-
-This replaces syntactic substitution and eliminates variable capture bugs.
-
-### Distinction from Staging Evaluator
-
-The type checker's NbE and the staging evaluator (`eval/mod.rs`) are separate:
-- **Type checker NbE** uses a unified `Value` domain to normalize types during elaboration.
-- **Staging evaluator** uses separate `Val0`/`Val1` domains to partition meta/object computation and produce object code.
-
-Both use `Closure { env, body }` pattern for closures, but serve different purposes and cannot be unified.
+Two terms are alpha-equivalent if they are structurally identical under De Bruijn indices (parameter names are irrelevant). With De Bruijn indices, equivalence checking is a straightforward recursive check — no renaming machinery is needed.
 
 ## Staging Interaction
 
