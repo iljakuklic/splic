@@ -16,7 +16,7 @@ fn infer_lift_of_object_type_returns_type_universe() {
     // Elaborated at meta phase: type of [[u64]] is Type (meta universe)
     let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     let ty_val = ctx.val_type_of(result);
-    assert!(matches!(ty_val, value::Value::U(Phase::Meta)));
+    assert!(matches!(ty_val, value::Value::Prim(Prim::U(Phase::Meta))));
 }
 
 // `[[u64]]` is illegal at object phase — Lift is only meaningful in meta context.

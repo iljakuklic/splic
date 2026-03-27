@@ -169,10 +169,10 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
             }
 
             // Primitive types inhabit the relevant universe.
-            core::Term::Prim(Prim::IntTy(it)) => value::Value::U(it.phase),
+            core::Term::Prim(Prim::IntTy(it)) => value::Value::Prim(Prim::U(it.phase)),
             // Type, VmType, and [[T]] all inhabit Type (meta universe).
             core::Term::Prim(Prim::U(_)) | core::Term::Lift(_) | core::Term::Pi(_) => {
-                value::Value::U(Phase::Meta)
+                value::Value::Prim(Prim::U(Phase::Meta))
             }
 
             // Comparison ops return u1 at the operand phase.
@@ -477,8 +477,7 @@ const fn value_type_universe(ty: &value::Value<'_>) -> Option<Phase> {
         value::Value::Prim(Prim::IntTy(IntType { phase, .. })) => Some(*phase),
         value::Value::Prim(Prim::U(_))
         | value::Value::Lift(_)
-        | value::Value::Pi(_)
-        | value::Value::U(_) => Some(Phase::Meta),
+        | value::Value::Pi(_) => Some(Phase::Meta),
         // Neutral or unknown — can't determine phase
         value::Value::Rigid(_)
         | value::Value::Global(_)
@@ -504,7 +503,7 @@ fn value_type_universe_ctx<'core>(ctx: &Ctx<'core, '_>, ty: &value::Value<'core>
                 let var_ty = ctx.types.get(i)?;
                 // If the variable's type is U(phase), then it classifies types in phase.
                 match var_ty {
-                    value::Value::Prim(Prim::U(p)) | value::Value::U(p) => Some(*p),
+                    value::Value::Prim(Prim::U(p)) => Some(*p),
                     _ => None,
                 }
             }
@@ -749,7 +748,7 @@ pub fn infer<'src, 'core>(
             let inner_ty_val = ctx.val_type_of(core_inner);
             let is_vm_type = matches!(
                 &inner_ty_val,
-                value::Value::Prim(Prim::U(Phase::Object)) | value::Value::U(Phase::Object)
+                value::Value::Prim(Prim::U(Phase::Object))
             );
             ensure!(is_vm_type, "argument of `[[...]]` must be an object type");
             Ok(ctx.alloc(core::Term::Lift(core_inner)))

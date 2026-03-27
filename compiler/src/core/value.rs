@@ -35,8 +35,6 @@ pub enum Value<'a> {
     Lift(&'a Self),
     /// Canonical: quoted object code `#(t)`
     Quote(&'a Self),
-    /// Canonical: universe `Type` or `VmType`
-    U(Phase),
 }
 
 /// Lambda value: parameter name, parameter type, and body closure.
@@ -229,7 +227,7 @@ pub fn apply<'a>(arena: &'a Bump, func: Value<'a>, arg: Value<'a>) -> Value<'a> 
             arena.alloc(Value::Prim(p)),
             arena.alloc_slice_fill_iter([arg]),
         ),
-        Value::Lit(..) | Value::Lift(_) | Value::Quote(_) | Value::U(_) => {
+        Value::Lit(..) | Value::Lift(_) | Value::Quote(_) => {
             // Should not happen in well-typed programs
             panic!("apply: function position holds non-function value")
         }
@@ -261,10 +259,6 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
         Value::Global(name) => arena.alloc(Term::Global(*name)),
         Value::Prim(p) => arena.alloc(Term::Prim(*p)),
         Value::Lit(n, it) => arena.alloc(Term::Lit(*n, *it)),
-        Value::U(phase) => match phase {
-            Phase::Meta => &Term::TYPE,
-            Phase::Object => &Term::VM_TYPE,
-        },
         Value::App(f, args) => {
             let qf = quote(arena, depth, f);
             let qargs: Vec<&'a Term<'a>> = args
@@ -325,7 +319,7 @@ pub fn eval_closed<'a>(arena: &'a Bump, term: &'a Term<'a>) -> Value<'a> {
 pub const fn value_phase(val: &Value<'_>) -> Option<Phase> {
     match val {
         Value::Prim(Prim::IntTy(it)) => Some(it.phase),
-        Value::Prim(Prim::U(_)) | Value::Lift(_) | Value::Pi(_) | Value::U(_) => Some(Phase::Meta),
+        Value::Prim(Prim::U(_)) | Value::Lift(_) | Value::Pi(_) => Some(Phase::Meta),
         _ => None,
     }
 }
