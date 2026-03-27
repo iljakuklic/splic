@@ -244,8 +244,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                         match pi_val {
                             value::Value::Pi(vpi) => {
                                 let arg_val = self.eval(arg);
-                                pi_val =
-                                    value::inst(self.arena, &vpi.closure, arg_val);
+                                pi_val = value::inst(self.arena, &vpi.closure, arg_val);
                             }
                             _ => unreachable!("App func must have Pi type (typechecker invariant)"),
                         }
@@ -325,7 +324,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                 let mut types2 = self.types.clone();
                 types2.push(ty_val);
                 let mut names2 = self.names.clone();
-                names2.push(name);
+                names2.push(*name);
                 let lvl2 = self.lvl.succ();
                 let fake_ctx = Ctx {
                     arena: self.arena,
@@ -357,7 +356,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                             lvl: self.lvl,
                             globals: self.globals,
                         };
-                        fake_ctx.push_local(core::Name::new(name), scrut_ty_term);
+                        fake_ctx.push_local(name, scrut_ty_term);
                         fake_ctx.val_type_of(arm.body)
                     }
                 }
@@ -369,8 +368,8 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 /// Resolve a built-in type name to a static core term, using `phase` for integer types.
 ///
 /// Returns `None` if the name is not a built-in type.
-fn builtin_prim_ty(name: &str, phase: Phase) -> Option<&'static core::Term<'static>> {
-    Some(match name {
+fn builtin_prim_ty(name: core::Name<'_>, phase: Phase) -> Option<&'static core::Term<'static>> {
+    Some(match name.0 {
         "u1" => core::Term::int_ty(IntWidth::U1, phase),
         "u8" => core::Term::int_ty(IntWidth::U8, phase),
         "u16" => core::Term::int_ty(IntWidth::U16, phase),
@@ -390,8 +389,8 @@ fn elaborate_sig<'src, 'core>(
     let empty_globals = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
-    let params: &'core [(core::Name<'core>, &'core core::Term<'core>)] =
-        arena.alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
+    let params: &'core [(core::Name<'core>, &'core core::Term<'core>)] = arena
+        .alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
             let param_name = core::Name::new(arena.alloc_str(p.name.as_str()));
             let param_ty = infer(&mut ctx, func.phase, p.ty)?;
             ctx.push_local(param_name, param_ty);
@@ -446,7 +445,7 @@ fn elaborate_bodies<'src, 'core>(
 
             // Push parameters as locals so the body can reference them.
             for (pname, pty) in pi.params {
-                ctx.push_local(core::Name::new(pname), pty);
+                ctx.push_local(*pname, pty);
             }
 
             // Elaborate the body, checking it against the declared return type.
@@ -475,9 +474,9 @@ pub fn elaborate_program<'core>(
 const fn value_type_universe(ty: &value::Value<'_>) -> Option<Phase> {
     match ty {
         value::Value::Prim(Prim::IntTy(IntType { phase, .. })) => Some(*phase),
-        value::Value::Prim(Prim::U(_))
-        | value::Value::Lift(_)
-        | value::Value::Pi(_) => Some(Phase::Meta),
+        value::Value::Prim(Prim::U(_)) | value::Value::Lift(_) | value::Value::Pi(_) => {
+            Some(Phase::Meta)
+        }
         // Neutral or unknown — can't determine phase
         value::Value::Rigid(_)
         | value::Value::Global(_)
@@ -534,29 +533,28 @@ pub fn infer<'src, 'core>(
         // ------------------------------------------------------------------ Var
         // Look up the name in locals; return its index and type.
         ast::Term::Var(name) => {
-            let name_str = name.as_str();
             // First check if it's a built-in type name — those are inferable too.
-            if let Some(term) = builtin_prim_ty(name_str, phase) {
+            if let Some(term) = builtin_prim_ty(*name, phase) {
                 // Phase check: U(Object) (VmType) is only valid in a meta-phase context.
                 if let core::Term::Prim(Prim::U(u_phase)) = term {
                     ensure!(
                         *u_phase == phase,
-                        "`{name_str}` is a {u_phase}-phase type, \
+                        "`{name}` is a {u_phase}-phase type, \
                          not valid in a {phase}-phase context"
                     );
                 }
                 return Ok(term);
             }
             // Check locals.
-            if let Some((ix, _)) = ctx.lookup_local(name_str) {
+            if let Some((ix, _)) = ctx.lookup_local(*name) {
                 return Ok(ctx.alloc(core::Term::Var(ix)));
             }
             // Check globals — bare reference without call, produces Global term.
-            let core_name = core::Name::new(ctx.arena.alloc_str(name_str));
-            if ctx.globals.contains_key(&core_name) {
-                return Ok(ctx.alloc(core::Term::Global(core_name)));
+            if ctx.globals.contains_key(name) {
+                let name = core::Name::new(ctx.arena.alloc_str(name.0));
+                return Ok(ctx.alloc(core::Term::Global(name)));
             }
-            Err(anyhow!("unbound variable `{name_str}`"))
+            Err(anyhow!("unbound variable `{name}`"))
         }
 
         // ------------------------------------------------------------------ Lit
@@ -677,7 +675,8 @@ pub fn infer<'src, 'core>(
             );
             let depth_before = ctx.depth();
 
-            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> = Vec::new();
+            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> =
+                Vec::new();
             for p in *params {
                 let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let param_ty = infer(ctx, Phase::Meta, p.ty)?;
@@ -716,7 +715,8 @@ pub fn infer<'src, 'core>(
             );
 
             let depth_before = ctx.depth();
-            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> = Vec::new();
+            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> =
+                Vec::new();
 
             for p in *params {
                 let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
@@ -746,10 +746,7 @@ pub fn infer<'src, 'core>(
             );
             let core_inner = infer(ctx, Phase::Object, inner)?;
             let inner_ty_val = ctx.val_type_of(core_inner);
-            let is_vm_type = matches!(
-                &inner_ty_val,
-                value::Value::Prim(Prim::U(Phase::Object))
-            );
+            let is_vm_type = matches!(&inner_ty_val, value::Value::Prim(Prim::U(Phase::Object)));
             ensure!(is_vm_type, "argument of `[[...]]` must be an object type");
             Ok(ctx.alloc(core::Term::Lift(core_inner)))
         }
@@ -1174,14 +1171,13 @@ pub fn check_val<'src, 'core>(
             // Peel exactly `params.len()` Pi layers from the expected type.
             // This allows nested lambdas: `|a: A| |b: B| body` checks against
             // `fn(_: A) -> fn(_: B) -> R` by covering one Pi layer per lambda.
-            let mut pi_params: Vec<(&str, value::Value<'core>)> = Vec::new();
+            let mut pi_params: Vec<(core::Name<'_>, value::Value<'core>)> = Vec::new();
             let mut cur_pi = expected.clone();
             for _ in 0..params.len() {
                 match cur_pi {
                     value::Value::Pi(vpi) => {
                         pi_params.push((vpi.name, (*vpi.domain).clone()));
-                        let fresh =
-                            value::Value::Rigid(Lvl(ctx.depth() + pi_params.len() - 1));
+                        let fresh = value::Value::Rigid(Lvl(ctx.depth() + pi_params.len() - 1));
                         cur_pi = value::inst(ctx.arena, &vpi.closure, fresh);
                     }
                     _ => bail!(
@@ -1193,9 +1189,10 @@ pub fn check_val<'src, 'core>(
             }
             let body_ty_val = cur_pi;
 
-            let mut elaborated_params: Vec<(&'core str, &'core core::Term<'core>)> = Vec::new();
+            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> =
+                Vec::new();
             for (p, (_, pi_param_ty)) in params.iter().zip(pi_params.into_iter()) {
-                let param_name: &'core str = ctx.arena.alloc_str(p.name.as_str());
+                let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let annotated_ty = infer(ctx, Phase::Meta, p.ty)?;
                 let annotated_ty_val = ctx.eval(annotated_ty);
                 ensure!(
@@ -1204,7 +1201,7 @@ pub fn check_val<'src, 'core>(
                      than the expected function type"
                 );
                 elaborated_params.push((param_name, annotated_ty));
-                ctx.push_local_val(core::Name::new(param_name), pi_param_ty);
+                ctx.push_local_val(param_name, pi_param_ty);
             }
 
             let core_body = check_val(ctx, phase, body, body_ty_val)?;
@@ -1233,7 +1230,7 @@ pub fn check_val<'src, 'core>(
                     .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
                         let core_pat = elaborate_pat(ctx, &arm.pat);
                         if let Some(bname) = core_pat.bound_name() {
-                            ctx.push_local(core::Name::new(bname), scrut_ty_term);
+                            ctx.push_local(bname, scrut_ty_term);
                         }
 
                         let arm_result = check_val(ctx, phase, arm.body, expected.clone());

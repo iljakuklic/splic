@@ -55,7 +55,7 @@ fn collect_signatures_two_functions() {
         .expect("id should be in globals");
     assert_eq!(id_pi.phase, Phase::Meta);
     assert_eq!(id_pi.params.len(), 1);
-    assert_eq!(id_pi.params[0].0, "x");
+    assert_eq!(id_pi.params[0].0.as_str(), "x");
     assert!(matches!(
         id_pi.params[0].1,
         core::Term::Prim(Prim::IntTy(IntType {
@@ -76,7 +76,7 @@ fn collect_signatures_two_functions() {
         .expect("add_one should be in globals");
     assert_eq!(add_pi.phase, Phase::Object);
     assert_eq!(add_pi.params.len(), 1);
-    assert_eq!(add_pi.params[0].0, "y");
+    assert_eq!(add_pi.params[0].0.as_str(), "y");
     assert!(matches!(
         add_pi.params[0].1,
         core::Term::Prim(Prim::IntTy(IntType {

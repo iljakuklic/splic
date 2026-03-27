@@ -31,7 +31,7 @@ pub fn sig_no_params_returns_u64(arena: &bumpalo::Bump) -> &core::Pi<'_> {
 
 /// Helper: build a Pi for `fn f(x: u32) -> u64`.
 pub fn sig_one_param_returns_u64(arena: &bumpalo::Bump) -> &core::Pi<'_> {
-    let params = arena.alloc_slice_fill_iter([("x", &core::Term::U32_META as &core::Term)]);
+    let params = arena.alloc_slice_fill_iter([(core::Name::new("x"), &core::Term::U32_META as &core::Term)]);
     arena.alloc(Pi {
         params,
         body_ty: &core::Term::U64_META,

@@ -40,7 +40,7 @@ pub enum Value<'a> {
 /// Lambda value: parameter name, parameter type, and body closure.
 #[derive(Clone, Debug)]
 pub struct VLam<'a> {
-    pub name: &'a str,
+    pub name: Name<'a>,
     pub param_ty: &'a Value<'a>,
     pub closure: Closure<'a>,
 }
@@ -48,7 +48,7 @@ pub struct VLam<'a> {
 /// Pi (dependent function type) value.
 #[derive(Clone, Debug)]
 pub struct VPi<'a> {
-    pub name: &'a str,
+    pub name: Name<'a>,
     pub domain: &'a Value<'a>,
     pub closure: Closure<'a>,
     pub phase: Phase,
@@ -170,7 +170,7 @@ pub fn eval_pi<'a>(arena: &'a Bump, env: &[Value<'a>], pi: &'a Pi<'a>) -> Value<
                 body: rest_body,
             };
             Value::Pi(VPi {
-                name,
+                name: *name,
                 domain: arena.alloc(domain),
                 closure,
                 phase: pi.phase,
@@ -198,7 +198,7 @@ fn eval_lam<'a>(arena: &'a Bump, env: &[Value<'a>], lam: &'a Lam<'a>) -> Value<'
                 body: rest_body,
             };
             Value::Lam(VLam {
-                name,
+                name: *name,
                 param_ty: arena.alloc(param_ty),
                 closure,
             })

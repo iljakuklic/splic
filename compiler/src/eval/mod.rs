@@ -665,7 +665,7 @@ fn unstage_obj<'out, 'eval>(
             let staged_body = unstage_obj(arena, eval_arena, globals, env, let_.body);
             env.pop();
             Ok(arena.alloc(Term::new_let(
-                arena.alloc_str(let_.name),
+                Name::new(arena.alloc_str(let_.name.as_str())),
                 staged_ty,
                 staged_expr,
                 staged_body?,
@@ -679,7 +679,9 @@ fn unstage_obj<'out, 'eval>(
                 arena.alloc_slice_try_fill_iter(match_.arms.iter().map(|arm| -> Result<_> {
                     let staged_pat = match &arm.pat {
                         Pat::Lit(n) => Pat::Lit(*n),
-                        Pat::Bind(name) => Pat::Bind(arena.alloc_str(name)),
+                        Pat::Bind(name) => {
+                            Pat::Bind(Name::new(arena.alloc_str(name.as_str())))
+                        }
                         Pat::Wildcard => Pat::Wildcard,
                     };
                     let has_binding = arm.pat.bound_name().is_some();
@@ -745,10 +747,10 @@ pub fn unstage_program<'out, 'core>(
             let mut env = Env::new(Lvl::new(0));
 
             let staged_params = arena.alloc_slice_try_fill_iter(pi.params.iter().map(
-                |(n, ty)| -> Result<(&'out str, &'out Term<'out>)> {
+                |(n, ty)| -> Result<(Name<'out>, &'out Term<'out>)> {
                     let staged_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, ty)?;
                     env.push_obj();
-                    Ok((arena.alloc_str(n), staged_ty))
+                    Ok((Name::new(arena.alloc_str(n.as_str())), staged_ty))
                 },
             ))?;
 
