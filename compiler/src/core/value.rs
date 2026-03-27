@@ -121,7 +121,7 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
                 Value::Lit(n, _) => n,
                 // Non-literal scrutinee: stuck, return neutral
                 other => {
-                    return Value::App(arena.alloc(other), arena.alloc_slice_fill_iter([]));
+                    return Value::App(arena.alloc(other), &[]);
                 }
             };
             for arm in match_.arms {
