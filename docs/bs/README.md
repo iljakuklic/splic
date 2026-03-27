@@ -12,7 +12,6 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 - [functional_goto.md](functional_goto.md) — Control flow via SSA-style basic blocks with goto
 - [comparison_operators.md](comparison_operators.md) — Boolean vs propositional comparisons
 - [tuples_and_inference.md](tuples_and_inference.md) — Tuple syntax and type inference
-- [pi_types.md](pi_types.md) — Dependent function types (Pi) and lambdas at the meta level
 
 ## Compiler Internals
 
