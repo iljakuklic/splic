@@ -19,6 +19,8 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 - [prototype_core.md](prototype_core.md) — Prototype core IR design decisions
 - [self_typed_ir.md](self_typed_ir.md) — Self-typed core IR and a future `type_of` method
 - [prototype_eval.md](prototype_eval.md) — Evaluator design and implementation sequence (substitution → spines → dependent types)
+- [nbe_and_debruijn.md](nbe_and_debruijn.md) — Normalization by Evaluation, De Bruijn indices vs levels, free variable index shifting in staging
+- [pi_types.md](pi_types.md) — Dependent function types (Pi) and lambdas at the meta level (implementation details and NbE type checking)
 
 ## Roadmap, Strategy & Process
 
