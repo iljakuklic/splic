@@ -99,7 +99,9 @@ Splic documentation is organized in two main locations:
 - **`docs/README.md`** — Overview and index of language design and user-facing docs (CONCEPT, SYNTAX, examples)
 - **`docs/bs/README.md`** — Index of implementation notes, proposals, and architecture documentation
 
-**Keep doc indices up to date:** When adding new documentation files, add entries to the appropriate `README.md` with a brief description. This helps navigate the documentation.
+**Guidelines for writing docs:**
+- Focus on architectural concepts and design decisions ("what" and "why") rather than implementation-specific details (function names, parameter types, exact APIs). This keeps docs resilient to code changes.
+- Keep doc indices up to date: when adding new files, add entries to the appropriate `README.md` with a brief description.
 
 ## Language Design
 
