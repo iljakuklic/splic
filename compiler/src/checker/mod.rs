@@ -445,7 +445,7 @@ fn elaborate_bodies<'src, 'core>(
 
             // Push parameters as locals so the body can reference them.
             for (pname, pty) in pi.params {
-                ctx.push_local(*pname, pty);
+                ctx.push_local(pname, pty);
             }
 
             // Elaborate the body, checking it against the declared return type.
@@ -534,7 +534,7 @@ pub fn infer<'src, 'core>(
         // Look up the name in locals; return its index and type.
         ast::Term::Var(name) => {
             // First check if it's a built-in type name — those are inferable too.
-            if let Some(term) = builtin_prim_ty(*name, phase) {
+            if let Some(term) = builtin_prim_ty(name, phase) {
                 // Phase check: U(Object) (VmType) is only valid in a meta-phase context.
                 if let core::Term::Prim(Prim::U(u_phase)) = term {
                     ensure!(
@@ -546,7 +546,7 @@ pub fn infer<'src, 'core>(
                 return Ok(term);
             }
             // Check locals.
-            if let Some((ix, _)) = ctx.lookup_local(*name) {
+            if let Some((ix, _)) = ctx.lookup_local(name) {
                 return Ok(ctx.alloc(core::Term::Var(ix)));
             }
             // Check globals — bare reference without call, produces Global term.

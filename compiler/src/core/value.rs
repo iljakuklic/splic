@@ -78,7 +78,7 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
 
         Term::Prim(p) => Value::Prim(*p),
         Term::Lit(n, it) => Value::Lit(*n, *it),
-        Term::Global(name) => Value::Global(*name),
+        Term::Global(name) => Value::Global(name),
 
         Term::Lam(lam) => eval_lam(arena, env, lam),
         Term::Pi(pi) => eval_pi(arena, env, pi),
@@ -169,7 +169,7 @@ pub fn eval_pi<'a>(arena: &'a Bump, env: &[Value<'a>], pi: &'a Pi<'a>) -> Value<
                 body: rest_body,
             };
             Value::Pi(VPi {
-                name: *name,
+                name,
                 domain: arena.alloc(domain),
                 closure,
                 phase: pi.phase,
@@ -197,7 +197,7 @@ fn eval_lam<'a>(arena: &'a Bump, env: &[Value<'a>], lam: &'a Lam<'a>) -> Value<'
                 body: rest_body,
             };
             Value::Lam(VLam {
-                name: *name,
+                name,
                 param_ty: arena.alloc(param_ty),
                 closure,
             })
@@ -256,7 +256,7 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
             let ix = lvl.ix_at_depth(depth);
             arena.alloc(Term::Var(ix))
         }
-        Value::Global(name) => arena.alloc(Term::Global(*name)),
+        Value::Global(name) => arena.alloc(Term::Global(name)),
         Value::Prim(p) => arena.alloc(Term::Prim(*p)),
         Value::Lit(n, it) => arena.alloc(Term::Lit(*n, *it)),
         Value::App(f, args) => {
