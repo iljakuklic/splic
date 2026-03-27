@@ -4,7 +4,12 @@ pub struct Name(str);
 
 impl Name {
     #[ref_cast::ref_cast_custom]
-    pub const fn new(s: &str) -> &Self;
+    const fn new_unchecked(s: &str) -> &Self;
+
+    pub const fn new(n: &str) -> &Self {
+        assert!(!n.is_empty(), "Empty name");
+        Self::new_unchecked(n)
+    }
 
     pub const fn as_str(&self) -> &str {
         &self.0
