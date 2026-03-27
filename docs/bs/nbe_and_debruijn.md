@@ -115,282 +115,63 @@ pub struct Closure<'a> {
 
 **Key insight:** Closures pair an **environment snapshot** (arena-allocated slice) with an **unevaluated term**. When instantiated, the environment is extended and the body is evaluated.
 
-### Evaluation (eval function)
+### Evaluation
 
-```rust
-pub fn eval<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    env: &Env<'a>,
-    term: &'a Term<'a>,
-) -> Value<'a> {
-    match term {
-        // Variable: convert index to stack position
-        Term::Var(Ix(i)) => {
-            let stack_pos = env.len() - 1 - i;
-            env[stack_pos].clone()
-        }
+The evaluator interprets terms in an environment, producing semantic values:
 
-        // Neutral references
-        Term::Global(name) => Value::Global(*name),
-        Term::Prim(p) => Value::Prim(*p),
-        Term::Lit(n) => Value::Lit(*n),
+**Key principles**:
+- **Variables** are converted from indices to stack positions via environment lookup.
+- **Lambdas and Pi types** create closures by snapshotting the current environment.
+- **Applications** apply a function value to arguments, evaluating on-demand.
+- **Let bindings** are eagerly evaluated: extend the environment with the let-bound value and continue.
+- **Lift/Quote/Splice** are reduced according to staging rules.
+- **Match** performs pattern matching at the semantic level.
 
-        // Lambda: create closure by snapshotting environment
-        Term::Lam(lam) if lam.params.is_empty() => {
-            eval(arena, globals, env, lam.body)
-        }
-        Term::Lam(lam) => {
-            let (name, ty) = lam.params[0];
-            let param_ty = eval(arena, globals, env, ty);
-            let rest_body = if lam.params.len() == 1 {
-                lam.body
-            } else {
-                // Slice to remaining params (zero-copy)
-                arena.alloc(Term::Lam(Lam {
-                    params: &lam.params[1..],
-                    body: lam.body,
-                }))
-            };
-            Value::Lam(VLam {
-                name,
-                param_ty: Box::new(param_ty),
-                closure: Closure {
-                    env: arena.alloc_slice_fill_iter(env.iter().cloned()),
-                    body: rest_body,
-                },
-            })
-        }
+**Variadic handling**: Multi-parameter lambdas and Pi types are curried by slicing, not duplicating:
+remaining parameters are encoded as a sub-term, avoiding allocation.
 
-        // Pi: similar to Lam
-        Term::Pi(pi) if pi.params.is_empty() => {
-            eval(arena, globals, env, pi.body_ty)
-        }
-        Term::Pi(pi) => {
-            let (name, ty) = pi.params[0];
-            let domain = eval(arena, globals, env, ty);
-            let rest_body = if pi.params.len() == 1 {
-                pi.body_ty
-            } else {
-                arena.alloc(Term::Pi(Pi {
-                    params: &pi.params[1..],
-                    body_ty: pi.body_ty,
-                    phase: pi.phase,
-                }))
-            };
-            Value::Pi(VPi {
-                name,
-                domain: Box::new(domain),
-                closure: Closure {
-                    env: arena.alloc_slice_fill_iter(env.iter().cloned()),
-                    body: rest_body,
-                },
-                phase: pi.phase,
-            })
-        }
+### Closure Instantiation
 
-        // Application
-        Term::App(app) => {
-            let func_val = eval(arena, globals, env, app.func);
-            let arg_vals: Vec<_> = app.args.iter()
-                .map(|arg| eval(arena, globals, env, arg))
-                .collect();
-            apply_many(arena, globals, func_val, arg_vals)
-        }
+To apply a closure to an argument:
 
-        // Let binding
-        Term::Let(let_) => {
-            let val = eval(arena, globals, env, let_.expr);
-            let mut env2 = env.clone();
-            env2.push(val);
-            eval(arena, globals, &env2, let_.body)
-        }
+1. Restore the closure's environment from its snapshot.
+2. Extend it with the argument value.
+3. Evaluate the body in the extended environment.
 
-        // Quoted/lifted/spliced code
-        Term::Quote(inner) => Value::Quote(Box::new(eval(arena, globals, env, inner))),
-        Term::Lift(inner) => Value::Lift(Box::new(eval(arena, globals, env, inner))),
-        Term::Splice(inner) => {
-            // Splice unwraps a Quote; otherwise stays as application
-            let inner_val = eval(arena, globals, env, inner);
-            if let Value::Quote(inner) = inner_val {
-                // Splice of a Quote: splice splices away to get the inner term, quote-splice
-                // For now: pass through
-                Value::Quote(*inner)
-            } else {
-                // Splice of non-quote: leave as application (staging will handle it)
-                Value::App(Box::new(inner_val), &[])
-            }
-        }
+For multi-argument applications, apply repeatedly: each application produces a value that may itself be a lambda (closure), ready for the next argument.
 
-        Term::Match(match_) => {
-            let scrutinee_val = eval(arena, globals, env, match_.scrutinee);
-            // Pattern match in semantic domain
-            for arm in match_.arms {
-                if matches_arm(&arm.pat, &scrutinee_val) {
-                    match &arm.pat {
-                        Pat::Bind(name) => {
-                            let mut env2 = env.clone();
-                            env2.push(scrutinee_val);
-                            return eval(arena, globals, &env2, arm.body);
-                        }
-                        Pat::Lit(_) | Pat::Wildcard => {
-                            return eval(arena, globals, env, arm.body);
-                        }
-                    }
-                }
-            }
-            unreachable!("match non-exhaustive")
-        }
-    }
-}
-```
+If application gets stuck (callee is not a lambda), the application becomes neutral (`Value::App`).
 
-### Closure Instantiation (apply)
-
-```rust
-pub fn apply<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    closure: &Closure<'a>,
-    arg: Value<'a>,
-) -> Value<'a> {
-    let mut env = closure.env.to_vec();  // Clone snapshot back to mutable vector
-    env.push(arg);
-    eval(arena, globals, &env, closure.body)
-}
-
-pub fn apply_many<'a>(
-    arena: &'a Bump,
-    globals: &HashMap<Name<'a>, &'a Term<'a>>,
-    func: Value<'a>,
-    args: Vec<Value<'a>>,
-) -> Value<'a> {
-    match func {
-        Value::Lam(vlam) => {
-            let mut result = apply(arena, globals, &vlam.closure, args[0].clone());
-            for arg in args.iter().skip(1) {
-                if let Value::Lam(vlam) = result {
-                    result = apply(arena, globals, &vlam.closure, arg.clone());
-                } else {
-                    // Not a lambda; application sticks
-                    return Value::App(Box::new(result), arena.alloc_slice_copy(&args[1..]));
-                }
-            }
-            result
-        }
-        other => Value::App(Box::new(other), arena.alloc_slice_copy(&args)),
-    }
-}
-```
-
-### Quotation (quote)
+### Quotation
 
 Convert values back to term syntax. Used for error reporting, output, and type comparison.
 
-```rust
-pub fn quote<'a>(
-    arena: &'a Bump,
-    depth: Lvl,
-    val: &Value<'a>,
-) -> &'a Term<'a> {
-    match val {
-        Value::Rigid(lvl) => {
-            // Convert level to index
-            let ix = lvl_to_ix(depth, *lvl);
-            arena.alloc(Term::Var(ix))
-        }
-
-        Value::Global(name) => arena.alloc(Term::Global(*name)),
-        Value::Prim(p) => arena.alloc(Term::Prim(*p)),
-        Value::Lit(n) => arena.alloc(Term::Lit(*n)),
-
-        Value::Lam(vlam) => {
-            // Apply closure to fresh variable at current depth
-            let fresh = Value::Rigid(depth);
-            let body_val = apply(arena, globals, &vlam.closure, fresh);
-            let body_term = quote(arena, depth.succ(), &body_val);
-
-            // Recover param info from VLam
-            let param_ty_term = quote(arena, depth, vlam.param_ty);
-            arena.alloc(Term::Lam(Lam {
-                params: arena.alloc_slice_copy(&[(vlam.name, param_ty_term)]),
-                body: body_term,
-            }))
-        }
-
-        Value::Pi(vpi) => {
-            let fresh = Value::Rigid(depth);
-            let body_val = apply(arena, globals, &vpi.closure, fresh);
-            let body_term = quote(arena, depth.succ(), &body_val);
-
-            let domain_term = quote(arena, depth, vpi.domain);
-            arena.alloc(Term::Pi(Pi {
-                params: arena.alloc_slice_copy(&[(vpi.name, domain_term)]),
-                body_ty: body_term,
-                phase: vpi.phase,
-            }))
-        }
-
-        Value::App(func, args) => {
-            let qfunc = quote(arena, depth, func);
-            let qargs: Vec<_> = args.iter().map(|a| quote(arena, depth, a)).collect();
-            arena.alloc(Term::App(App {
-                func: qfunc,
-                args: arena.alloc_slice_copy(&qargs),
-            }))
-        }
-
-        Value::Lift(inner) => {
-            arena.alloc(Term::Lift(quote(arena, depth, inner)))
-        }
-
-        Value::Quote(inner) => {
-            arena.alloc(Term::Quote(quote(arena, depth, inner)))
-        }
-    }
-}
-```
+**Key operations**:
+- **Rigid variables** are converted from levels to indices using `lvl_to_ix(depth, lvl)`.
+- **Globals, prims, and literals** are reconstructed directly.
+- **Lambdas and Pi types** are reconstructed by:
+  1. Applying the closure to a fresh variable at the current depth.
+  2. Recursively quoting the result at the next depth.
+  3. Storing the original parameter information (name, type).
+- **Applications** are reconstructed by quoting the function and arguments.
+- **Lift/Quote/Splice** are reconstructed structurally.
 
 ## Type Checker Integration
 
-The type checker (`checker/mod.rs`) maintains a context with an **evaluation environment**:
+The type checker maintains a context with:
 
-```rust
-pub struct Ctx<'core, 'globals> {
-    arena: &'core Bump,
-    env: value::Env<'core>,          // evaluation environment (Values)
-    types: Vec<value::Value<'core>>, // type of each local
-    lvl: Lvl,                         // current depth
-    names: Vec<&'core str>,           // names for error messages
-    globals: &'globals HashMap<Name<'core>, &'core Term<'core>>,
-}
+- **Evaluation environment** (`env`): Values of bound variables, indexed by De Bruijn level.
+- **Type environment** (`types`): Semantic type of each bound variable.
+- **Current depth** (`lvl`): How many binders we are under.
+- **Name tracking** (`names`): Variable names for error messages (not used in lookups).
+- **Globals table** (`globals`): Top-level function types.
 
-impl<'core, 'globals> Ctx<'core, 'globals> {
-    pub fn push_local(&mut self, name: &'core str, ty_val: value::Value<'core>) {
-        self.env.push(value::Value::Rigid(self.lvl));  // variable at this level
-        self.types.push(ty_val);
-        self.names.push(name);
-        self.lvl = self.lvl.succ();
-    }
+When a local variable is bound:
+1. Push a fresh rigid value at the current level.
+2. Push its type (as a semantic value) into the type environment.
+3. Increment the depth.
 
-    pub fn pop_local(&mut self) {
-        self.env.pop();
-        self.types.pop();
-        self.names.pop();
-        self.lvl = Lvl(self.lvl.0 - 1);
-    }
-
-    pub fn type_of(&self, term: &Term) -> value::Value<'_> {
-        match term {
-            Term::Var(Ix(i)) => {
-                let stack_pos = self.types.len() - 1 - i;
-                self.types[stack_pos].clone()
-            }
-            // ... other cases
-        }
-    }
-}
-```
+This way, type information flows as semantic values throughout checking, and variable lookup is O(1) indexing.
 
 ### Dependent Type Checking Example
 
