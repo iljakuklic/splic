@@ -50,7 +50,7 @@ fn parse_simple_fn() {
     let program = parser.parse_program().unwrap();
     assert_eq!(program.functions.len(), 1);
     let f = &program.functions[0];
-    assert_eq!(f.name.0, "add");
+    assert_eq!(f.name.as_str(), "add");
     assert_eq!(f.params.len(), 2);
 }
 

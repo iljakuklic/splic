@@ -20,7 +20,7 @@ pub enum Value<'a> {
     /// Neutral: stuck on a local variable (identified by De Bruijn level)
     Rigid(Lvl),
     /// Neutral: global function reference (not inlined during type-checking)
-    Global(Name<'a>),
+    Global(&'a Name),
     /// Neutral: unapplied or partially applied primitive
     Prim(Prim),
     /// Neutral: stuck application (callee cannot reduce further)
@@ -40,7 +40,7 @@ pub enum Value<'a> {
 /// Lambda value: parameter name, parameter type, and body closure.
 #[derive(Clone, Debug)]
 pub struct VLam<'a> {
-    pub name: Name<'a>,
+    pub name: &'a Name,
     pub param_ty: &'a Value<'a>,
     pub closure: Closure<'a>,
 }
@@ -48,7 +48,7 @@ pub struct VLam<'a> {
 /// Pi (dependent function type) value.
 #[derive(Clone, Debug)]
 pub struct VPi<'a> {
-    pub name: Name<'a>,
+    pub name: &'a Name,
     pub domain: &'a Value<'a>,
     pub closure: Closure<'a>,
     pub phase: Phase,

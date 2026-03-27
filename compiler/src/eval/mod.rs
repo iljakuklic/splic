@@ -118,7 +118,7 @@ struct GlobalDef<'a> {
     body: &'a Term<'a>,
 }
 
-type Globals<'a> = HashMap<Name<'a>, GlobalDef<'a>>;
+type Globals<'a> = HashMap<&'a Name, GlobalDef<'a>>;
 
 // ── Meta-level evaluator ──────────────────────────────────────────────────────
 
@@ -745,7 +745,7 @@ pub fn unstage_program<'out, 'core>(
             let mut env = Env::new(Lvl::new(0));
 
             let staged_params = arena.alloc_slice_try_fill_iter(pi.params.iter().map(
-                |(n, ty)| -> Result<(Name<'out>, &'out Term<'out>)> {
+                |(n, ty)| -> Result<(&'out Name, &'out Term<'out>)> {
                     let staged_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, ty)?;
                     env.push_obj();
                     Ok((Name::new(arena.alloc_str(n.as_str())), staged_ty))

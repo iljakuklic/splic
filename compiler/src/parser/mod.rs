@@ -55,7 +55,7 @@ where
         })
     }
 
-    fn take_ident(&mut self) -> Result<Name<'a>> {
+    fn take_ident(&mut self) -> Result<&'a Name> {
         self.expect_token("identifier", |token| {
             if let Token::Ident(name) = token {
                 Some(name)
@@ -158,7 +158,7 @@ where
             .with_context(|| format!("in function `{name}`"))
     }
 
-    fn parse_fn_def_after_name(&mut self, phase: Phase, name: Name<'a>) -> Result<Function<'a>> {
+    fn parse_fn_def_after_name(&mut self, phase: Phase, name: &'a Name) -> Result<Function<'a>> {
         self.take(Token::LParen).context("expected '('")?;
         let params = self.parse_params()?;
         self.take(Token::RParen).context("expected ')'")?;
@@ -327,7 +327,7 @@ where
     }
 
     /// Parse a function call with arguments
-    fn parse_function_call(&mut self, name: Name<'a>) -> Result<Term<'a>> {
+    fn parse_function_call(&mut self, name: &'a Name) -> Result<Term<'a>> {
         let args = self.parse_separated_list(Token::RParen, |parser| {
             parser.parse_expr().context("parsing function argument")
         })?;

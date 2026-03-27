@@ -51,13 +51,13 @@ impl Ix {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pat<'a> {
     Lit(u64),
-    Bind(Name<'a>), // named binding
+    Bind(&'a Name), // named binding
     Wildcard,       // _ pattern
 }
 
 impl<'a> Pat<'a> {
     /// Return the name bound by this pattern, if any.
-    pub const fn bound_name(&self) -> Option<Name<'a>> {
+    pub const fn bound_name(&self) -> Option<&'a Name> {
         match self {
             Pat::Bind(name) => Some(*name),
             Pat::Lit(_) | Pat::Wildcard => None,
@@ -75,7 +75,7 @@ pub struct Arm<'a> {
 /// Elaborated top-level function definition.
 #[derive(Debug)]
 pub struct Function<'a> {
-    pub name: Name<'a>,
+    pub name: &'a Name,
     /// Function type: phase, params, and return type.
     pub ty: &'a Pi<'a>,
     pub body: &'a Term<'a>,
@@ -116,7 +116,7 @@ pub struct App<'a> {
 /// for globals and locals.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Pi<'a> {
-    pub params: &'a [(Name<'a>, &'a Term<'a>)], // (name, type) pairs
+    pub params: &'a [(&'a Name, &'a Term<'a>)], // (name, type) pairs
     pub body_ty: &'a Term<'a>,
     pub phase: Phase,
 }
@@ -124,14 +124,14 @@ pub struct Pi<'a> {
 /// Lambda abstraction: |params...| body
 #[derive(Debug, PartialEq, Eq)]
 pub struct Lam<'a> {
-    pub params: &'a [(Name<'a>, &'a Term<'a>)], // (name, type) pairs
+    pub params: &'a [(&'a Name, &'a Term<'a>)], // (name, type) pairs
     pub body: &'a Term<'a>,
 }
 
 /// Let binding with explicit type annotation and a body.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Let<'a> {
-    pub name: Name<'a>,
+    pub name: &'a Name,
     pub ty: &'a Term<'a>,
     pub expr: &'a Term<'a>,
     pub body: &'a Term<'a>,
@@ -154,7 +154,7 @@ pub enum Term<'a> {
     /// Numeric literal with its integer type
     Lit(u64, IntType),
     /// Global function reference
-    Global(Name<'a>),
+    Global(&'a Name),
     /// Function or primitive application: func(args...)
     App(App<'a>),
     /// Dependent function type: fn(x: A) -> B
@@ -234,7 +234,7 @@ impl<'a> Term<'a> {
         Self::App(App { func, args })
     }
 
-    pub const fn new_let(name: Name<'a>, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
+    pub const fn new_let(name: &'a Name, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
         Self::Let(Let {
             name,
             ty,

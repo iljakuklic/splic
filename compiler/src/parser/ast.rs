@@ -20,7 +20,7 @@ impl std::fmt::Debug for FunName<'_> {
 
 #[derive(Debug)]
 pub enum Pat<'a> {
-    Name(Name<'a>),
+    Name(&'a Name),
     Lit(u64),
 }
 
@@ -32,21 +32,21 @@ pub struct MatchArm<'a> {
 
 #[derive(Debug)]
 pub struct Let<'a> {
-    pub name: Name<'a>,
+    pub name: &'a Name,
     pub ty: Option<&'a Term<'a>>,
     pub expr: &'a Term<'a>,
 }
 
 #[derive(Debug)]
 pub struct Param<'a> {
-    pub name: Name<'a>,
+    pub name: &'a Name,
     pub ty: &'a Term<'a>,
 }
 
 #[derive(Debug)]
 pub struct Function<'a> {
     pub phase: Phase,
-    pub name: Name<'a>,
+    pub name: &'a Name,
     pub params: &'a [Param<'a>],
     pub ret_ty: &'a Term<'a>,
     pub body: &'a Term<'a>,
@@ -60,7 +60,7 @@ pub struct Program<'a> {
 #[derive(Debug)]
 pub enum Term<'a> {
     Lit(u64),
-    Var(Name<'a>),
+    Var(&'a Name),
     App {
         func: FunName<'a>,
         args: &'a [&'a Self],

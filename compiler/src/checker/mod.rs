@@ -17,7 +17,7 @@ pub struct Ctx<'core, 'globals> {
     /// Arena for allocating core terms
     arena: &'core bumpalo::Bump,
     /// Local variable names (oldest first), for error messages.
-    names: Vec<core::Name<'core>>,
+    names: Vec<&'core core::Name>,
     /// Evaluation environment (oldest first): values of locals.
     /// `env[env.len() - 1 - ix]` = value of `Var(Ix(ix))`.
     env: value::Env<'core>,
@@ -29,13 +29,13 @@ pub struct Ctx<'core, 'globals> {
     /// Global function types: name -> Pi term.
     /// Storing `&Term` (always a Pi) unifies type lookup for globals and locals.
     /// Borrowed independently of the arena so the map can live on the stack.
-    globals: &'globals HashMap<core::Name<'core>, &'core core::Pi<'core>>,
+    globals: &'globals HashMap<&'core core::Name, &'core core::Pi<'core>>,
 }
 
 impl<'core, 'globals> Ctx<'core, 'globals> {
     pub const fn new(
         arena: &'core bumpalo::Bump,
-        globals: &'globals HashMap<core::Name<'core>, &'core core::Pi<'core>>,
+        globals: &'globals HashMap<&'core core::Name, &'core core::Pi<'core>>,
     ) -> Self {
         Ctx {
             arena,
@@ -62,7 +62,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Push a local variable onto the context, given its type as a term.
     /// Evaluates the type term in the current environment.
-    pub fn push_local(&mut self, name: core::Name<'core>, ty: &'core core::Term<'core>) {
+    pub fn push_local(&mut self, name: &'core core::Name, ty: &'core core::Term<'core>) {
         let ty_val = value::eval(self.arena, &self.env, ty);
         self.env.push(value::Value::Rigid(self.lvl));
         self.types.push(ty_val);
@@ -72,7 +72,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Push a local variable onto the context, given its type as a Value.
     /// The variable itself is a fresh rigid (neutral) variable — use for lambda/pi params.
-    fn push_local_val(&mut self, name: core::Name<'core>, ty_val: value::Value<'core>) {
+    fn push_local_val(&mut self, name: &'core core::Name, ty_val: value::Value<'core>) {
         self.env.push(value::Value::Rigid(self.lvl));
         self.types.push(ty_val);
         self.lvl = self.lvl.succ();
@@ -83,7 +83,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     /// Use for `let x = e` bindings so that dependent references to `x` evaluate correctly.
     fn push_let_binding(
         &mut self,
-        name: core::Name<'core>,
+        name: &'core core::Name,
         ty_val: value::Value<'core>,
         expr_val: value::Value<'core>,
     ) {
@@ -103,7 +103,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Look up a variable by name, returning its (index, type as Value).
     /// Searches from the most recently pushed variable inward to handle shadowing.
-    pub fn lookup_local(&self, name: core::Name<'_>) -> Option<(Ix, &value::Value<'core>)> {
+    pub fn lookup_local(&self, name: &'_ core::Name) -> Option<(Ix, &value::Value<'core>)> {
         for (i, local_name) in self.names.iter().enumerate().rev() {
             if *local_name == name {
                 let ix = Lvl(i).ix_at_depth(self.lvl);
@@ -368,8 +368,8 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 /// Resolve a built-in type name to a static core term, using `phase` for integer types.
 ///
 /// Returns `None` if the name is not a built-in type.
-fn builtin_prim_ty(name: core::Name<'_>, phase: Phase) -> Option<&'static core::Term<'static>> {
-    Some(match name.0 {
+fn builtin_prim_ty(name: &'_ core::Name, phase: Phase) -> Option<&'static core::Term<'static>> {
+    Some(match name.as_str() {
         "u1" => core::Term::int_ty(IntWidth::U1, phase),
         "u8" => core::Term::int_ty(IntWidth::U8, phase),
         "u16" => core::Term::int_ty(IntWidth::U16, phase),
@@ -389,7 +389,7 @@ fn elaborate_sig<'src, 'core>(
     let empty_globals = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
-    let params: &'core [(core::Name<'core>, &'core core::Term<'core>)] = arena
+    let params: &'core [(&'core core::Name, &'core core::Term<'core>)] = arena
         .alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
             let param_name = core::Name::new(arena.alloc_str(p.name.as_str()));
             let param_ty = infer(&mut ctx, func.phase, p.ty)?;
@@ -410,8 +410,8 @@ fn elaborate_sig<'src, 'core>(
 pub(crate) fn collect_signatures<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-) -> Result<HashMap<core::Name<'core>, &'core core::Pi<'core>>> {
-    let mut globals: HashMap<core::Name<'core>, &'core core::Pi<'core>> = HashMap::new();
+) -> Result<HashMap<&'core core::Name, &'core core::Pi<'core>>> {
+    let mut globals: HashMap<&'core core::Name, &'core core::Pi<'core>> = HashMap::new();
 
     for func in program.functions {
         let name = core::Name::new(arena.alloc_str(func.name.as_str()));
@@ -433,7 +433,7 @@ pub(crate) fn collect_signatures<'src, 'core>(
 fn elaborate_bodies<'src, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'src>,
-    globals: &HashMap<core::Name<'core>, &'core core::Pi<'core>>,
+    globals: &HashMap<&'core core::Name, &'core core::Pi<'core>>,
 ) -> Result<core::Program<'core>> {
     let functions: &'core [core::Function<'core>] =
         arena.alloc_slice_try_fill_iter(program.functions.iter().map(|func| -> Result<_> {
@@ -551,7 +551,7 @@ pub fn infer<'src, 'core>(
             }
             // Check globals — bare reference without call, produces Global term.
             if ctx.globals.contains_key(name) {
-                let name = core::Name::new(ctx.arena.alloc_str(name.0));
+                let name = core::Name::new(ctx.arena.alloc_str(name.as_str()));
                 return Ok(ctx.alloc(core::Term::Global(name)));
             }
             Err(anyhow!("unbound variable `{name}`"))
@@ -675,7 +675,7 @@ pub fn infer<'src, 'core>(
             );
             let depth_before = ctx.depth();
 
-            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> =
+            let mut elaborated_params: Vec<(&'core core::Name, &'core core::Term<'core>)> =
                 Vec::new();
             for p in *params {
                 let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
@@ -715,7 +715,7 @@ pub fn infer<'src, 'core>(
             );
 
             let depth_before = ctx.depth();
-            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> =
+            let mut elaborated_params: Vec<(&'core core::Name, &'core core::Term<'core>)> =
                 Vec::new();
 
             for p in *params {
@@ -1171,7 +1171,7 @@ pub fn check_val<'src, 'core>(
             // Peel exactly `params.len()` Pi layers from the expected type.
             // This allows nested lambdas: `|a: A| |b: B| body` checks against
             // `fn(_: A) -> fn(_: B) -> R` by covering one Pi layer per lambda.
-            let mut pi_params: Vec<(core::Name<'_>, value::Value<'core>)> = Vec::new();
+            let mut pi_params: Vec<(&'_ core::Name, value::Value<'core>)> = Vec::new();
             let mut cur_pi = expected.clone();
             for _ in 0..params.len() {
                 match cur_pi {
@@ -1189,7 +1189,7 @@ pub fn check_val<'src, 'core>(
             }
             let body_ty_val = cur_pi;
 
-            let mut elaborated_params: Vec<(core::Name<'core>, &'core core::Term<'core>)> =
+            let mut elaborated_params: Vec<(&'core core::Name, &'core core::Term<'core>)> =
                 Vec::new();
             for (p, (_, pi_param_ty)) in params.iter().zip(pi_params.into_iter()) {
                 let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));

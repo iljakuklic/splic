@@ -18,7 +18,7 @@ impl<'a> Term<'a> {
     /// (the caller is responsible for any surrounding braces).
     fn fmt_term(
         &self,
-        env: &mut Vec<Name<'a>>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -40,7 +40,7 @@ impl<'a> Term<'a> {
     /// a new indented block (e.g. `Let` / `Match`).
     fn fmt_term_inline(
         &self,
-        env: &mut Vec<Name<'a>>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -170,7 +170,7 @@ impl<'a> Term<'a> {
     /// syntactically valid as sub-expressions.
     fn fmt_expr(
         &self,
-        env: &mut Vec<Name<'a>>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -200,7 +200,7 @@ impl<'a> Arm<'a> {
     /// Print a single match arm.
     fn fmt_arm(
         &self,
-        env: &mut Vec<Name<'a>>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -241,7 +241,7 @@ impl fmt::Display for Function<'_> {
         let pi = self.pi();
 
         // Build the name environment for the body: one entry per parameter.
-        let mut env: Vec<Name> = Vec::with_capacity(pi.params.len());
+        let mut env: Vec<&Name> = Vec::with_capacity(pi.params.len());
 
         // Phase prefix.
         match pi.phase {
