@@ -47,10 +47,8 @@ impl<'a> Term<'a> {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
             Term::Var(ix) => {
-                let i = env
-                    .len()
-                    .checked_sub(1 + ix.0)
-                    .expect("De Bruijn index out of environment bounds");
+                let lvl = ix.lvl_at_depth(super::Lvl(env.len()));
+                let i = lvl.0;
                 let name = env
                     .get(i)
                     .expect("De Bruijn index out of environment bounds");
