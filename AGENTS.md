@@ -92,13 +92,19 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 - Quotations (`#(e)`, `#{...}`) and splices (`$(e)`, `${...}`) for metaprogramming
 - Lifting with `[[e]]`
 
+## Documentation
+
+Splic documentation is organized in two main locations:
+
+- **`docs/README.md`** — Overview and index of language design and user-facing docs (CONCEPT, SYNTAX, examples)
+- **`docs/bs/README.md`** — Index of implementation notes, proposals, and architecture documentation
+
+**Keep doc indices up to date:** When adding new documentation files, add entries to the appropriate `README.md` with a brief description. This helps navigate the documentation.
+
 ## Language Design
 
 Splic is built on **two-level type theory (2LTT)**:
 - **Meta-level**: Purely functional dependently typed language
 - **Object-level**: Low-level language for zkvm bytecode
 - Connected through quotations and splices for type-safe metaprogramming
-
-See `docs/CONCEPT.md` and `docs/SYNTAX.md` for detailed language specifications.
-
-For compiler architecture details (NbE, De Bruijn representation, dependent types), see `docs/bs/nbe_and_debruijn.md` and `docs/bs/pi_types.md`.
+- See the 2ltt skill for more detail
