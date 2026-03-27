@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use anyhow::{Context as _, Result, anyhow, bail, ensure};
 
-use crate::core::{self, IntType, IntWidth, Ix, Lam, Lvl, Pi, Prim, alpha_eq, lvl_to_ix, value};
+use crate::core::{self, IntType, IntWidth, Ix, Lam, Lvl, Pi, Prim, alpha_eq, value};
 use crate::parser::ast::{self, Phase};
 
 /// Elaboration context.
@@ -106,7 +106,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     pub fn lookup_local(&self, name: &str) -> Option<(Ix, &value::Value<'core>)> {
         for (i, &local_name) in self.names.iter().enumerate().rev() {
             if local_name == name {
-                let ix = lvl_to_ix(self.lvl, Lvl(i));
+                let ix = Lvl(i).ix_at_depth(self.lvl);
                 let ty = self
                     .types
                     .get(i)
@@ -499,7 +499,7 @@ fn value_type_universe_ctx<'core>(ctx: &Ctx<'core, '_>, ty: &value::Value<'core>
             // A rigid variable: look up its type in the context to determine phase.
             value::Value::Rigid(lvl) => {
                 // lvl is the De Bruijn level; convert to index
-                let ix = lvl_to_ix(ctx.lvl, *lvl);
+                let ix = lvl.ix_at_depth(ctx.lvl);
                 let i = ctx.types.len().checked_sub(1 + ix.0)?;
                 let var_ty = ctx.types.get(i)?;
                 // If the variable's type is U(phase), then it classifies types in phase.

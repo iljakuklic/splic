@@ -20,6 +20,11 @@ impl Lvl {
     pub const fn succ(self) -> Self {
         Self(self.0 + 1)
     }
+
+    #[must_use]
+    pub const fn ix_at_depth(self, depth: Self) -> Ix {
+        Ix(depth.0 - self.0 - 1)
+    }
 }
 
 /// De Bruijn index (counts from nearest enclosing binder, 0 = innermost)
@@ -34,6 +39,11 @@ impl Ix {
     #[must_use]
     pub const fn succ(self) -> Self {
         Self(self.0 + 1)
+    }
+
+    #[must_use]
+    pub const fn lvl_at_depth(self, depth: Lvl) -> Self {
+        Self(depth.0 - self.0 - 1)
     }
 }
 

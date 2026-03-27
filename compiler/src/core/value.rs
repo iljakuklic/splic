@@ -7,7 +7,7 @@
 use bumpalo::Bump;
 
 use super::prim::IntType;
-use super::{Lam, Lvl, Name, Pat, Pi, Prim, Term, lvl_to_ix};
+use super::{Lam, Lvl, Name, Pat, Pi, Prim, Term};
 use crate::common::Phase;
 
 /// Working evaluation environment: index 0 = outermost binding, last = innermost.
@@ -257,7 +257,7 @@ pub fn inst<'a>(arena: &'a Bump, closure: &Closure<'a>, arg: Value<'a>) -> Value
 pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
     match val {
         Value::Rigid(lvl) => {
-            let ix = lvl_to_ix(depth, *lvl);
+            let ix = lvl.ix_at_depth(depth);
             arena.alloc(Term::Var(ix))
         }
         Value::Global(name) => arena.alloc(Term::Global(*name)),
