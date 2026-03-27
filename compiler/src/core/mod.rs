@@ -47,16 +47,6 @@ impl Ix {
     }
 }
 
-/// Convert a De Bruijn level to an index given the current depth.
-pub const fn lvl_to_ix(depth: Lvl, lvl: Lvl) -> Ix {
-    Ix(depth.0 - lvl.0 - 1)
-}
-
-/// Convert a De Bruijn index to a level given the current depth.
-pub const fn ix_to_lvl(depth: Lvl, ix: Ix) -> Lvl {
-    Lvl(depth.0 - ix.0 - 1)
-}
-
 /// Match pattern in the core IR
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pat<'a> {
