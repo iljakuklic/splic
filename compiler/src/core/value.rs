@@ -132,6 +132,7 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
                     Pat::Lit(_) => continue,
                     Pat::Bind(_) | Pat::Wildcard => {
                         let mut env2 = env.to_vec();
+                        // TODO(#24): Type should come from scrutinee, not hardcoded u64
                         env2.push(Value::Lit(
                             n,
                             IntType {
