@@ -144,7 +144,7 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
                 }
             }
             // Non-exhaustive match (should not happen in well-typed code)
-            Value::Rigid(Lvl(usize::MAX))
+            unreachable!("non-exhaustive pattern match in match term evaluation")
         }
     }
 }
