@@ -14,8 +14,7 @@ fn infer_lift_of_object_type_returns_type_universe() {
     let term = src_arena.alloc(ast::Term::Lift(inner));
 
     // Elaborated at meta phase: type of [[u64]] is Type (meta universe)
-    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty_val = ctx.val_type_of(result);
+    let (_, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(ty_val, value::Value::Prim(Prim::U(Phase::Meta))));
 }
 
@@ -81,8 +80,7 @@ fn infer_quote_of_global_call_returns_lifted_type() {
     let term = src_arena.alloc(ast::Term::Quote(inner));
 
     // Checked at meta phase; result type should be [[u64]]
-    let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty_val = ctx.val_type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(core_term, core::Term::Quote(_)));
     // Type is Lift(u64)
     assert!(matches!(ty_val, value::Value::Lift(_)));
@@ -174,8 +172,7 @@ fn infer_splice_of_lifted_var_returns_inner_type() {
     let term = src_arena.alloc(ast::Term::Splice(x));
 
     // splice is checked at object phase
-    let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty_val = ctx.val_type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Object, term).expect("should infer");
     assert!(matches!(core_term, core::Term::Splice(_)));
     assert!(matches!(
         ty_val,
@@ -219,8 +216,7 @@ fn infer_splice_of_meta_int_succeeds() {
     let term = src_arena.alloc(ast::Term::Splice(x));
 
     // $(x) at object phase: result type is u32 at object phase.
-    let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty_val = ctx.val_type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Object, term).expect("should infer");
     assert!(matches!(core_term, core::Term::Splice(_)));
     assert!(matches!(
         ty_val,

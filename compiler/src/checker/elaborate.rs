@@ -19,7 +19,7 @@ fn elaborate_sig<'src, 'core>(
     let params: &'core [(&'core core::Name, &'core core::Term<'core>)] = arena
         .alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
             let param_name = core::Name::new(arena.alloc_str(p.name.as_str()));
-            let param_ty = infer::infer(&mut ctx, func.phase, p.ty)?;
+            let (param_ty, _) = infer::infer(&mut ctx, func.phase, p.ty)?;
             ctx.push_local(param_name, param_ty);
             Ok((param_name, param_ty))
         }))?;
@@ -31,7 +31,8 @@ fn elaborate_sig<'src, 'core>(
     let body_ty = if func.phase == core::Phase::Meta {
         infer::check(&mut ctx, core::Phase::Meta, func.ret_ty, &core::Term::TYPE)?
     } else {
-        infer::infer(&mut ctx, func.phase, func.ret_ty)?
+        let (term, _) = infer::infer(&mut ctx, func.phase, func.ret_ty)?;
+        term
     };
 
     Ok(arena.alloc(Pi {

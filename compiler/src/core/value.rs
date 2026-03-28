@@ -35,6 +35,8 @@ pub enum Value<'a> {
     Lift(&'a Self),
     /// Canonical: quoted object code `#(t)`
     Quote(&'a Self),
+    /// Neutral: stuck splice `$(t)` where `t` did not reduce to a Quote
+    Splice(&'a Self),
 }
 
 /// Lambda value: parameter name, parameter type, and body closure.
@@ -96,14 +98,17 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
 
         Term::Quote(inner) => {
             let inner_val = eval(arena, env, inner);
-            Value::Quote(arena.alloc(inner_val))
+            match inner_val {
+                Value::Splice(v) => (*v).clone(),
+                v => Value::Quote(arena.alloc(v)),
+            }
         }
 
         Term::Splice(inner) => {
-            // In type-checking context: splice unwraps a Quote, otherwise propagates.
+            // Splice unwraps a Quote; otherwise stays stuck.
             match eval(arena, env, inner) {
                 Value::Quote(v) => (*v).clone(),
-                v => v,
+                v => Value::Splice(arena.alloc(v)),
             }
         }
 
@@ -227,7 +232,7 @@ pub fn apply<'a>(arena: &'a Bump, func: Value<'a>, arg: Value<'a>) -> Value<'a> 
             arena.alloc(Value::Prim(p)),
             arena.alloc_slice_fill_iter([arg]),
         ),
-        Value::Lit(..) | Value::Lift(_) | Value::Quote(_) => {
+        Value::Lit(..) | Value::Lift(_) | Value::Quote(_) | Value::Splice(_) => {
             // Should not happen in well-typed programs
             panic!("apply: function position holds non-function value")
         }
@@ -299,6 +304,10 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
             let inner_term = quote(arena, depth, inner);
             arena.alloc(Term::Quote(inner_term))
         }
+        Value::Splice(inner) => {
+            let inner_term = quote(arena, depth, inner);
+            arena.alloc(Term::Splice(inner_term))
+        }
     }
 }
 
@@ -320,6 +329,13 @@ pub const fn value_phase(val: &Value<'_>) -> Option<Phase> {
     match val {
         Value::Prim(Prim::IntTy(it)) => Some(it.phase),
         Value::Prim(Prim::U(_)) | Value::Lift(_) | Value::Pi(_) => Some(Phase::Meta),
-        _ => None,
+        Value::Rigid(_)
+        | Value::Global(_)
+        | Value::App(_, _)
+        | Value::Prim(_)
+        | Value::Lit(..)
+        | Value::Lam(_)
+        | Value::Quote(_)
+        | Value::Splice(_) => None,
     }
 }

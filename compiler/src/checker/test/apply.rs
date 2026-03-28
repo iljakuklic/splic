@@ -15,8 +15,7 @@ fn infer_global_call_no_args_returns_ret_ty() {
         func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
-    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty_val = ctx.val_type_of(result);
+    let (_, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(
         ty_val,
         value::Value::Prim(Prim::IntTy(IntType {
@@ -99,8 +98,7 @@ fn infer_global_call_with_arg_checks_arg_type() {
         func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args,
     });
-    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty_val = ctx.val_type_of(result);
+    let (_, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(
         ty_val,
         value::Value::Prim(Prim::IntTy(IntType {
@@ -166,8 +164,7 @@ fn infer_comparison_op_returns_u1() {
     });
 
     // Eq is inferable: result is u1, prim carries the operand type (u64).
-    let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty_val = ctx.val_type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Object, term).expect("should infer");
     assert!(matches!(
         core_term,
         core::Term::App(core::App {
