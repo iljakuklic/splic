@@ -16,6 +16,7 @@ pub(crate) fn builtin_prim_ty(
     phase: Phase,
 ) -> Option<&'static core::Term<'static>> {
     Some(match name.as_str() {
+        "u0" => core::Term::int_ty(IntWidth::U0, phase),
         "u1" => core::Term::int_ty(IntWidth::U1, phase),
         "u8" => core::Term::int_ty(IntWidth::U8, phase),
         "u16" => core::Term::int_ty(IntWidth::U16, phase),

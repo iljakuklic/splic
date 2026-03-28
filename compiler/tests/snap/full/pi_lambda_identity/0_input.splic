@@ -1,0 +1,15 @@
+// Polymorphic identity as a local dependent lambda
+fn test_id() -> u64 {
+    let id = |T: Type| |x: T| x;
+    let _ = id(u32)(67);
+    id(u64)(42)
+}
+
+fn test_id_u8() -> u8 {
+    let id = |T: Type| |x: T| x;
+    let id_u8 = id(u8);
+    id_u8(7)
+}
+
+code fn result_u64() -> u64 { $(test_id()) }
+code fn result_u8() -> u8 { $(test_id_u8()) }

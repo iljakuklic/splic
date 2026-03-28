@@ -468,14 +468,15 @@ fn check_block_val<'src, 'core>(
     stmts: &'src [ast::Let<'src>],
     expr: &'src ast::Term<'src>,
     expected: value::Value<'core>,
+    expected_term: Option<&'core core::Term<'core>>,
 ) -> Result<&'core core::Term<'core>> {
     match stmts {
-        [] => check_val(ctx, phase, expr, expected),
+        [] => check_val_impl(ctx, phase, expr, expected, expected_term),
         [first, rest @ ..] => elaborate_let(
             ctx,
             phase,
             first,
-            |ctx| check_block_val(ctx, phase, rest, expr, expected.clone()),
+            |ctx| check_block_val(ctx, phase, rest, expr, expected.clone(), expected_term),
             |body| body,
             |let_term, _body| let_term,
         ),
@@ -485,6 +486,7 @@ fn check_block_val<'src, 'core>(
 /// Check `term` against `expected` (as a term reference), returning the elaborated core term.
 ///
 /// This is a convenience wrapper for callers that have an expected type as a `&Term`.
+/// It also threads the expected term through for dependent-type arm refinement.
 pub fn check<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
     phase: Phase,
@@ -492,7 +494,7 @@ pub fn check<'src, 'core>(
     expected: &'core core::Term<'core>,
 ) -> Result<&'core core::Term<'core>> {
     let expected_val = ctx.eval(expected);
-    check_val(ctx, phase, term, expected_val)
+    check_val_impl(ctx, phase, term, expected_val, Some(expected))
 }
 
 /// Check `term` against `expected` (as a semantic Value), returning the elaborated core term.
@@ -502,9 +504,31 @@ pub fn check_val<'src, 'core>(
     term: &'src ast::Term<'src>,
     expected: value::Value<'core>,
 ) -> Result<&'core core::Term<'core>> {
+    check_val_impl(ctx, phase, term, expected, None)
+}
+
+/// Internal implementation — `expected_term` carries the original core term for the expected
+/// type, enabling dependent-type arm refinement (re-evaluating under a modified env).
+fn check_val_impl<'src, 'core>(
+    ctx: &mut Ctx<'core, '_>,
+    phase: Phase,
+    term: &'src ast::Term<'src>,
+    expected: value::Value<'core>,
+    expected_term: Option<&'core core::Term<'core>>,
+) -> Result<&'core core::Term<'core>> {
     // Verify `expected` inhabits the correct universe for the current phase.
-    let ty_phase = value_type_universe_ctx(ctx, &expected)
-        .expect("expected type passed to `check` is not a well-formed type expression");
+    // For neutral expected types (e.g. a match whose scrutinee is a free variable),
+    // value_type_universe_ctx returns None; fall back to val_type_of on the core term
+    // (when available), which traverses the term structure rather than the NbE value.
+    let ty_phase = value_type_universe_ctx(ctx, &expected).or_else(|| {
+        let t = expected_term?;
+        match ctx.val_type_of(t) {
+            value::Value::Prim(Prim::U(p)) => Some(p),
+            _ => None,
+        }
+    });
+    let ty_phase =
+        ty_phase.ok_or_else(|| anyhow!("expected type is not a well-formed type expression"))?;
     ensure!(
         ty_phase == phase,
         "expected type inhabits the {ty_phase}-phase universe, \
@@ -706,15 +730,41 @@ pub fn check_val<'src, 'core>(
             check_exhaustiveness(&scrut_ty_val, arms)?;
 
             let scrut_ty_term = ctx.quote_val(&scrut_ty_val);
+
+            // For dependent return types: if the scrutinee is a rigid variable and we
+            // have the expected type as a core term, refine per-arm by re-evaluating
+            // that term with the arm's literal substituted for the scrutinee variable.
+            // This handles `fn f(b: u1) -> (match b { 0 => u0, 1 => u16 }) { ... }`.
+            let scrut_val = ctx.eval(core_scrutinee);
+            let scrut_refine: Option<(Lvl, IntType)> =
+                match (&scrut_val, &scrut_ty_val) {
+                    (value::Value::Rigid(lvl), value::Value::Prim(Prim::IntTy(it))) => {
+                        Some((*lvl, *it))
+                    }
+                    _ => None,
+                };
+
             let core_arms: &'core [core::Arm<'core>] =
                 ctx.arena
                     .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
                         let core_pat = elaborate_pat(ctx, &arm.pat);
+
+                        // Refine the expected type for each literal arm when we have the
+                        // core term available (threaded from elaborate_bodies via `check`).
+                        let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
+                            (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
+                                let mut env = ctx.env.clone();
+                                env[lvl.0] = value::Value::Lit(*n, *int_ty);
+                                value::eval(ctx.arena, &env, ety)
+                            }
+                            _ => expected.clone(),
+                        };
+
                         if let Some(bname) = core_pat.bound_name() {
                             ctx.push_local(bname, scrut_ty_term);
                         }
 
-                        let arm_result = check_val(ctx, phase, arm.body, expected.clone());
+                        let arm_result = check_val(ctx, phase, arm.body, arm_expected);
 
                         if core_pat.bound_name().is_some() {
                             ctx.pop_local();
@@ -733,7 +783,7 @@ pub fn check_val<'src, 'core>(
         // ------------------------------------------------------------------ Block (check mode)
         ast::Term::Block { stmts, expr } => {
             let depth_before = ctx.depth();
-            let result = check_block_val(ctx, phase, stmts, expr, expected);
+            let result = check_block_val(ctx, phase, stmts, expr, expected, expected_term);
             assert_eq!(ctx.depth(), depth_before, "check_block leaked locals");
             result
         }

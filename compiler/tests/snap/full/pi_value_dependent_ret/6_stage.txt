@@ -1,0 +1,8 @@
+code fn result_0() -> u0 {
+    0_u0
+}
+
+code fn result_1() -> u16 {
+    42_u16
+}
+

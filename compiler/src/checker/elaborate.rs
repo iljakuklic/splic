@@ -76,8 +76,9 @@ fn elaborate_bodies<'src, 'core>(
             }
 
             // Elaborate the body, checking it against the declared return type.
-            let ret_ty_val = ctx.eval(pi.body_ty);
-            let body = infer::check_val(&mut ctx, pi.phase, func.body, ret_ty_val)
+            // Using `check` (rather than pre-evaluating) threads the core term through
+            // so the checker can refine dependent return types per match arm.
+            let body = infer::check(&mut ctx, pi.phase, func.body, pi.body_ty)
                 .with_context(|| format!("in function `{name}`"))?;
 
             Ok(core::Function { name, ty: pi, body })
