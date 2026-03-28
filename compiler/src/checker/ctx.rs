@@ -243,9 +243,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
                                 let arg_val = self.eval(arg);
                                 pi_val = value::inst(self.arena, &vpi.closure, arg_val);
                             }
-                            _ => unreachable!(
-                                "App func must have Pi type (typechecker invariant)"
-                            ),
+                            _ => unreachable!("App func must have Pi type (typechecker invariant)"),
                         }
                     }
                     pi_val
@@ -365,4 +363,3 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         }
     }
 }
-

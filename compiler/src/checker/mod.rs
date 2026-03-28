@@ -1,7 +1,7 @@
 use crate::core::{self, IntType, IntWidth, Lvl, Phase, Prim, alpha_eq, value};
 
 pub use ctx::Ctx;
-pub use elaborate::{elaborate_program, collect_signatures};
+pub use elaborate::{collect_signatures, elaborate_program};
 pub use infer::{check, check_val, infer};
 
 mod ctx;
@@ -11,7 +11,10 @@ mod infer;
 /// Resolve a built-in type name to a static core term, using `phase` for integer types.
 ///
 /// Returns `None` if the name is not a built-in type.
-pub(crate) fn builtin_prim_ty(name: &'_ core::Name, phase: Phase) -> Option<&'static core::Term<'static>> {
+pub(crate) fn builtin_prim_ty(
+    name: &'_ core::Name,
+    phase: Phase,
+) -> Option<&'static core::Term<'static>> {
     Some(match name.as_str() {
         "u1" => core::Term::int_ty(IntWidth::U1, phase),
         "u8" => core::Term::int_ty(IntWidth::U8, phase),
@@ -46,14 +49,19 @@ const fn value_type_universe(ty: &value::Value<'_>) -> Option<Phase> {
 
 /// Return the universe phase that a Value type inhabits, using context to look up
 /// type variables. Returns `None` if phase is still indeterminate.
-pub(crate) fn value_type_universe_ctx<'core>(ctx: &Ctx<'core, '_>, ty: &value::Value<'core>) -> Option<Phase> {
+pub(crate) fn value_type_universe_ctx<'core>(
+    ctx: &Ctx<'core, '_>,
+    ty: &value::Value<'core>,
+) -> Option<Phase> {
     match value_type_universe(ty) {
         Some(phase) => Some(phase),
         None => {
             // Look up the type of a variable
             if let value::Value::Rigid(lvl) = ty {
                 let ix = lvl.ix_at_depth(ctx.lvl);
-                ctx.types.get(ctx.types.len() - 1 - ix.0).and_then(|t| value_type_universe_ctx(ctx, t))
+                ctx.types
+                    .get(ctx.types.len() - 1 - ix.0)
+                    .and_then(|t| value_type_universe_ctx(ctx, t))
             } else {
                 None
             }

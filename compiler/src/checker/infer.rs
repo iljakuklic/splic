@@ -3,7 +3,7 @@ use anyhow::{Context as _, Result, anyhow, bail, ensure};
 use crate::core::{self, IntType, IntWidth, Lam, Lvl, Phase, Pi, Prim, value};
 use crate::parser::ast;
 
-use super::{Ctx, builtin_prim_ty, value_type_universe_ctx, types_equal_val};
+use super::{Ctx, builtin_prim_ty, types_equal_val, value_type_universe_ctx};
 
 pub fn infer<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
@@ -750,4 +750,3 @@ pub fn check_val<'src, 'core>(
         }
     }
 }
-
