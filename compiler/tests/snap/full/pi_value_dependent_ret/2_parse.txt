@@ -11,43 +11,28 @@ Program {
                     ),
                 },
             ],
-            ret_ty: Block {
-                stmts: [
-                    Let {
-                        name: "ty",
-                        ty: Some(
-                            Var(
-                                "Type",
-                            ),
+            ret_ty: Match {
+                scrutinee: Var(
+                    "b",
+                ),
+                arms: [
+                    MatchArm {
+                        pat: Lit(
+                            0,
                         ),
-                        expr: Match {
-                            scrutinee: Var(
-                                "b",
-                            ),
-                            arms: [
-                                MatchArm {
-                                    pat: Lit(
-                                        0,
-                                    ),
-                                    body: Var(
-                                        "u0",
-                                    ),
-                                },
-                                MatchArm {
-                                    pat: Lit(
-                                        1,
-                                    ),
-                                    body: Var(
-                                        "u16",
-                                    ),
-                                },
-                            ],
-                        },
+                        body: Var(
+                            "u0",
+                        ),
+                    },
+                    MatchArm {
+                        pat: Lit(
+                            1,
+                        ),
+                        body: Var(
+                            "u16",
+                        ),
                     },
                 ],
-                expr: Var(
-                    "ty",
-                ),
             },
             body: Block {
                 stmts: [],

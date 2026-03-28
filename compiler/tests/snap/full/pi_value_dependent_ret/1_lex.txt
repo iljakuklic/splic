@@ -6,12 +6,7 @@ Colon
 Ident("u1")
 RParen
 Arrow
-LBrace
-Let
-Ident("ty")
-Colon
-Ident("Type")
-Eq
+LParen
 Match
 Ident("b")
 LBrace
@@ -23,9 +18,7 @@ Num(1)
 DArrow
 Ident("u16")
 RBrace
-Semi
-Ident("ty")
-RBrace
+RParen
 LBrace
 Match
 Ident("b")

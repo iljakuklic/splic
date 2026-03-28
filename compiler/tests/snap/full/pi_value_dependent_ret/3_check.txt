@@ -1,11 +1,8 @@
 fn get_value(b@0: u1) -> {
-        let ty@1: Type = {
-            match b@0 {
-                0 => u0,
-                1 => u16,
-            }
-        };
-        ty@1
+        match b@0 {
+            0 => u0,
+            1 => u16,
+        }
     } {
     match b@0 {
         0 => 0_u0,

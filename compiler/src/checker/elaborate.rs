@@ -24,7 +24,15 @@ fn elaborate_sig<'src, 'core>(
             Ok((param_name, param_ty))
         }))?;
 
-    let body_ty = infer::infer(&mut ctx, func.phase, func.ret_ty)?;
+    // For meta-phase (`fn`) functions, use `check` against `Type` so that dependent
+    // return type expressions (e.g. `match b { 0 => u0, 1 => u16 }`) are handled in
+    // check mode. For object-phase (`code fn`) functions, type expressions are never
+    // dependent, so `infer` at Object phase is sufficient and correct.
+    let body_ty = if func.phase == core::Phase::Meta {
+        infer::check(&mut ctx, core::Phase::Meta, func.ret_ty, &core::Term::TYPE)?
+    } else {
+        infer::infer(&mut ctx, func.phase, func.ret_ty)?
+    };
 
     Ok(arena.alloc(Pi {
         params,

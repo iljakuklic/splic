@@ -517,23 +517,16 @@ fn check_val_impl<'src, 'core>(
     expected_term: Option<&'core core::Term<'core>>,
 ) -> Result<&'core core::Term<'core>> {
     // Verify `expected` inhabits the correct universe for the current phase.
-    // For neutral expected types (e.g. a match whose scrutinee is a free variable),
-    // value_type_universe_ctx returns None; fall back to val_type_of on the core term
-    // (when available), which traverses the term structure rather than the NbE value.
-    let ty_phase = value_type_universe_ctx(ctx, &expected).or_else(|| {
-        let t = expected_term?;
-        match ctx.val_type_of(t) {
-            value::Value::Prim(Prim::U(p)) => Some(p),
-            _ => None,
-        }
-    });
-    let ty_phase =
-        ty_phase.ok_or_else(|| anyhow!("expected type is not a well-formed type expression"))?;
-    ensure!(
-        ty_phase == phase,
-        "expected type inhabits the {ty_phase}-phase universe, \
-         but elaborating at {phase} phase"
-    );
+    // For neutral expected types (e.g. a dependent return type referencing a free variable),
+    // value_type_universe_ctx returns None — trust `phase`, since elaborate_sig already
+    // verified the return type expression against Type/VmType.
+    if let Some(ty_phase) = value_type_universe_ctx(ctx, &expected) {
+        ensure!(
+            ty_phase == phase,
+            "expected type inhabits the {ty_phase}-phase universe, \
+             but elaborating at {phase} phase"
+        );
+    }
     match term {
         // ------------------------------------------------------------------ Lit
         ast::Term::Lit(n) => match &expected {
@@ -736,13 +729,12 @@ fn check_val_impl<'src, 'core>(
             // that term with the arm's literal substituted for the scrutinee variable.
             // This handles `fn f(b: u1) -> (match b { 0 => u0, 1 => u16 }) { ... }`.
             let scrut_val = ctx.eval(core_scrutinee);
-            let scrut_refine: Option<(Lvl, IntType)> =
-                match (&scrut_val, &scrut_ty_val) {
-                    (value::Value::Rigid(lvl), value::Value::Prim(Prim::IntTy(it))) => {
-                        Some((*lvl, *it))
-                    }
-                    _ => None,
-                };
+            let scrut_refine: Option<(Lvl, IntType)> = match (&scrut_val, &scrut_ty_val) {
+                (value::Value::Rigid(lvl), value::Value::Prim(Prim::IntTy(it))) => {
+                    Some((*lvl, *it))
+                }
+                _ => None,
+            };
 
             let core_arms: &'core [core::Arm<'core>] =
                 ctx.arena
@@ -754,7 +746,9 @@ fn check_val_impl<'src, 'core>(
                         let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
                             (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
                                 let mut env = ctx.env.clone();
-                                env[lvl.0] = value::Value::Lit(*n, *int_ty);
+                                *env.get_mut(lvl.0)
+                                    .expect("scrutinee level must be in scope") =
+                                    value::Value::Lit(*n, *int_ty);
                                 value::eval(ctx.arena, &env, ety)
                             }
                             _ => expected.clone(),

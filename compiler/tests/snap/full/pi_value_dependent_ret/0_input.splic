@@ -1,4 +1,4 @@
-fn get_value(b: u1) -> { let ty: Type = match b { 0 => u0, 1 => u16 }; ty } {
+fn get_value(b: u1) -> (match b { 0 => u0, 1 => u16 }) {
     match b {
         0 => 0,
         1 => 42,
