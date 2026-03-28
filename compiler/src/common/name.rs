@@ -22,6 +22,18 @@ impl AsRef<str> for Name {
     }
 }
 
+impl std::borrow::Borrow<str> for Name {
+    fn borrow(&self) -> &str {
+        self.as_str()
+    }
+}
+
+impl<'a> From<&'a str> for &'a Name {
+    fn from(s: &'a str) -> Self {
+        Name::new(s)
+    }
+}
+
 impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
