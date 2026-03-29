@@ -91,6 +91,9 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 - No syntactic separation between type-level and term-level expressions
 - Quotations (`#(e)`, `#{...}`) and splices (`$(e)`, `${...}`) for metaprogramming
 - Lifting with `[[e]]`
+- `infer` returns `(&Term, Value)` — term **and** its type; never reconstruct types from elaborated terms
+- Use `check_universe(ctx, phase, term)` to check a term is a type; do not infer then check the universe
+- The canonical reference for the elaborator is [AndrasKovacs/staged](https://github.com/AndrasKovacs/staged) (`Elaboration.hs`, `Evaluation.hs`)
 
 ## Documentation
 
