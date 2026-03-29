@@ -226,23 +226,7 @@ Meta code can compute these indices and select specialized representations, and 
 
 ---
 
-## 8. Implementation checklist
-
-Core:
-- [ ] Define two stages and enforce stage-local type formers.
-- [ ] Implement `⇑`, `⟨⟩`, `∼` with correct typing.
-- [ ] Implement strong meta normalization / evaluation.
-- [ ] Implement weak object conversion (at least structural).
-- [ ] Implement unstaging that eliminates all splices.
-
-Quality:
-- [ ] Add let-insertion (`Gen`) to prevent duplication.
-- [ ] Decide if you want closure-free object typing (`ValTy`/`CompTy`).
-- [ ] Decide if you want representation indices (KACC-style).
-
----
-
-## 9. Implementation Architecture: NbE + Staging
+## 8. Implementation Architecture: NbE + Staging
 
 Modern practical implementations use **Normalization by Evaluation (NbE)** for type checking and evaluation for staging.
 
@@ -286,34 +270,9 @@ quote lvl (VPi x a b)    = Pi x (quote lvl a) (quote (lvl+1) (b (VRigid lvl)))
 - Levels are the natural output of evaluation — fresh variables are just the current depth.
 - Closures capture the evaluation environment, eliminating variable-capture bugs.
 
-### Staging Evaluator (Separate system)
-
-The **staging evaluator** is a different system that compiles meta code and produces the object program:
-
-```haskell
--- Two separate value types
-data Val0 = V0Lit Int | V0App Name [Val0] | V0Code Term | ...
-data Val1 = V1Lam (Val0 -> Val1) | V1Lit Int | ...
-
--- Two separate evaluators
-eval0 :: Env Val0 -> Term -> Val0    -- object-level computation
-eval1 :: Env Val1 -> Term -> Val1    -- meta-level computation
-```
-
-**Distinct from NbE because:**
-- NbE normalizes types during type checking (unifies meta/object under `Value`).
-- Staging separates meta and object code and produces the output program.
-- The two systems operate on different goals with different value representations.
-
-**In Splic:**
-- Type checker: `core/value.rs` NbE (unified semantic domain, normalized for type comparison).
-- Staging: `eval/mod.rs` with separate `Val0`/`Val1` (partitioned computation).
-
-Both use the same `Term` representation and `Closure { env: &[Value], body: &Term }` pattern.
-
 ---
 
-## 10. De Bruijn Representation and Shifting
+## 9. De Bruijn Representation and Shifting
 
 ### Indices vs Levels
 
@@ -340,34 +299,9 @@ ix_to_lvl(depth: Lvl, ix: Ix) -> Lvl = Lvl(depth.0 - ix.0 - 1)
 lvl_to_ix(depth: Lvl, lvl: Lvl) -> Ix = Ix(depth.0 - lvl.0 - 1)
 ```
 
-### Free Variable Shifting (Staging)
-
-When quoted code (`MetaVal::Code { term, depth }`) created at one depth is spliced at a deeper depth, its free variables must be shifted:
-
-```
-Code created at depth = 2: App(mul, [Var(Ix(0)), Var(Ix(1))])
-Spliced at depth = 4: these indices now refer to different variables!
-
-Solution: shift += (4 - 2), applied to free variables (Ix >= some cutoff).
-```
-
-Implement via recursive term traversal:
-
-```rust
-fn shift_free_ix(term, shift, cutoff) {
-    match term {
-        Var(Ix(i)) if i >= cutoff => Var(Ix(i + shift)),
-        Lam { body, .. } => Lam { body: shift_free_ix(body, shift, cutoff) },
-        // ... recursively apply to all sub-terms
-    }
-}
-```
-
-Only free variables (those not bound within the term itself) are shifted.
-
 ---
 
-## 11. Reference Implementations
+## 10. Reference Implementations
 
 - **elaboration-zoo** (Kovács, 2020): https://github.com/AndrasKovacs/elaboration-zoo
   - Branch `01-eval-closures-debruijn` is the canonical reference for NbE + De Bruijn.
@@ -385,11 +319,11 @@ Only free variables (those not bound within the term itself) are shifted.
 
 ---
 
-## 12. Bidirectional Elaboration Patterns (anti-drift guardrails)
+## 11. Bidirectional Elaboration Patterns (anti-drift guardrails)
 
 The type-checker is a **bidirectional elaborator**: `infer` synthesises a type, `check` verifies one. Getting these right avoids a class of ad-hoc workarounds.
 
-### 12.1 `infer` must return its type
+### 11.1 `infer` must return its type
 
 ```haskell
 infer :: Ctx -> Stage -> Tm -> (CoreTm, VTy)
@@ -397,7 +331,7 @@ infer :: Ctx -> Stage -> Tm -> (CoreTm, VTy)
 
 Returning the type directly means callers never need to reconstruct the type from the elaborated term. A helper like `typeOf` that pattern-matches the core term to recover a type is a signal that `infer` is not returning enough information.
 
-### 12.2 `checkU` / `check_universe`
+### 11.2 `checkU` / `check_universe`
 
 Instead of:
 ```haskell
@@ -412,7 +346,7 @@ t <- checkU ctx s e   -- checkU cxt t s = check cxt t (VU s) s
 
 This directly encodes the kinding rule and avoids fragile `isUniverseType` predicates. See the reference implementation (`Elaboration.hs: checkU`).
 
-### 12.3 Stuck splices are a neutral form
+### 11.3 Stuck splices are a neutral form
 
 `Value` needs a `Splice` neutral alongside `Rigid` (stuck variable):
 
@@ -425,7 +359,7 @@ eval(Quote(v))         = Quote(v)    -- stuck: v is not a Splice
 
 Without the `Splice` neutral, `eval(Splice(v))` has nowhere to go and either panics or silently drops the splice, breaking quote/splice cancellation in the NbE type-checker.
 
-### 12.4 Stage-check variables at lookup
+### 11.4 Stage-check variables at lookup
 
 The context should record the stage of each binding and verify it matches the current elaboration stage when a variable is looked up:
 
@@ -440,7 +374,7 @@ Without this, a meta-phase variable referenced in an object context produces a c
 
 ---
 
-## 13. Glossary
+## 12. Glossary
 
 | Term | Definition |
 |------|-----------|
