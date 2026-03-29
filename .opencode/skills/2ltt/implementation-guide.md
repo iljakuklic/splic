@@ -385,7 +385,62 @@ Only free variables (those not bound within the term itself) are shifted.
 
 ---
 
-## 12. Glossary
+## 12. Bidirectional Elaboration Patterns (anti-drift guardrails)
+
+The type-checker is a **bidirectional elaborator**: `infer` synthesises a type, `check` verifies one. Getting these right avoids a class of ad-hoc workarounds.
+
+### 12.1 `infer` must return its type
+
+```haskell
+infer :: Ctx -> Stage -> Tm -> (CoreTm, VTy)
+```
+
+Returning the type directly means callers never need to reconstruct the type from the elaborated term. A helper like `typeOf` that pattern-matches the core term to recover a type is a signal that `infer` is not returning enough information.
+
+### 12.2 `checkU` / `check_universe`
+
+Instead of:
+```haskell
+(t, ty) <- infer ctx s e
+unless (isUniverseType ty) $ fail "expected a type"
+```
+
+Use:
+```haskell
+t <- checkU ctx s e   -- checkU cxt t s = check cxt t (VU s) s
+```
+
+This directly encodes the kinding rule and avoids fragile `isUniverseType` predicates. See the reference implementation (`Elaboration.hs: checkU`).
+
+### 12.3 Stuck splices are a neutral form
+
+`Value` needs a `Splice` neutral alongside `Rigid` (stuck variable):
+
+```
+eval(Quote(Splice(v))) = v           -- cancel
+eval(Splice(Quote(v))) = v           -- cancel
+eval(Splice(v))        = Splice(v)   -- stuck: v is not a Quote
+eval(Quote(v))         = Quote(v)    -- stuck: v is not a Splice
+```
+
+Without the `Splice` neutral, `eval(Splice(v))` has nowhere to go and either panics or silently drops the splice, breaking quote/splice cancellation in the NbE type-checker.
+
+### 12.4 Stage-check variables at lookup
+
+The context should record the stage of each binding and verify it matches the current elaboration stage when a variable is looked up:
+
+```haskell
+infer cxt (Var x) = do
+  let (x', a, s) = lookupVar cxt x
+  when (stage cxt /= s) $ fail "stage mismatch for variable"
+  pure (Var x', a)
+```
+
+Without this, a meta-phase variable referenced in an object context produces a confusing type error instead of a clear stage error. The reference calls this `guardStage` (`Cxt.hs`).
+
+---
+
+## 13. Glossary
 
 | Term | Definition |
 |------|-----------|
