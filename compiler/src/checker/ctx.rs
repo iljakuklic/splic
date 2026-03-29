@@ -55,7 +55,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     }
 
     /// Current De Bruijn level / locals stack depth — always equal to `env.len()`.
-    pub fn depth(&self) -> Lvl {
+    pub const fn depth(&self) -> Lvl {
         Lvl(self.env.len())
     }
 

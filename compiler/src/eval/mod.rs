@@ -506,7 +506,7 @@ fn eval_meta_match<'out, 'eval>(
 /// Used when splicing a `Code` value that was created at a shallower output depth into a deeper
 /// context: every free variable index must increase by the depth difference.
 ///
-/// TODO(#29): This shifting step would be eliminated if object-level code used NbE with
+/// TODO(#29): This shifting step would be eliminated if object-level code used `NbE` with
 /// closures and De Bruijn levels (as in the Kovács reference impl) instead of raw terms.
 fn shift_free_ix<'out>(
     arena: &'out Bump,

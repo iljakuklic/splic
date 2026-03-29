@@ -24,8 +24,12 @@ fn elaborate_sig<'src, 'core>(
             Ok((param_name, param_ty))
         }))?;
 
-    let body_ty =
-        infer::check(&mut ctx, func.phase, func.ret_ty, core::Term::universe(func.phase))?;
+    let body_ty = infer::check(
+        &mut ctx,
+        func.phase,
+        func.ret_ty,
+        core::Term::universe(func.phase),
+    )?;
 
     Ok(arena.alloc(Pi {
         params,
