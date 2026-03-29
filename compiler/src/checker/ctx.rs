@@ -21,8 +21,6 @@ pub struct Ctx<'core, 'globals> {
     /// Types of locals as semantic values (oldest first).
     /// `types[types.len() - 1 - ix]` = type of `Var(Ix(ix))`.
     pub types: Vec<value::Value<'core>>,
-    /// Current De Bruijn level (= `env.len()` = `types.len()`).
-    pub lvl: Lvl,
     /// Global function types: name -> Pi term.
     /// Storing `&Term` (always a Pi) unifies type lookup for globals and locals.
     /// Borrowed independently of the arena so the map can live on the stack.
@@ -39,7 +37,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
             names: Vec::new(),
             env: Vec::new(),
             types: Vec::new(),
-            lvl: Lvl::new(0),
             globals,
         }
     }
@@ -57,22 +54,23 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         self.arena.alloc_slice_fill_iter(items)
     }
 
+    /// Current De Bruijn level / locals stack depth — always equal to `env.len()`.
+    pub fn depth(&self) -> Lvl {
+        Lvl(self.env.len())
+    }
+
     /// Push a local variable onto the context, given its type as a term.
     /// Evaluates the type term in the current environment.
     pub fn push_local(&mut self, name: &'core core::Name, ty: &'core core::Term<'core>) {
         let ty_val = value::eval(self.arena, &self.env, ty);
-        self.env.push(value::Value::Rigid(self.lvl));
-        self.types.push(ty_val);
-        self.lvl = self.lvl.succ();
-        self.names.push(name);
+        self.push_local_val(name, ty_val);
     }
 
     /// Push a local variable onto the context, given its type as a Value.
     /// The variable itself is a fresh rigid (neutral) variable — use for lambda/pi params.
     pub fn push_local_val(&mut self, name: &'core core::Name, ty_val: value::Value<'core>) {
-        self.env.push(value::Value::Rigid(self.lvl));
+        self.env.push(value::Value::Rigid(self.depth()));
         self.types.push(ty_val);
-        self.lvl = self.lvl.succ();
         self.names.push(name);
     }
 
@@ -86,7 +84,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     ) {
         self.env.push(expr_val);
         self.types.push(ty_val);
-        self.lvl = self.lvl.succ();
         self.names.push(name);
     }
 
@@ -95,7 +92,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         self.names.pop();
         self.env.pop();
         self.types.pop();
-        self.lvl = Lvl(self.lvl.0 - 1);
     }
 
     /// Look up a variable by name, returning its (index, type as Value).
@@ -103,7 +99,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     pub fn lookup_local(&self, name: &'_ core::Name) -> Option<(Ix, &value::Value<'core>)> {
         for (i, local_name) in self.names.iter().enumerate().rev() {
             if *local_name == name {
-                let ix = Lvl(i).ix_at_depth(self.lvl);
+                let ix = Lvl(i).ix_at_depth(self.depth());
                 let ty = self
                     .types
                     .get(i)
@@ -112,11 +108,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
             }
         }
         None
-    }
-
-    /// Get the current depth of the locals stack
-    pub const fn depth(&self) -> usize {
-        self.lvl.0
     }
 
     /// Helper to create a lifted type [[T]]
@@ -131,6 +122,6 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Quote a value back to a term at the current depth.
     pub fn quote_val(&self, val: &value::Value<'core>) -> &'core core::Term<'core> {
-        value::quote(self.arena, self.lvl, val)
+        value::quote(self.arena, self.depth(), val)
     }
 }

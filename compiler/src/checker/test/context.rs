@@ -114,13 +114,13 @@ fn context_depth() {
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
 
-    assert_eq!(ctx.depth(), 0);
+    assert_eq!(ctx.depth(), Lvl(0));
     ctx.push_local(core::Name::new("x"), u64_term);
-    assert_eq!(ctx.depth(), 1);
+    assert_eq!(ctx.depth(), Lvl(1));
     ctx.push_local(core::Name::new("y"), u64_term);
-    assert_eq!(ctx.depth(), 2);
+    assert_eq!(ctx.depth(), Lvl(2));
     ctx.pop_local();
-    assert_eq!(ctx.depth(), 1);
+    assert_eq!(ctx.depth(), Lvl(1));
 }
 
 #[test]
@@ -140,14 +140,14 @@ fn object_variable_outside_quote_is_invalid() {
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
     ctx.push_local(core::Name::new("x"), u64_term);
-    assert_eq!(ctx.depth(), 1);
+    assert_eq!(ctx.depth(), Lvl(1));
 }
 
 #[test]
 fn phase_is_argument_not_context() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
-    assert_eq!(ctx.depth(), 0);
+    assert_eq!(ctx.depth(), Lvl(0));
 }
 
 #[test]

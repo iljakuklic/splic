@@ -213,7 +213,7 @@ pub fn infer<'src, 'core>(
 
             // Build the Pi type for this lambda by quoting the body type at
             // the extended depth, then constructing a Pi term and evaluating it.
-            let body_ty_term = value::quote(ctx.arena, ctx.lvl, &body_ty);
+            let body_ty_term = value::quote(ctx.arena, ctx.depth(), &body_ty);
 
             for _ in &elaborated_params {
                 ctx.pop_local();
@@ -594,7 +594,7 @@ fn check_val_impl<'src, 'core>(
         // ------------------------------------------------------------------ Quote (check mode)
         ast::Term::Quote(inner) => match &expected {
             value::Value::Lift(obj_ty) => {
-                let obj_ty_term = value::quote(ctx.arena, ctx.lvl, obj_ty);
+                let obj_ty_term = value::quote(ctx.arena, ctx.depth(), obj_ty);
                 let core_inner = check(ctx, Phase::Object, inner, obj_ty_term)?;
                 Ok(ctx.alloc(core::Term::Quote(core_inner)))
             }
@@ -648,7 +648,7 @@ fn check_val_impl<'src, 'core>(
                 match cur_pi {
                     value::Value::Pi(vpi) => {
                         pi_params.push((vpi.name, (*vpi.domain).clone()));
-                        let fresh = value::Value::Rigid(Lvl(ctx.depth() + pi_params.len() - 1));
+                        let fresh = value::Value::Rigid(Lvl(ctx.depth().0 + pi_params.len() - 1));
                         cur_pi = value::inst(ctx.arena, &vpi.closure, fresh);
                     }
                     _ => bail!(
@@ -667,7 +667,7 @@ fn check_val_impl<'src, 'core>(
                 let (annotated_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
                 let annotated_ty_val = ctx.eval(annotated_ty);
                 ensure!(
-                    value::val_eq(ctx.arena, ctx.lvl, &annotated_ty_val, &pi_param_ty),
+                    value::val_eq(ctx.arena, ctx.depth(), &annotated_ty_val, &pi_param_ty),
                     "lambda parameter type mismatch: annotation gives a different type \
                      than the expected function type"
                 );
@@ -755,7 +755,7 @@ fn check_val_impl<'src, 'core>(
         ast::Term::Var(_) | ast::Term::App { .. } | ast::Term::Lift(_) | ast::Term::Pi { .. } => {
             let (core_term, inferred_val) = infer(ctx, phase, term)?;
             ensure!(
-                value::val_eq(ctx.arena, ctx.lvl, &inferred_val, &expected),
+                value::val_eq(ctx.arena, ctx.depth(), &inferred_val, &expected),
                 "type mismatch"
             );
             Ok(core_term)
