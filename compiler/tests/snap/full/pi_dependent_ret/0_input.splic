@@ -1,0 +1,9 @@
+// Return type depends on the first type argument.
+// const_(A, B, a, b) ignores b and returns a : A.
+fn const_(A: Type, B: Type, a: A, b: B) -> A { a }
+
+fn test_u64() -> u64 { const_(u64, u8, 10, 7) }
+fn test_u8() -> u8 { const_(u8, u64, 7, 10) }
+
+code fn result_u64() -> u64 { $(test_u64()) }
+code fn result_u8() -> u8 { $(test_u8()) }

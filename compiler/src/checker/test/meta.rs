@@ -14,9 +14,8 @@ fn infer_lift_of_object_type_returns_type_universe() {
     let term = src_arena.alloc(ast::Term::Lift(inner));
 
     // Elaborated at meta phase: type of [[u64]] is Type (meta universe)
-    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(result);
-    assert!(matches!(ty, core::Term::Prim(Prim::U(Phase::Meta))));
+    let (_, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
+    assert!(matches!(ty_val, value::Value::Prim(Prim::U(Phase::Meta))));
 }
 
 // `[[u64]]` is illegal at object phase — Lift is only meaningful in meta context.
@@ -42,7 +41,7 @@ fn infer_lift_of_non_type_fails() {
 
     // Push a local `x: u32` (a value, not a type) then write `[[x]]`
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("x", u32_ty);
+    ctx.push_local(core::Name::new("x"), u32_ty);
 
     let inner = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Lift(inner));
@@ -65,27 +64,26 @@ fn infer_quote_of_global_call_returns_lifted_type() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("f"),
-        FunSig {
+        core_arena.alloc(Pi {
             params: &[],
-            ret_ty: u64_ty_core,
+            body_ty: u64_ty_core,
             phase: Phase::Object,
-        },
+        }) as &_,
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     // Surface: `#(f())`
     let inner = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
     let term = src_arena.alloc(ast::Term::Quote(inner));
 
     // Checked at meta phase; result type should be [[u64]]
-    let core_term = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(core_term, core::Term::Quote(_)));
     // Type is Lift(u64)
-    assert!(matches!(ty, core::Term::Lift(_)));
+    assert!(matches!(ty_val, value::Value::Lift(_)));
 }
 
 // `#(...)` at object phase is illegal — Quote is only meaningful in meta context.
@@ -98,16 +96,16 @@ fn infer_quote_at_object_phase_fails() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("f"),
-        FunSig {
+        core_arena.alloc(Pi {
             params: &[],
-            ret_ty: u64_ty_core,
+            body_ty: u64_ty_core,
             phase: Phase::Object,
-        },
+        }) as &_,
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let inner = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
     let term = src_arena.alloc(ast::Term::Quote(inner));
@@ -141,7 +139,7 @@ fn check_quote_switches_to_object_phase() {
     // x : [[u64]] — meta variable holding object code; Lift contains an object-phase type.
     let u64_obj = core::Term::int_ty(IntWidth::U64, Phase::Object);
     let lifted = ctx.lift_ty(u64_obj);
-    ctx.push_local("x", lifted);
+    ctx.push_local(core::Name::new("x"), lifted);
 
     // `#($(x))` — splice x inside a quote; type should be [[u64]]
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
@@ -168,18 +166,17 @@ fn infer_splice_of_lifted_var_returns_inner_type() {
 
     let u64_ty = &core::Term::U64_META;
     let lifted = ctx.lift_ty(u64_ty);
-    ctx.push_local("x", lifted); // x: [[u64]]
+    ctx.push_local(core::Name::new("x"), lifted); // x: [[u64]]
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));
 
     // splice is checked at object phase
-    let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Object, term).expect("should infer");
     assert!(matches!(core_term, core::Term::Splice(_)));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -195,7 +192,7 @@ fn infer_splice_at_meta_phase_fails() {
 
     let u64_ty = &core::Term::U64_META;
     let lifted = ctx.lift_ty(u64_ty);
-    ctx.push_local("x", lifted); // x: [[u64]]
+    ctx.push_local(core::Name::new("x"), lifted); // x: [[u64]]
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));
@@ -213,18 +210,17 @@ fn infer_splice_of_meta_int_succeeds() {
 
     // x: u32 at meta phase
     let u32_meta = &core::Term::U32_META;
-    ctx.push_local("x", u32_meta);
+    ctx.push_local(core::Name::new("x"), u32_meta);
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));
 
     // $(x) at object phase: result type is u32 at object phase.
-    let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Object, term).expect("should infer");
     assert!(matches!(core_term, core::Term::Splice(_)));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             phase: Phase::Object,
         }))
@@ -253,7 +249,7 @@ fn infer_splice_of_non_lifted_non_int_var_fails() {
     let mut ctx = test_ctx(&core_arena);
 
     let type_ty = &core::Term::TYPE; // Type (meta universe), not an integer or [[T]]
-    ctx.push_local("x", type_ty);
+    ctx.push_local(core::Name::new("x"), type_ty);
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));

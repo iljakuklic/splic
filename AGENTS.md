@@ -84,11 +84,27 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 ### Memory Management
 - Use `bumpalo` arena allocator wherever practical
 - For arena-allocated structures, refer to other objects using plain references rather than `Box`
+- In NbE (semantic evaluation), use slices `&'a [Value<'a>]` for environment snapshots captured in closures, not vectors
+- Keep mutable working environments (`Vec<Value>`) on the stack; snapshot them to the arena only at closure creation time
 
 ### 2LTT Patterns
 - No syntactic separation between type-level and term-level expressions
 - Quotations (`#(e)`, `#{...}`) and splices (`$(e)`, `${...}`) for metaprogramming
 - Lifting with `[[e]]`
+- `infer` returns `(&Term, Value)` — term **and** its type; never reconstruct types from elaborated terms
+- Use `check_universe(ctx, phase, term)` to check a term is a type; do not infer then check the universe
+- The canonical reference for the elaborator is [AndrasKovacs/staged](https://github.com/AndrasKovacs/staged) (`Elaboration.hs`, `Evaluation.hs`)
+
+## Documentation
+
+Splic documentation is organized in two main locations:
+
+- **`docs/README.md`** — Overview and index of language design and user-facing docs (CONCEPT, SYNTAX, examples)
+- **`docs/bs/README.md`** — Index of implementation notes, proposals, and architecture documentation
+
+**Guidelines for writing docs:**
+- Focus on architectural concepts and design decisions ("what" and "why") rather than implementation-specific details (function names, parameter types, exact APIs). This keeps docs resilient to code changes.
+- Keep doc indices up to date: when adding new files, add entries to the appropriate `README.md` with a brief description.
 
 ## Language Design
 
@@ -96,5 +112,4 @@ Splic is built on **two-level type theory (2LTT)**:
 - **Meta-level**: Purely functional dependently typed language
 - **Object-level**: Low-level language for zkvm bytecode
 - Connected through quotations and splices for type-safe metaprogramming
-
-See `docs/CONCEPT.md` and `docs/SYNTAX.md` for detailed language specifications.
+- See the 2ltt skill for more detail

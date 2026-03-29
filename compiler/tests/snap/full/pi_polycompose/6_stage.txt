@@ -1,0 +1,4 @@
+code fn result() -> u8 {
+    3_u8
+}
+

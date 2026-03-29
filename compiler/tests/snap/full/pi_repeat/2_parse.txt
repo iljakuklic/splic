@@ -1,0 +1,167 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "repeat",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Lift(
+                                    Var(
+                                        "u64",
+                                    ),
+                                ),
+                            },
+                        ],
+                        ret_ty: Lift(
+                            Var(
+                                "u64",
+                            ),
+                        ),
+                    },
+                },
+                Param {
+                    name: "n",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+                Param {
+                    name: "x",
+                    ty: Lift(
+                        Var(
+                            "u64",
+                        ),
+                    ),
+                },
+            ],
+            ret_ty: Lift(
+                Var(
+                    "u64",
+                ),
+            ),
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: Var(
+                        "n",
+                    ),
+                    arms: [
+                        MatchArm {
+                            pat: Lit(
+                                0,
+                            ),
+                            body: Var(
+                                "x",
+                            ),
+                        },
+                        MatchArm {
+                            pat: Name(
+                                "n",
+                            ),
+                            body: App {
+                                func: Var(
+                                    "repeat",
+                                ),
+                                args: [
+                                    Var(
+                                        "f",
+                                    ),
+                                    App {
+                                        func: Sub,
+                                        args: [
+                                            Var(
+                                                "n",
+                                            ),
+                                            Lit(
+                                                1,
+                                            ),
+                                        ],
+                                    },
+                                    App {
+                                        func: Var(
+                                            "f",
+                                        ),
+                                        args: [
+                                            Var(
+                                                "x",
+                                            ),
+                                        ],
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "square_twice",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: Var(
+                            "repeat",
+                        ),
+                        args: [
+                            Lam {
+                                params: [
+                                    Param {
+                                        name: "y",
+                                        ty: Lift(
+                                            Var(
+                                                "u64",
+                                            ),
+                                        ),
+                                    },
+                                ],
+                                body: Quote(
+                                    App {
+                                        func: Mul,
+                                        args: [
+                                            Splice(
+                                                Var(
+                                                    "y",
+                                                ),
+                                            ),
+                                            Splice(
+                                                Var(
+                                                    "y",
+                                                ),
+                                            ),
+                                        ],
+                                    },
+                                ),
+                            },
+                            Lit(
+                                2,
+                            ),
+                            Quote(
+                                Var(
+                                    "x",
+                                ),
+                            ),
+                        ],
+                    },
+                ),
+            },
+        },
+    ],
+}

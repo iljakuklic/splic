@@ -50,42 +50,42 @@ fn collect_signatures_two_functions() {
 
     assert_eq!(globals.len(), 2);
 
-    let id_sig = globals
+    let id_pi = globals
         .get(&Name::new("id"))
         .expect("id should be in globals");
-    assert_eq!(id_sig.phase, Phase::Meta);
-    assert_eq!(id_sig.params.len(), 1);
-    assert_eq!(id_sig.params[0].0, "x");
+    assert_eq!(id_pi.phase, Phase::Meta);
+    assert_eq!(id_pi.params.len(), 1);
+    assert_eq!(id_pi.params[0].0.as_str(), "x");
     assert!(matches!(
-        id_sig.params[0].1,
+        id_pi.params[0].1,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
     ));
     assert!(matches!(
-        id_sig.ret_ty,
+        id_pi.body_ty,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
     ));
 
-    let add_sig = globals
+    let add_pi = globals
         .get(&Name::new("add_one"))
         .expect("add_one should be in globals");
-    assert_eq!(add_sig.phase, Phase::Object);
-    assert_eq!(add_sig.params.len(), 1);
-    assert_eq!(add_sig.params[0].0, "y");
+    assert_eq!(add_pi.phase, Phase::Object);
+    assert_eq!(add_pi.params.len(), 1);
+    assert_eq!(add_pi.params[0].0.as_str(), "y");
     assert!(matches!(
-        add_sig.params[0].1,
+        add_pi.params[0].1,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
     ));
     assert!(matches!(
-        add_sig.ret_ty,
+        add_pi.body_ty,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
@@ -256,7 +256,7 @@ fn elaborate_program_code_fn_with_splice() {
 
     // pow0's body: $(k())
     let k_call = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("k")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k")))),
         args: &[],
     });
     let pow0_body = src_arena.alloc(ast::Term::Splice(k_call));
@@ -296,7 +296,7 @@ fn elaborate_program_forward_reference_succeeds() {
 
     // fn a() -> u32 { b() }
     let a_body = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("b")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("b")))),
         args: &[],
     });
     // fn b() -> u32 { 42 }

@@ -1,0 +1,2 @@
+ERROR
+in function `too_many`: too many arguments at argument 1

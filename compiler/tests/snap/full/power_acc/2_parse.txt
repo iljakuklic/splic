@@ -109,7 +109,9 @@ Program {
                                                             0,
                                                         ),
                                                         body: App {
-                                                            func: "power_acc",
+                                                            func: Var(
+                                                                "power_acc",
+                                                            ),
                                                             args: [
                                                                 Quote(
                                                                     App {
@@ -150,7 +152,9 @@ Program {
                                                                 stmts: [],
                                                                 expr: Splice(
                                                                     App {
-                                                                        func: "power_acc",
+                                                                        func: Var(
+                                                                            "power_acc",
+                                                                        ),
                                                                         args: [
                                                                             Quote(
                                                                                 App {
@@ -311,7 +315,9 @@ Program {
                                                             0,
                                                         ),
                                                         body: App {
-                                                            func: "power_acc_1",
+                                                            func: Var(
+                                                                "power_acc_1",
+                                                            ),
                                                             args: [
                                                                 Quote(
                                                                     App {
@@ -345,7 +351,9 @@ Program {
                                                             1,
                                                         ),
                                                         body: App {
-                                                            func: "power_acc",
+                                                            func: Var(
+                                                                "power_acc",
+                                                            ),
                                                             args: [
                                                                 Quote(
                                                                     App {
@@ -417,7 +425,9 @@ Program {
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: "power_acc_1",
+                    func: Var(
+                        "power_acc_1",
+                    ),
                     args: [
                         Var(
                             "x",
@@ -447,7 +457,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Var(
@@ -480,7 +492,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Var(
@@ -513,7 +527,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Block {
@@ -569,7 +585,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Var(
@@ -602,7 +620,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Var(
@@ -635,7 +655,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Var(

@@ -20,11 +20,10 @@ fn infer_let_annotated_infers_body_type() {
     }]);
     let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
 
-    let result = infer(&mut ctx, Phase::Meta, block).expect("should infer");
-    let ty = ctx.type_of(result);
+    let (_, ty_val) = infer(&mut ctx, Phase::Meta, block).expect("should infer");
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U32,
             ..
         }))
@@ -78,7 +77,7 @@ fn infer_let_annotation_mismatch_fails() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     let u64_ty = &core::Term::U64_META;
-    ctx.push_local("y", u64_ty); // y: u64
+    ctx.push_local(core::Name::new("y"), u64_ty); // y: u64
 
     // `let x: u32 = y; x`  — y is u64, annotation says u32
     let ty_ann = src_arena.alloc(ast::Term::Var(ast::Name::new("u32")));

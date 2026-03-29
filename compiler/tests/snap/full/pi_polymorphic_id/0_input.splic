@@ -1,0 +1,8 @@
+// Polymorphic identity function using dependent types
+fn id(A: Type, x: A) -> A { x }
+
+fn test_u64() -> u64 { id(u64, 42) }
+fn test_u8() -> u8 { id(u8, 7) }
+
+code fn result_u64() -> u64 { $(test_u64()) }
+code fn result_u8() -> u8 { $(test_u8()) }

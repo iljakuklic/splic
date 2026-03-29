@@ -1,0 +1,12 @@
+// Nested function types: function that takes a function and applies it twice
+fn apply_twice(f: fn(_: u64) -> u64, x: u64) -> u64 {
+    f(f(x))
+}
+
+fn inc(x: u64) -> u64 { x + 1 }
+
+fn test() -> u64 {
+    apply_twice(inc, 0)
+}
+
+code fn result() -> u64 { $(test()) }

@@ -29,7 +29,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "k",
+                        func: Var(
+                            "k",
+                        ),
                         args: [],
                     },
                 ),

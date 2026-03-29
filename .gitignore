@@ -3,3 +3,4 @@ __fuzz__/**/crashes/
 scratch/
 posts/
 .claude/settings.local.json
+.claude/worktrees/

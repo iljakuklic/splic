@@ -1,10 +1,13 @@
 pub mod pretty;
 mod prim;
+pub mod value;
 
+pub mod alpha_eq;
 pub use crate::common::{Name, Phase};
+pub use alpha_eq::alpha_eq;
 pub use prim::{IntType, IntWidth, Prim};
 
-/// De Bruijn level (counts from the outermost binder)
+/// De Bruijn level (counts from the outermost binder, 0 = outermost)
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Lvl(pub usize);
 
@@ -17,19 +20,30 @@ impl Lvl {
     pub const fn succ(self) -> Self {
         Self(self.0 + 1)
     }
+
+    #[must_use]
+    pub const fn ix_at_depth(self, depth: Self) -> Ix {
+        Ix(depth.0 - self.0 - 1)
+    }
 }
 
-/// Head of an application: either a top-level function or a primitive op
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum Head<'a> {
-    Global(Name<'a>), // resolved top-level function name
-    Prim(Prim),       // built-in operation with resolved width
-}
+/// De Bruijn index (counts from nearest enclosing binder, 0 = innermost)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Ix(pub usize);
 
-impl Head<'_> {
-    /// Returns `true` if this head is a binary infix primitive operator.
-    pub const fn is_binop(&self) -> bool {
-        matches!(self, Self::Prim(p) if p.is_binop())
+impl Ix {
+    pub const fn new(n: usize) -> Self {
+        Self(n)
+    }
+
+    #[must_use]
+    pub const fn succ(self) -> Self {
+        Self(self.0 + 1)
+    }
+
+    #[must_use]
+    pub const fn lvl_at_depth(self, depth: Lvl) -> Self {
+        Self(depth.0 - self.0 - 1)
     }
 }
 
@@ -37,15 +51,15 @@ impl Head<'_> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Pat<'a> {
     Lit(u64),
-    Bind(&'a str), // named binding
-    Wildcard,      // _ pattern
+    Bind(&'a Name), // named binding
+    Wildcard,       // _ pattern
 }
 
 impl<'a> Pat<'a> {
     /// Return the name bound by this pattern, if any.
-    pub const fn bound_name(&self) -> Option<&'a str> {
+    pub const fn bound_name(&self) -> Option<&'a Name> {
         match self {
-            Pat::Bind(name) => Some(name),
+            Pat::Bind(name) => Some(*name),
             Pat::Lit(_) | Pat::Wildcard => None,
         }
     }
@@ -58,20 +72,20 @@ pub struct Arm<'a> {
     pub body: &'a Term<'a>,
 }
 
-/// Top-level function signature (stored in the globals table during elaboration)
-#[derive(Debug)]
-pub struct FunSig<'a> {
-    pub params: &'a [(&'a str, &'a Term<'a>)], // (name, type) pairs
-    pub ret_ty: &'a Term<'a>,
-    pub phase: Phase,
-}
-
-/// Elaborated top-level function definition
+/// Elaborated top-level function definition.
 #[derive(Debug)]
 pub struct Function<'a> {
-    pub name: Name<'a>,
-    pub sig: FunSig<'a>,
+    pub name: &'a Name,
+    /// Function type: phase, params, and return type.
+    pub ty: &'a Pi<'a>,
     pub body: &'a Term<'a>,
+}
+
+impl<'a> Function<'a> {
+    /// Return the function's Pi type.
+    pub const fn pi(&self) -> &Pi<'a> {
+        self.ty
+    }
 }
 
 /// Elaborated program: a sequence of top-level function definitions
@@ -80,36 +94,44 @@ pub struct Program<'a> {
     pub functions: &'a [Function<'a>],
 }
 
-/// Application of a global function or primitive operation to arguments.
+/// Function or primitive application: `func(args...)`
+///
+/// `func` may be any term yielding a function type — most commonly:
+/// - `Term::Global(name)` for top-level function calls
+/// - `Term::Prim(p)` for built-in primitive operations
+/// - any expression for higher-order calls
+///
+/// An empty `args` slice represents a zero-argument call and is distinct from
+/// a bare reference to `func`.
 #[derive(Debug, PartialEq, Eq)]
 pub struct App<'a> {
-    pub head: Head<'a>,
+    pub func: &'a Term<'a>,
     pub args: &'a [&'a Term<'a>],
 }
 
-impl App<'_> {
-    /// Returns the number of arguments.
-    pub const fn arity(&self) -> usize {
-        self.args.len()
-    }
+/// Dependent function type: `fn(params...) -> body_ty`
+///
+/// `phase` distinguishes meta-level (`fn`) from object-level (`code fn`) functions.
+/// This allows the globals table to store `&Term` directly, unifying type lookup
+/// for globals and locals.
+#[derive(Debug, PartialEq, Eq)]
+pub struct Pi<'a> {
+    pub params: &'a [(&'a Name, &'a Term<'a>)], // (name, type) pairs
+    pub body_ty: &'a Term<'a>,
+    pub phase: Phase,
+}
 
-    /// Returns `true` if this application is a binary infix primitive operator.
-    ///
-    /// Asserts that the argument count is exactly 2, which is an invariant
-    /// enforced by the elaborator for all binop applications.
-    pub fn is_binop(&self) -> bool {
-        let result = self.head.is_binop();
-        if result {
-            assert_eq!(self.arity(), 2, "binop App must have exactly 2 arguments");
-        }
-        result
-    }
+/// Lambda abstraction: |params...| body
+#[derive(Debug, PartialEq, Eq)]
+pub struct Lam<'a> {
+    pub params: &'a [(&'a Name, &'a Term<'a>)], // (name, type) pairs
+    pub body: &'a Term<'a>,
 }
 
 /// Let binding with explicit type annotation and a body.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Let<'a> {
-    pub name: &'a str,
+    pub name: &'a Name,
     pub ty: &'a Term<'a>,
     pub expr: &'a Term<'a>,
     pub body: &'a Term<'a>,
@@ -125,14 +147,20 @@ pub struct Match<'a> {
 /// Core term / type (terms and types are unified)
 #[derive(Debug, PartialEq, Eq)]
 pub enum Term<'a> {
-    /// Local variable, identified by De Bruijn level
-    Var(Lvl),
-    /// Built-in type or operation
+    /// Local variable, identified by De Bruijn index (0 = innermost binder)
+    Var(Ix),
+    /// Built-in type or operation (not applied)
     Prim(Prim),
     /// Numeric literal with its integer type
     Lit(u64, IntType),
-    /// Application of a global function or primitive operation to arguments
+    /// Global function reference
+    Global(&'a Name),
+    /// Function or primitive application: func(args...)
     App(App<'a>),
+    /// Dependent function type: fn(x: A) -> B
+    Pi(Pi<'a>),
+    /// Lambda abstraction: |x: A| body
+    Lam(Lam<'a>),
     /// Lift: [[T]] — meta type representing object-level code of type T
     Lift(&'a Self),
     /// Quotation: #(t) — produce object-level code from a meta expression
@@ -202,11 +230,11 @@ impl Term<'static> {
 }
 
 impl<'a> Term<'a> {
-    pub const fn new_app(head: Head<'a>, args: &'a [&'a Self]) -> Self {
-        Self::App(App { head, args })
+    pub const fn new_app(func: &'a Self, args: &'a [&'a Self]) -> Self {
+        Self::App(App { func, args })
     }
 
-    pub const fn new_let(name: &'a str, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
+    pub const fn new_let(name: &'a Name, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
         Self::Let(Let {
             name,
             ty,
@@ -220,15 +248,15 @@ impl<'a> Term<'a> {
     }
 }
 
-impl<'a> From<App<'a>> for Term<'a> {
-    fn from(app: App<'a>) -> Self {
-        Self::App(app)
-    }
-}
-
 impl<'a> From<Let<'a>> for Term<'a> {
     fn from(let_: Let<'a>) -> Self {
         Self::Let(let_)
+    }
+}
+
+impl<'a> From<App<'a>> for Term<'a> {
+    fn from(app: App<'a>) -> Self {
+        Self::App(app)
     }
 }
 
