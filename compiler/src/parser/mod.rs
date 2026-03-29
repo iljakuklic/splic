@@ -390,6 +390,7 @@ where
             parser
                 .take(Token::Colon)
                 .context("expected ':' in lambda parameter (type annotations are required)")?;
+            // TODO(#23): Use parse_expr instead of parse_atom_owned to allow full expressions as param types.
             let ty = parser
                 .parse_atom_owned()
                 .context("expected parameter type")?;
