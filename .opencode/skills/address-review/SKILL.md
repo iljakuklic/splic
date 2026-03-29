@@ -43,16 +43,18 @@ Write the final plan to the plan file. Structure:
 - **Context section** at the top: what this PR does and why these comments need addressing
 - One **section per task**, titled clearly (e.g. `T1 — Regression: empty lambda params`)
 - Each task section includes:
-  - The **problem** (from the comment)
-  - The **comment ID(s)** it corresponds to
+  - The **problem** (from the comment — preserve all details)
+  - The **comment ID(s)** it corresponds to (all relevant comment IDs)
   - The **file(s) and function/struct name(s)** to modify (no raw line numbers)
-  - Any constraints or hints from the comment itself
+  - **Complete context and constraints** from the comment(s): exact error messages, code examples, suggestions, workarounds mentioned, why the change matters
 - A **suggested implementation order** (regressions and bugs first, then cleanup, then docs, then issues to file)
 - A **verification section** with the exact commands to run after implementation
 
 ### Guidelines
 
 - **Never use raw line numbers** as location pointers — use function/struct/impl names instead, since line numbers drift as files are edited.
+- **Preserve all information from comments**: Include exact error messages, code snippets, workarounds, alternative approaches, and rationale. The plan should be complete enough to implement without re-reading the PR comments.
 - Note which comments reference items **already addressed** in the current codebase (do not re-do them).
 - If a comment asks to "file a GitHub issue", that is a task of its own (use `gh issue create`).
-- Keep the plan concise enough to scan quickly but detailed enough to execute without re-reading the original comments.
+- Include multiple comment IDs if a single task addresses several related comments.
+- Keep the plan scannable but comprehensive — every detail from the comments must appear somewhere in the plan, organized logically by task.
