@@ -352,15 +352,13 @@ fn check_exhaustiveness(scrut_ty: &value::Value<'_>, arms: &[ast::MatchArm<'_>])
 fn elaborate_pat<'core>(ctx: &Ctx<'core, '_>, pat: &ast::Pat<'_>) -> core::Pat<'core> {
     match pat {
         ast::Pat::Lit(n) => core::Pat::Lit(*n),
-        ast::Pat::Name(name) => {
-            let s = name.as_str();
-            if s == "_" {
-                core::Pat::Wildcard
-            } else {
+        ast::Pat::Name(name) => match name.as_str() {
+            "_" => core::Pat::Wildcard,
+            s => {
                 let bound = core::Name::new(ctx.arena.alloc_str(s));
                 core::Pat::Bind(bound)
             }
-        }
+        },
     }
 }
 
