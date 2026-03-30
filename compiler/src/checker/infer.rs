@@ -58,7 +58,7 @@ pub fn infer<'src, 'core>(
         } => {
             let (callee, callee_ty) = infer(ctx, phase, func_term)?;
 
-            // For globals: verify phase and arity from the globals table.
+            // For globals: verify phase from the globals table.
             if let core::Term::Global(gname) = callee {
                 let pi = ctx
                     .globals
@@ -70,31 +70,41 @@ pub fn infer<'src, 'core>(
                     "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
                     pi.phase,
                 );
-                ensure!(
-                    args.len() == pi.params.len(),
-                    "wrong number of arguments: callee expects {}, got {}",
-                    pi.params.len(),
-                    args.len()
-                );
             }
 
-            // Iterate through args, checking each against the Pi domain.
-            let mut pi_val = callee_ty;
+            // Universal arity check: callee must be a Pi type with matching param count.
+            let vpi = match &callee_ty {
+                value::Value::Pi(vpi) => vpi.clone(),
+                _ => bail!("callee is not a function"),
+            };
+            ensure!(
+                args.len() == vpi.params.len(),
+                "wrong number of arguments: callee expects {}, got {}",
+                vpi.params.len(),
+                args.len()
+            );
+
+            // Check each arg against its domain (evaluated with prior arg values).
+            let mut arg_vals: Vec<value::Value<'core>> = Vec::with_capacity(args.len());
             let mut core_args: Vec<&'core core::Term<'core>> = Vec::with_capacity(args.len());
+            #[expect(clippy::indexing_slicing)]
             for (i, arg) in args.iter().enumerate() {
-                let vpi = match pi_val {
-                    value::Value::Pi(vpi) => vpi,
-                    _ => bail!("too many arguments at argument {i}"),
-                };
-                let core_arg = check_val(ctx, phase, arg, (*vpi.domain).clone())
+                let domain_val = value::inst_n(ctx.arena, &vpi.params[i].1, &arg_vals);
+                let core_arg = check_val(ctx, phase, arg, domain_val)
                     .with_context(|| format!("in argument {i} of function call"))?;
                 let arg_val = ctx.eval(core_arg);
+                arg_vals.push(arg_val);
                 core_args.push(core_arg);
-                pi_val = value::inst(ctx.arena, &vpi.closure, arg_val);
             }
 
+            // Evaluate return type with all arg values.
+            let result_ty = value::inst_n(ctx.arena, &vpi.ret_closure, &arg_vals);
+
             let args_slice = ctx.alloc_slice(core_args);
-            Ok((ctx.alloc(core::Term::new_app(callee, args_slice)), pi_val))
+            Ok((
+                ctx.alloc(core::Term::new_app(callee, args_slice)),
+                result_ty,
+            ))
         }
 
         // ------------------------------------------------------------------ App { Prim (comparison) }
@@ -641,40 +651,39 @@ fn check_val_impl<'src, 'core>(
 
             let depth_before = ctx.depth();
 
-            // Peel exactly `params.len()` Pi layers from the expected type.
-            let mut pi_params: Vec<(&'_ core::Name, value::Value<'core>)> = Vec::new();
-            let mut cur_pi = expected.clone();
-            for _ in 0..params.len() {
-                match cur_pi {
-                    value::Value::Pi(vpi) => {
-                        pi_params.push((vpi.name, (*vpi.domain).clone()));
-                        let fresh = value::Value::Rigid(Lvl(ctx.depth().0 + pi_params.len() - 1));
-                        cur_pi = value::inst(ctx.arena, &vpi.closure, fresh);
-                    }
-                    _ => bail!(
-                        "lambda has {} parameter(s) but expected type has {}",
-                        params.len(),
-                        pi_params.len()
-                    ),
-                }
-            }
-            let body_ty_val = cur_pi;
+            // Expected type must be a Pi with matching arity.
+            let vpi = match &expected {
+                value::Value::Pi(vpi) => vpi.clone(),
+                _ => bail!("lambda requires a function type"),
+            };
+            ensure!(
+                params.len() == vpi.params.len(),
+                "lambda has {} parameter(s) but expected type has {}",
+                params.len(),
+                vpi.params.len()
+            );
 
             let mut elaborated_params: Vec<(&'core core::Name, &'core core::Term<'core>)> =
                 Vec::new();
-            for (p, (_, pi_param_ty)) in params.iter().zip(pi_params.into_iter()) {
+            let mut arg_vals: Vec<value::Value<'core>> = Vec::new();
+
+            #[expect(clippy::indexing_slicing)]
+            for (i, p) in params.iter().enumerate() {
                 let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let (annotated_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
                 let annotated_ty_val = ctx.eval(annotated_ty);
+                let expected_domain = value::inst_n(ctx.arena, &vpi.params[i].1, &arg_vals);
                 ensure!(
-                    value::val_eq(ctx.arena, ctx.depth(), &annotated_ty_val, &pi_param_ty),
+                    value::val_eq(ctx.arena, ctx.depth(), &annotated_ty_val, &expected_domain),
                     "lambda parameter type mismatch: annotation gives a different type \
                      than the expected function type"
                 );
                 elaborated_params.push((param_name, annotated_ty));
-                ctx.push_local_val(param_name, pi_param_ty);
+                ctx.push_local_val(param_name, expected_domain);
+                arg_vals.push(value::Value::Rigid(Lvl(ctx.depth().0 - 1)));
             }
 
+            let body_ty_val = value::inst_n(ctx.arena, &vpi.ret_closure, &arg_vals);
             let core_body = check_val(ctx, phase, body, body_ty_val)?;
 
             for _ in &elaborated_params {

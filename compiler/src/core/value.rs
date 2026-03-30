@@ -39,20 +39,26 @@ pub enum Value<'a> {
     Splice(&'a Self),
 }
 
-/// Lambda value: parameter name, parameter type, and body closure.
+/// Lambda value: parameter names/type-closures and body closure.
+///
+/// `params[i]` holds `(name, domain_closure)` where `domain_closure` captures
+/// the base environment and, when instantiated with `args[0..i]`, produces the
+/// type of the i-th parameter (supporting dependent telescopes).
+/// `closure` takes all `params.len()` arguments.
 #[derive(Clone, Debug)]
 pub struct VLam<'a> {
-    pub name: &'a Name,
-    pub param_ty: &'a Value<'a>,
+    pub params: &'a [(&'a Name, Closure<'a>)],
     pub closure: Closure<'a>,
 }
 
 /// Pi (dependent function type) value.
+///
+/// Same telescope layout as `VLam`: `params[i].1` is instantiated with `args[0..i]`
+/// to yield the domain of the i-th parameter. `ret_closure` takes all `params.len()` args.
 #[derive(Clone, Debug)]
 pub struct VPi<'a> {
-    pub name: &'a Name,
-    pub domain: &'a Value<'a>,
-    pub closure: Closure<'a>,
+    pub params: &'a [(&'a Name, Closure<'a>)],
+    pub ret_closure: Closure<'a>,
     pub phase: Phase,
 }
 
@@ -154,101 +160,98 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
     }
 }
 
-/// Evaluate a multi-param Pi, currying by slicing.
+/// Evaluate a multi-param Pi into a multi-param `Value::Pi` (no currying).
+///
+/// All parameter domain closures share the same base environment snapshot.
+/// Each domain closure's body uses De Bruijn indices to reference preceding
+/// parameters, so they are correctly differentiated despite sharing the base env.
 pub fn eval_pi<'a>(arena: &'a Bump, env: &[Value<'a>], pi: &'a Pi<'a>) -> Value<'a> {
-    match pi.params {
-        [] => eval(arena, env, pi.body_ty),
-        [(name, ty), rest @ ..] => {
-            let domain = eval(arena, env, ty);
-            let rest_body: &'a Term<'a> = if rest.is_empty() {
-                pi.body_ty
-            } else {
-                arena.alloc(Term::Pi(Pi {
-                    params: rest,
-                    body_ty: pi.body_ty,
-                    phase: pi.phase,
-                }))
-            };
-            let closure = Closure {
-                env: arena.alloc_slice_fill_iter(env.iter().cloned()),
-                body: rest_body,
-            };
-            Value::Pi(VPi {
+    let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
+    let params: Vec<(&'a Name, Closure<'a>)> = pi
+        .params
+        .iter()
+        .map(|&(name, ty_term)| {
+            (
                 name,
-                domain: arena.alloc(domain),
-                closure,
-                phase: pi.phase,
-            })
-        }
-    }
+                Closure {
+                    env: env_snapshot,
+                    body: ty_term,
+                },
+            )
+        })
+        .collect();
+    Value::Pi(VPi {
+        params: arena.alloc_slice_fill_iter(params),
+        ret_closure: Closure {
+            env: env_snapshot,
+            body: pi.body_ty,
+        },
+        phase: pi.phase,
+    })
 }
 
-/// Evaluate a multi-param Lam, currying by slicing.
+/// Evaluate a multi-param Lam into a multi-param `Value::Lam` (no currying).
 fn eval_lam<'a>(arena: &'a Bump, env: &[Value<'a>], lam: &'a Lam<'a>) -> Value<'a> {
-    match lam.params {
-        [] => eval(arena, env, lam.body),
-        [(name, ty), rest @ ..] => {
-            let param_ty = eval(arena, env, ty);
-            let rest_body: &'a Term<'a> = if rest.is_empty() {
-                lam.body
-            } else {
-                arena.alloc(Term::Lam(Lam {
-                    params: rest,
-                    body: lam.body,
-                }))
-            };
-            let closure = Closure {
-                env: arena.alloc_slice_fill_iter(env.iter().cloned()),
-                body: rest_body,
-            };
-            Value::Lam(VLam {
+    let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
+    let params: Vec<(&'a Name, Closure<'a>)> = lam
+        .params
+        .iter()
+        .map(|&(name, ty_term)| {
+            (
                 name,
-                param_ty: arena.alloc(param_ty),
-                closure,
-            })
-        }
-    }
+                Closure {
+                    env: env_snapshot,
+                    body: ty_term,
+                },
+            )
+        })
+        .collect();
+    Value::Lam(VLam {
+        params: arena.alloc_slice_fill_iter(params),
+        closure: Closure {
+            env: env_snapshot,
+            body: lam.body,
+        },
+    })
 }
 
-/// Apply a single argument to a value.
-pub fn apply<'a>(arena: &'a Bump, func: Value<'a>, arg: Value<'a>) -> Value<'a> {
+/// Apply a value to multiple arguments simultaneously.
+///
+/// For `Value::Lam` and `Value::Pi`, all args are pushed into the closure env at once.
+/// For neutrals, a stuck `App` node is produced. Each call site is its own `App` node;
+/// args are NOT flattened into existing `App` nodes to preserve call-site identity.
+pub fn apply_many<'a>(arena: &'a Bump, func: Value<'a>, args: &[Value<'a>]) -> Value<'a> {
     match func {
-        Value::Lam(vlam) => inst(arena, &vlam.closure, arg),
-        Value::Pi(vpi) => inst(arena, &vpi.closure, arg),
+        Value::Lam(vlam) => inst_n(arena, &vlam.closure, args),
+        Value::Pi(vpi) => inst_n(arena, &vpi.ret_closure, args),
         Value::Rigid(lvl) => Value::App(
             arena.alloc(Value::Rigid(lvl)),
-            arena.alloc_slice_fill_iter([arg]),
+            arena.alloc_slice_fill_iter(args.iter().cloned()),
         ),
         Value::Global(name) => Value::App(
             arena.alloc(Value::Global(name)),
-            arena.alloc_slice_fill_iter([arg]),
+            arena.alloc_slice_fill_iter(args.iter().cloned()),
         ),
-        Value::App(f, args) => {
-            let mut new_args: Vec<Value<'a>> = args.to_vec();
-            new_args.push(arg);
-            Value::App(f, arena.alloc_slice_fill_iter(new_args))
+        Value::App(f, existing_args) => {
+            // Nested application — do NOT flatten into existing args
+            let callee = arena.alloc(Value::App(f, existing_args));
+            Value::App(callee, arena.alloc_slice_fill_iter(args.iter().cloned()))
         }
         Value::Prim(p) => Value::App(
             arena.alloc(Value::Prim(p)),
-            arena.alloc_slice_fill_iter([arg]),
+            arena.alloc_slice_fill_iter(args.iter().cloned()),
         ),
         Value::Lit(..) | Value::Lift(_) | Value::Quote(_) | Value::Splice(_) => {
             // Should not happen in well-typed programs
-            panic!("apply: function position holds non-function value")
+            panic!("apply_many: function position holds non-function value")
         }
     }
 }
 
-/// Apply a value to multiple arguments in sequence.
-pub fn apply_many<'a>(arena: &'a Bump, func: Value<'a>, args: &[Value<'a>]) -> Value<'a> {
-    args.iter()
-        .fold(func, |f, arg| apply(arena, f, arg.clone()))
-}
-
-/// Instantiate a closure with one argument: extend env with arg, eval body.
-pub fn inst<'a>(arena: &'a Bump, closure: &Closure<'a>, arg: Value<'a>) -> Value<'a> {
+/// Instantiate a closure with N arguments: extend env with all args, eval body.
+pub fn inst_n<'a>(arena: &'a Bump, closure: &Closure<'a>, args: &[Value<'a>]) -> Value<'a> {
     let mut env = closure.env.to_vec();
-    env.push(arg);
+    env.extend_from_slice(args);
     eval(arena, &env, closure.body)
 }
 
@@ -273,26 +276,45 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
             arena.alloc(Term::new_app(qf, arena.alloc_slice_fill_iter(qargs)))
         }
         Value::Lam(vlam) => {
-            // Apply the closure to a fresh rigid variable, then quote the result.
-            let fresh = Value::Rigid(depth);
-            let body_val = inst(arena, &vlam.closure, fresh);
-            let body_term = quote(arena, depth.succ(), &body_val);
-            let param_ty_term = quote(arena, depth, vlam.param_ty);
-            let params = arena.alloc_slice_fill_iter([(vlam.name, param_ty_term as &'a _)]);
+            let mut rigid_vals: Vec<Value<'a>> = Vec::new();
+            let mut quoted_params: Vec<(&'a Name, &'a Term<'a>)> = Vec::new();
+            let mut d = depth;
+
+            for (name, param_ty_cl) in vlam.params {
+                let param_ty_val = inst_n(arena, param_ty_cl, &rigid_vals);
+                let param_ty_term = quote(arena, d, &param_ty_val);
+                quoted_params.push((*name, param_ty_term));
+                rigid_vals.push(Value::Rigid(d));
+                d = d.succ();
+            }
+
+            let body_val = inst_n(arena, &vlam.closure, &rigid_vals);
+            let body_term = quote(arena, d, &body_val);
+            let params_slice = arena.alloc_slice_fill_iter(quoted_params);
             arena.alloc(Term::Lam(Lam {
-                params,
+                params: params_slice,
                 body: body_term,
             }))
         }
         Value::Pi(vpi) => {
-            let fresh = Value::Rigid(depth);
-            let body_val = inst(arena, &vpi.closure, fresh);
-            let body_term = quote(arena, depth.succ(), &body_val);
-            let domain_term = quote(arena, depth, vpi.domain);
-            let params = arena.alloc_slice_fill_iter([(vpi.name, domain_term as &'a _)]);
+            let mut rigid_vals: Vec<Value<'a>> = Vec::new();
+            let mut quoted_params: Vec<(&'a Name, &'a Term<'a>)> = Vec::new();
+            let mut d = depth;
+
+            for (name, domain_cl) in vpi.params {
+                let domain_val = inst_n(arena, domain_cl, &rigid_vals);
+                let domain_term = quote(arena, d, &domain_val);
+                quoted_params.push((*name, domain_term));
+                rigid_vals.push(Value::Rigid(d));
+                d = d.succ();
+            }
+
+            let ret_val = inst_n(arena, &vpi.ret_closure, &rigid_vals);
+            let ret_term = quote(arena, d, &ret_val);
+            let params_slice = arena.alloc_slice_fill_iter(quoted_params);
             arena.alloc(Term::Pi(Pi {
-                params,
-                body_ty: body_term,
+                params: params_slice,
+                body_ty: ret_term,
                 phase: vpi.phase,
             }))
         }
