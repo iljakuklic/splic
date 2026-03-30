@@ -505,9 +505,6 @@ fn eval_meta_match<'out, 'eval>(
 ///
 /// Used when splicing a `Code` value that was created at a shallower output depth into a deeper
 /// context: every free variable index must increase by the depth difference.
-///
-/// TODO(#29): This shifting step would be eliminated if object-level code used `NbE` with
-/// closures and De Bruijn levels (as in the Kovács reference impl) instead of raw terms.
 fn shift_free_ix<'out>(
     arena: &'out Bump,
     term: &'out Term<'out>,
@@ -723,7 +720,7 @@ pub fn unstage_program<'out, 'core>(
     // that exist only during evaluation and must not appear in the output.  Its lifetime
     // `'eval` is shorter than `'core`, so `'core` data is coercible to `'eval` via the
     // covariance of `Term`.
-    let eval_arena = Bump::new();
+    let eval_bump = Bump::new();
 
     let globals: Globals<'_> = program
         .functions
@@ -749,14 +746,14 @@ pub fn unstage_program<'out, 'core>(
 
             let staged_params = arena.alloc_slice_try_fill_iter(pi.params.iter().map(
                 |(n, ty)| -> Result<(&'out Name, &'out Term<'out>)> {
-                    let staged_ty = unstage_obj(arena, &eval_arena, &globals, &mut env, ty)?;
+                    let staged_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, ty)?;
                     env.push_obj();
                     Ok((Name::new(arena.alloc_str(n.as_str())), staged_ty))
                 },
             ))?;
 
-            let staged_ret_ty = unstage_obj(arena, &eval_arena, &globals, &mut env, pi.body_ty)?;
-            let staged_body = unstage_obj(arena, &eval_arena, &globals, &mut env, f.body)?;
+            let staged_ret_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, pi.body_ty)?;
+            let staged_body = unstage_obj(arena, &eval_bump, &globals, &mut env, f.body)?;
 
             Ok(Function {
                 name: Name::new(arena.alloc_str(f.name.as_str())),

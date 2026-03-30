@@ -1,6 +1,6 @@
 use anyhow::{Context as _, Result};
 use clap::{Parser, Subcommand};
-use splic_compiler::{checker, eval, lexer, parser};
+use splic_compiler::{checker, lexer, parser, staging};
 use std::path::PathBuf;
 
 #[derive(Parser)]
@@ -52,7 +52,7 @@ fn stage(file: &PathBuf) -> Result<()> {
     // Unstage into out_arena; core_arena is no longer needed after this.
     let out_arena = bumpalo::Bump::new();
     let staged =
-        eval::unstage_program(&out_arena, &core_program).context("failed to stage program")?;
+        staging::unstage_program(&out_arena, &core_program).context("failed to stage program")?;
     drop(core_arena);
 
     // Print the staged result, then out_arena is dropped at end of scope.
