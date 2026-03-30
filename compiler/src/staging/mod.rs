@@ -213,8 +213,10 @@ fn eval_meta<'out, 'eval>(
 }
 
 /// Convert a global function definition into a closure value.
-#[expect(clippy::missing_const_for_fn)]
-fn global_to_closure<'out, 'eval>(def: &GlobalDef<'eval>, obj_next: Lvl) -> MetaVal<'out, 'eval> {
+const fn global_to_closure<'out, 'eval>(
+    def: &GlobalDef<'eval>,
+    obj_next: Lvl,
+) -> MetaVal<'out, 'eval> {
     MetaVal::Closure {
         body: def.body,
         arity: def.ty.params.len(),

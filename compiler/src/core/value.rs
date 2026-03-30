@@ -255,6 +255,28 @@ pub fn inst_n<'a>(arena: &'a Bump, closure: &Closure<'a>, args: &[Value<'a>]) ->
     eval(arena, &env, closure.body)
 }
 
+/// Quote a telescope (sequence of named parameters with closures).
+/// Returns the quoted parameters, final depth, and the rigid values built during the process.
+fn quote_telescope<'a>(
+    arena: &'a Bump,
+    initial_depth: Lvl,
+    params: &[(&'a Name, Closure<'a>)],
+) -> (Vec<(&'a Name, &'a Term<'a>)>, Lvl, Vec<Value<'a>>) {
+    let mut rigid_vals = Vec::new();
+    let mut quoted_params = Vec::new();
+    let mut d = initial_depth;
+
+    for (name, param_cl) in params {
+        let param_val = inst_n(arena, param_cl, &rigid_vals);
+        let param_term = quote(arena, d, &param_val);
+        quoted_params.push((*name, param_term));
+        rigid_vals.push(Value::Rigid(d));
+        d = d.succ();
+    }
+
+    (quoted_params, d, rigid_vals)
+}
+
 /// Convert a value back to a term (for error reporting and definitional equality).
 ///
 /// `depth` is the current De Bruijn level (number of locally-bound variables in scope).
@@ -276,20 +298,9 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
             arena.alloc(Term::new_app(qf, arena.alloc_slice_fill_iter(qargs)))
         }
         Value::Lam(vlam) => {
-            let mut rigid_vals: Vec<Value<'a>> = Vec::new();
-            let mut quoted_params: Vec<(&'a Name, &'a Term<'a>)> = Vec::new();
-            let mut d = depth;
-
-            for (name, param_ty_cl) in vlam.params {
-                let param_ty_val = inst_n(arena, param_ty_cl, &rigid_vals);
-                let param_ty_term = quote(arena, d, &param_ty_val);
-                quoted_params.push((*name, param_ty_term));
-                rigid_vals.push(Value::Rigid(d));
-                d = d.succ();
-            }
-
+            let (quoted_params, final_d, rigid_vals) = quote_telescope(arena, depth, vlam.params);
             let body_val = inst_n(arena, &vlam.closure, &rigid_vals);
-            let body_term = quote(arena, d, &body_val);
+            let body_term = quote(arena, final_d, &body_val);
             let params_slice = arena.alloc_slice_fill_iter(quoted_params);
             arena.alloc(Term::Lam(Lam {
                 params: params_slice,
@@ -297,20 +308,9 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
             }))
         }
         Value::Pi(vpi) => {
-            let mut rigid_vals: Vec<Value<'a>> = Vec::new();
-            let mut quoted_params: Vec<(&'a Name, &'a Term<'a>)> = Vec::new();
-            let mut d = depth;
-
-            for (name, domain_cl) in vpi.params {
-                let domain_val = inst_n(arena, domain_cl, &rigid_vals);
-                let domain_term = quote(arena, d, &domain_val);
-                quoted_params.push((*name, domain_term));
-                rigid_vals.push(Value::Rigid(d));
-                d = d.succ();
-            }
-
+            let (quoted_params, final_d, rigid_vals) = quote_telescope(arena, depth, vpi.params);
             let ret_val = inst_n(arena, &vpi.ret_closure, &rigid_vals);
-            let ret_term = quote(arena, d, &ret_val);
+            let ret_term = quote(arena, final_d, &ret_val);
             let params_slice = arena.alloc_slice_fill_iter(quoted_params);
             arena.alloc(Term::Pi(Pi {
                 params: params_slice,

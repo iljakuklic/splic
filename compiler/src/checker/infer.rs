@@ -87,9 +87,8 @@ pub fn infer<'src, 'core>(
             // Check each arg against its domain (evaluated with prior arg values).
             let mut arg_vals: Vec<value::Value<'core>> = Vec::with_capacity(args.len());
             let mut core_args: Vec<&'core core::Term<'core>> = Vec::with_capacity(args.len());
-            #[expect(clippy::indexing_slicing)]
-            for (i, arg) in args.iter().enumerate() {
-                let domain_val = value::inst_n(ctx.arena, &vpi.params[i].1, &arg_vals);
+            for (i, (arg, (_, domain_cl))) in args.iter().zip(vpi.params.iter()).enumerate() {
+                let domain_val = value::inst_n(ctx.arena, domain_cl, &arg_vals);
                 let core_arg = check_val(ctx, phase, arg, domain_val)
                     .with_context(|| format!("in argument {i} of function call"))?;
                 let arg_val = ctx.eval(core_arg);
@@ -667,12 +666,11 @@ fn check_val_impl<'src, 'core>(
                 Vec::new();
             let mut arg_vals: Vec<value::Value<'core>> = Vec::new();
 
-            #[expect(clippy::indexing_slicing)]
-            for (i, p) in params.iter().enumerate() {
+            for (p, (_, domain_cl)) in params.iter().zip(vpi.params.iter()) {
                 let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let (annotated_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
                 let annotated_ty_val = ctx.eval(annotated_ty);
-                let expected_domain = value::inst_n(ctx.arena, &vpi.params[i].1, &arg_vals);
+                let expected_domain = value::inst_n(ctx.arena, domain_cl, &arg_vals);
                 ensure!(
                     value::val_eq(ctx.arena, ctx.depth(), &annotated_ty_val, &expected_domain),
                     "lambda parameter type mismatch: annotation gives a different type \
