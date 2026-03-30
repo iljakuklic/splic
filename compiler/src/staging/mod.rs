@@ -36,6 +36,7 @@ enum MetaVal<'out, 'eval> {
     /// A closure: a lambda body captured with its environment.
     Closure {
         body: &'eval Term<'eval>,
+        arity: usize,
         env: Vec<Binding<'out, 'eval>>,
         obj_next: Lvl,
     },
@@ -148,52 +149,28 @@ fn eval_meta<'out, 'eval>(
             let def = globals
                 .get(name)
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
-            let pi = def.ty;
-            if pi.params.is_empty() {
-                // Zero-param global: evaluate the body immediately in a fresh env.
-                let mut callee_env = Env::new(env.obj_next);
-                eval_meta(arena, eval_arena, globals, &mut callee_env, def.body)
-            } else {
-                // Multi-param global: produce a closure.
-                Ok(global_to_closure(eval_arena, def, env.obj_next))
-            }
+            Ok(global_to_closure(def, env.obj_next))
         }
 
         // ── Lambda ───────────────────────────────────────────────────────────
-        Term::Lam(lam) => {
-            // For a zero-param lambda (thunk), wrap in a Closure whose body IS the
-            // lambda body; force_thunk evaluates it when applied to zero args.
-            // For a multi-param lambda, wrap params[1..] in a synthetic Lam so that
-            // apply_closure can peel one param at a time.
-            let body = match lam.params {
-                [] | [_] => lam.body,
-                [_, rest @ ..] => eval_arena.alloc(Term::Lam(Lam {
-                    params: rest,
-                    body: lam.body,
-                })),
-            };
-            Ok(MetaVal::Closure {
-                body,
-                env: env.bindings.clone(),
-                obj_next: env.obj_next,
-            })
-        }
+        Term::Lam(lam) => Ok(MetaVal::Closure {
+            body: lam.body,
+            arity: lam.params.len(),
+            env: env.bindings.clone(),
+            obj_next: env.obj_next,
+        }),
 
         // ── Application ──────────────────────────────────────────────────────
         Term::App(app) => match app.func {
             Term::Prim(prim) => eval_meta_prim(arena, eval_arena, globals, env, *prim, app.args),
             _ => {
-                let mut val = eval_meta(arena, eval_arena, globals, env, app.func)?;
-                if app.args.is_empty() {
-                    // Zero-arg call: force the thunk closure.
-                    val = force_thunk(arena, eval_arena, globals, val)?;
-                } else {
-                    for arg in app.args {
-                        let arg_val = eval_meta(arena, eval_arena, globals, env, arg)?;
-                        val = apply_closure(arena, eval_arena, globals, val, arg_val)?;
-                    }
-                }
-                Ok(val)
+                let func_val = eval_meta(arena, eval_arena, globals, env, app.func)?;
+                let arg_vals: Vec<MetaVal<'out, 'eval>> = app
+                    .args
+                    .iter()
+                    .map(|a| eval_meta(arena, eval_arena, globals, env, a))
+                    .collect::<Result<_>>()?;
+                apply_closure_n(arena, eval_arena, globals, func_val, &arg_vals)
             }
         },
 
@@ -236,84 +213,46 @@ fn eval_meta<'out, 'eval>(
 }
 
 /// Convert a global function definition into a closure value.
-///
-/// For a multi-parameter function, we build nested closures.  E.g., `fn f(x, y) = body`
-/// becomes a closure whose body is a lambda `|y| body`.  The synthetic `Lam` wrapper nodes
-/// are allocated in `eval_arena`, which is local to `unstage_program` and lives for the
-/// duration of staging — long enough to outlive any closure values.
-fn global_to_closure<'out, 'eval>(
-    eval_arena: &'eval Bump,
+const fn global_to_closure<'out, 'eval>(
     def: &GlobalDef<'eval>,
     obj_next: Lvl,
 ) -> MetaVal<'out, 'eval> {
-    // Called only when params is non-empty (zero-param globals are evaluated immediately).
-    let pi = def.ty;
-    let body = match pi.params {
-        [_] | [] => def.body,
-        [_, rest @ ..] => eval_arena.alloc(Term::Lam(Lam {
-            params: rest,
-            body: def.body,
-        })),
-    };
     MetaVal::Closure {
-        body,
+        body: def.body,
+        arity: def.ty.params.len(),
         env: Vec::new(),
         obj_next,
     }
 }
 
-/// Apply a closure value to an argument value.
-fn apply_closure<'out, 'eval>(
+/// Apply a closure value to N arguments simultaneously.
+fn apply_closure_n<'out, 'eval>(
     arena: &'out Bump,
     eval_arena: &'eval Bump,
     globals: &Globals<'eval>,
     func_val: MetaVal<'out, 'eval>,
-    arg_val: MetaVal<'out, 'eval>,
+    args: &[MetaVal<'out, 'eval>],
 ) -> Result<MetaVal<'out, 'eval>> {
     match func_val {
         MetaVal::Closure {
             body,
+            arity,
             env,
             obj_next,
-            ..
         } => {
+            debug_assert_eq!(args.len(), arity, "arity mismatch in apply_closure_n");
             let mut callee_env = Env {
                 bindings: env,
                 obj_next,
             };
-            callee_env.push_meta(arg_val);
-
+            for arg in args {
+                callee_env.push_meta(arg.clone());
+            }
             eval_meta(arena, eval_arena, globals, &mut callee_env, body)
         }
         MetaVal::Lit(_) | MetaVal::Code { .. } | MetaVal::Ty => {
             unreachable!("applying a non-function value (typechecker invariant)")
         }
-    }
-}
-
-/// Force a thunk closure: evaluate its body in the captured environment without pushing any arg.
-fn force_thunk<'out, 'eval>(
-    arena: &'out Bump,
-    eval_arena: &'eval Bump,
-    globals: &Globals<'eval>,
-    val: MetaVal<'out, 'eval>,
-) -> Result<MetaVal<'out, 'eval>> {
-    match val {
-        MetaVal::Closure {
-            body,
-            env,
-            obj_next,
-            ..
-        } => {
-            let mut callee_env = Env {
-                bindings: env,
-                obj_next,
-            };
-            eval_meta(arena, eval_arena, globals, &mut callee_env, body)
-        }
-        // Already-evaluated value (e.g. a zero-param global reduced to Lit/Code).
-        // A zero-arg call is a no-op in this case.
-        other => Ok(other),
     }
 }
 

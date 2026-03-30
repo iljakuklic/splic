@@ -1,12 +1,12 @@
 ---
 name: address-review
 description: Download unresolved GitHub PR review comments and create a structured plan for addressing them. Use when the user wants to work through PR feedback.
-allowed-tools: Bash(${CLAUDE_SKILL_DIR}/fetch_comments.py), Bash(gh pr view *), Bash(gh repo view *)
+allowed-tools: Bash(.opencode/skills/address-review/fetch_comments.py), Bash(gh pr view *), Bash(gh repo view *)
 ---
 
 ## Unresolved Review Comments
 
-!`${CLAUDE_SKILL_DIR}/fetch_comments.py`
+!`.opencode/skills/address-review/fetch_comments.py`
 
 ---
 
