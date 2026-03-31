@@ -38,7 +38,7 @@ fn variable_lookup_after_push() {
     let (ix, ty) = ctx
         .lookup_local(core::Name::new("x"))
         .expect("x should be in scope");
-    assert_eq!(ix, Ix(0));
+    assert_eq!(ix, de_bruijn::Ix::new(0));
     assert!(matches!(
         ty,
         value::Value::Prim(Prim::IntTy(IntType {
@@ -62,7 +62,7 @@ fn variable_lookup_with_multiple_locals() {
     let (ix_y, ty_y) = ctx
         .lookup_local(core::Name::new("y"))
         .expect("y should be in scope");
-    assert_eq!(ix_y, Ix(0));
+    assert_eq!(ix_y, de_bruijn::Ix::new(0));
     assert!(matches!(
         ty_y,
         value::Value::Prim(Prim::IntTy(IntType {
@@ -74,7 +74,7 @@ fn variable_lookup_with_multiple_locals() {
     let (ix_x, ty_x) = ctx
         .lookup_local(core::Name::new("x"))
         .expect("x should be in scope");
-    assert_eq!(ix_x, Ix(1));
+    assert_eq!(ix_x, de_bruijn::Ix::new(1));
     assert!(matches!(
         ty_x,
         value::Value::Prim(Prim::IntTy(IntType {
@@ -98,7 +98,7 @@ fn variable_shadowing() {
     let (ix, ty) = ctx
         .lookup_local(core::Name::new("x"))
         .expect("x should be in scope");
-    assert_eq!(ix, Ix(0));
+    assert_eq!(ix, de_bruijn::Ix::new(0));
     assert!(matches!(
         ty,
         value::Value::Prim(Prim::IntTy(IntType {
@@ -114,13 +114,13 @@ fn context_depth() {
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
 
-    assert_eq!(ctx.depth(), Lvl(0));
+    assert_eq!(ctx.depth(), de_bruijn::Depth::ZERO);
     ctx.push_local(core::Name::new("x"), u64_term);
-    assert_eq!(ctx.depth(), Lvl(1));
+    assert_eq!(ctx.depth(), de_bruijn::Depth::new(1));
     ctx.push_local(core::Name::new("y"), u64_term);
-    assert_eq!(ctx.depth(), Lvl(2));
+    assert_eq!(ctx.depth(), de_bruijn::Depth::new(2));
     ctx.pop_local();
-    assert_eq!(ctx.depth(), Lvl(1));
+    assert_eq!(ctx.depth(), de_bruijn::Depth::new(1));
 }
 
 #[test]
@@ -130,8 +130,8 @@ fn meta_variable_in_quote_is_ok() {
     let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
     ctx.push_local(core::Name::new("x"), lifted_u64);
-    let x_var = arena.alloc(core::Term::Var(Ix(0)));
-    assert!(matches!(x_var, core::Term::Var(Ix(0))));
+    let x_var = arena.alloc(core::Term::Var(de_bruijn::Ix::new(0)));
+    assert_eq!(x_var, &core::Term::Var(de_bruijn::Ix::new(0)));
 }
 
 #[test]
@@ -140,14 +140,14 @@ fn object_variable_outside_quote_is_invalid() {
     let mut ctx = test_ctx(&arena);
     let u64_term = &core::Term::U64_META;
     ctx.push_local(core::Name::new("x"), u64_term);
-    assert_eq!(ctx.depth(), Lvl(1));
+    assert_eq!(ctx.depth(), de_bruijn::Depth::new(1));
 }
 
 #[test]
 fn phase_is_argument_not_context() {
     let arena = bumpalo::Bump::new();
     let ctx = test_ctx(&arena);
-    assert_eq!(ctx.depth(), Lvl(0));
+    assert_eq!(ctx.depth(), de_bruijn::Depth::ZERO);
 }
 
 #[test]
@@ -220,7 +220,7 @@ fn splice_inference_mirrors_inner() {
     let u64_term = &core::Term::U64_META;
     let lifted_u64 = ctx.lift_ty(u64_term);
     ctx.push_local(core::Name::new("x"), lifted_u64);
-    let x_var = arena.alloc(core::Term::Var(Ix(0)));
+    let x_var = arena.alloc(core::Term::Var(de_bruijn::Ix::new(0)));
     let spliced = arena.alloc(core::Term::Splice(x_var));
     assert!(matches!(spliced, core::Term::Splice(_)));
 }
@@ -230,7 +230,7 @@ fn let_binding_structure() {
     let arena = bumpalo::Bump::new();
     let u64_term = &core::Term::U64_META;
     let expr = arena.alloc(core::Term::Lit(42, IntType::U64_META));
-    let body = arena.alloc(core::Term::Var(Ix(0)));
+    let body = arena.alloc(core::Term::Var(de_bruijn::Ix::new(0)));
     let let_term = arena.alloc(core::Term::new_let(
         core::Name::new("x"),
         u64_term,
@@ -243,7 +243,7 @@ fn let_binding_structure() {
 #[test]
 fn match_with_literal_pattern() {
     let arena = bumpalo::Bump::new();
-    let scrutinee = arena.alloc(core::Term::Var(Ix(0)));
+    let scrutinee = arena.alloc(core::Term::Var(de_bruijn::Ix::new(0)));
     let body0 = arena.alloc(core::Term::Lit(0, IntType::U64_META));
     let body1 = arena.alloc(core::Term::Lit(1, IntType::U64_META));
 
@@ -265,8 +265,8 @@ fn match_with_literal_pattern() {
 #[test]
 fn match_with_binding_pattern() {
     let arena = bumpalo::Bump::new();
-    let scrutinee = arena.alloc(core::Term::Var(Ix(0)));
-    let body = arena.alloc(core::Term::Var(Ix(0)));
+    let scrutinee = arena.alloc(core::Term::Var(de_bruijn::Ix::new(0)));
+    let body = arena.alloc(core::Term::Var(de_bruijn::Ix::new(0)));
 
     let arm = core::Arm {
         pat: Pat::Bind(core::Name::new("n")),

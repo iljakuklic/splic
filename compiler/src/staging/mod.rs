@@ -4,8 +4,9 @@ use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
 use crate::core::{
-    Arm, Function, IntType, IntWidth, Ix, Lam, Lvl, Name, Pat, Pi, Prim, Program, Term,
+    Arm, Function, IntType, IntWidth, Lam, Name, Pat, Pi, Prim, Program, Term,
 };
+use crate::common::de_bruijn;
 use crate::parser::ast::Phase;
 
 // ── Value types ───────────────────────────────────────────────────────────────
@@ -28,7 +29,7 @@ enum MetaVal<'out, 'eval> {
     /// must be shifted by `(current_depth - depth)` before the term can be used.
     Code {
         term: &'out Term<'out>,
-        depth: usize,
+        depth: de_bruijn::Depth,
     },
     /// A type term passed as a type argument (dependent types: types are values).
     /// The type term itself is not inspected during evaluation.
@@ -38,7 +39,7 @@ enum MetaVal<'out, 'eval> {
         body: &'eval Term<'eval>,
         arity: usize,
         env: Vec<Binding<'out, 'eval>>,
-        obj_next: Lvl,
+        obj_depth: de_bruijn::Depth,
     },
 }
 
@@ -50,7 +51,7 @@ enum Binding<'out, 'eval> {
     /// A meta-level variable bound to a concrete `MetaVal`.
     Meta(MetaVal<'out, 'eval>),
     /// An object-level variable.
-    Obj(Lvl),
+    Obj(de_bruijn::Lvl),
 }
 
 /// Evaluation environment: a stack of bindings indexed by De Bruijn index.
@@ -60,24 +61,22 @@ enum Binding<'out, 'eval> {
 #[derive(Debug)]
 struct Env<'out, 'eval> {
     bindings: Vec<Binding<'out, 'eval>>,
-    obj_next: Lvl,
+    obj_depth: de_bruijn::Depth,
 }
 
 impl<'out, 'eval> Env<'out, 'eval> {
-    const fn new(obj_next: Lvl) -> Self {
+    const fn new(obj_depth: de_bruijn::Depth) -> Self {
         Env {
             bindings: Vec::new(),
-            obj_next,
+            obj_depth,
         }
     }
 
     /// Look up the binding for `Var(Ix(ix))`.
-    fn get_ix(&self, ix: Ix) -> &Binding<'out, 'eval> {
-        let i = self
-            .bindings
-            .len()
-            .checked_sub(1 + ix.0)
-            .expect("De Bruijn index out of environment bounds");
+    fn get_ix(&self, ix: de_bruijn::Ix) -> &Binding<'out, 'eval> {
+        let depth = de_bruijn::Depth::new(self.bindings.len());
+        let lvl = ix.lvl_at_depth(depth);
+        let i = lvl.as_usize();
         self.bindings
             .get(i)
             .expect("De Bruijn index out of environment bounds")
@@ -85,8 +84,8 @@ impl<'out, 'eval> Env<'out, 'eval> {
 
     /// Push an object-level binding.
     fn push_obj(&mut self) {
-        let lvl = self.obj_next;
-        self.obj_next = lvl.succ();
+        let lvl = self.obj_depth.as_lvl();
+        self.obj_depth = self.obj_depth.succ();
         self.bindings.push(Binding::Obj(lvl));
     }
 
@@ -99,11 +98,11 @@ impl<'out, 'eval> Env<'out, 'eval> {
     fn pop(&mut self) {
         match self.bindings.pop().expect("pop on empty environment") {
             Binding::Obj(_) => {
-                self.obj_next = Lvl::new(
-                    self.obj_next
-                        .0
+                self.obj_depth = de_bruijn::Depth::new(
+                    self.obj_depth
+                        .as_usize()
                         .checked_sub(1)
-                        .expect("obj_next underflow on pop"),
+                        .expect("obj_depth underflow on pop"),
                 );
             }
             Binding::Meta(_) => {}
@@ -136,8 +135,8 @@ fn eval_meta<'out, 'eval>(
         Term::Var(ix) => match env.get_ix(*ix) {
             Binding::Meta(v) => Ok(v.clone()),
             Binding::Obj(_) => unreachable!(
-                "object variable at index {} referenced in meta context (typechecker invariant)",
-                ix.0
+                "object variable at index {:?} referenced in meta context (typechecker invariant)",
+                ix
             ),
         },
 
@@ -149,7 +148,7 @@ fn eval_meta<'out, 'eval>(
             let def = globals
                 .get(name)
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
-            Ok(global_to_closure(def, env.obj_next))
+            Ok(global_to_closure(def, env.obj_depth))
         }
 
         // ── Lambda ───────────────────────────────────────────────────────────
@@ -157,7 +156,7 @@ fn eval_meta<'out, 'eval>(
             body: lam.body,
             arity: lam.params.len(),
             env: env.bindings.clone(),
-            obj_next: env.obj_next,
+            obj_depth: env.obj_depth,
         }),
 
         // ── Application ──────────────────────────────────────────────────────
@@ -179,7 +178,7 @@ fn eval_meta<'out, 'eval>(
             let obj_term = unstage_obj(arena, eval_arena, globals, env, inner)?;
             Ok(MetaVal::Code {
                 term: obj_term,
-                depth: env.obj_next.0,
+                depth: env.obj_depth,
             })
         }
 
@@ -215,13 +214,13 @@ fn eval_meta<'out, 'eval>(
 /// Convert a global function definition into a closure value.
 const fn global_to_closure<'out, 'eval>(
     def: &GlobalDef<'eval>,
-    obj_next: Lvl,
+    obj_depth: de_bruijn::Depth,
 ) -> MetaVal<'out, 'eval> {
     MetaVal::Closure {
         body: def.body,
         arity: def.ty.params.len(),
         env: Vec::new(),
-        obj_next,
+        obj_depth,
     }
 }
 
@@ -238,12 +237,12 @@ fn apply_closure_n<'out, 'eval>(
             body,
             arity,
             env,
-            obj_next,
+            obj_depth,
         } => {
             debug_assert_eq!(args.len(), arity, "arity mismatch in apply_closure_n");
             let mut callee_env = Env {
                 bindings: env,
-                obj_next,
+                obj_depth,
             };
             for arg in args {
                 callee_env.push_meta(arg.clone());
@@ -386,7 +385,7 @@ fn eval_meta_prim<'out, 'eval>(
             let lit_term = arena.alloc(Term::Lit(n, IntType { width, phase }));
             Ok(MetaVal::Code {
                 term: lit_term,
-                depth: env.obj_next.0,
+                depth: env.obj_depth,
             })
         }
 
@@ -454,9 +453,9 @@ fn shift_free_ix<'out>(
         return term;
     }
     match term {
-        Term::Var(Ix(i)) => {
-            if *i >= cutoff {
-                arena.alloc(Term::Var(Ix(i + shift)))
+        Term::Var(ix) => {
+            if ix.as_usize() >= cutoff {
+                arena.alloc(Term::Var(de_bruijn::Ix::new(ix.as_usize() + shift)))
             } else {
                 term
             }
@@ -538,26 +537,26 @@ fn unstage_obj<'out, 'eval>(
         Term::Var(ix) => match env.get_ix(*ix) {
             Binding::Obj(out_lvl) => {
                 // Convert output level → De Bruijn index relative to current output depth.
-                let out_ix = Ix(env.obj_next.0 - out_lvl.0 - 1);
+                let out_ix = de_bruijn::Ix::new(env.obj_depth.as_usize() - out_lvl.as_usize() - 1);
                 Ok(arena.alloc(Term::Var(out_ix)))
             }
             Binding::Meta(MetaVal::Code { term, depth }) => {
-                Ok(shift_free_ix(arena, term, env.obj_next.0 - depth, 0))
+                Ok(shift_free_ix(arena, term, env.obj_depth.as_usize() - depth.as_usize(), 0))
             }
             Binding::Meta(MetaVal::Lit(_)) => unreachable!(
                 "integer meta variable at index {} referenced in object context \
                  (typechecker invariant)",
-                ix.0
+                ix.as_usize()
             ),
             Binding::Meta(MetaVal::Closure { .. }) => unreachable!(
-                "closure meta variable at index {} referenced in object context \
+                "closure meta variable at index {:?} referenced in object context \
                  (typechecker invariant)",
-                ix.0
+                ix
             ),
             Binding::Meta(MetaVal::Ty) => unreachable!(
-                "type meta variable at index {} referenced in object context \
+                "type meta variable at index {:?} referenced in object context \
                  (typechecker invariant)",
-                ix.0
+                ix
             ),
         },
 
@@ -588,7 +587,7 @@ fn unstage_obj<'out, 'eval>(
             let meta_val = eval_meta(arena, eval_arena, globals, env, inner)?;
             match meta_val {
                 MetaVal::Code { term, depth } => {
-                    Ok(shift_free_ix(arena, term, env.obj_next.0 - depth, 0))
+                    Ok(shift_free_ix(arena, term, env.obj_depth.as_usize() - depth.as_usize(), 0))
                 }
                 MetaVal::Lit(_) | MetaVal::Ty | MetaVal::Closure { .. } => {
                     unreachable!("splice evaluated to non-code value (typechecker invariant)")
@@ -681,7 +680,7 @@ pub fn unstage_program<'out, 'core>(
         .filter(|f| f.pi().phase == Phase::Object)
         .map(|f| -> Result<_> {
             let pi = f.pi();
-            let mut env = Env::new(Lvl::new(0));
+            let mut env = Env::new(de_bruijn::Depth::ZERO);
 
             let staged_params = arena.alloc_slice_try_fill_iter(pi.params.iter().map(
                 |(n, ty)| -> Result<(&'out Name, &'out Term<'out>)> {

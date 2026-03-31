@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
-use crate::core::{self, Ix, Lvl, value};
+use crate::core::{self, value};
+use crate::common::de_bruijn;
 
 /// Elaboration context.
 ///
@@ -54,9 +55,9 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
         self.arena.alloc_slice_fill_iter(items)
     }
 
-    /// Current De Bruijn level / locals stack depth — always equal to `env.len()`.
-    pub const fn depth(&self) -> Lvl {
-        Lvl(self.env.len())
+    /// Current De Bruijn depth — always equal to `env.len()`.
+    pub const fn depth(&self) -> de_bruijn::Depth {
+        de_bruijn::Depth::new(self.env.len())
     }
 
     /// Push a local variable onto the context, given its type as a term.
@@ -69,7 +70,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     /// Push a local variable onto the context, given its type as a Value.
     /// The variable itself is a fresh rigid (neutral) variable — use for lambda/pi params.
     pub fn push_local_val(&mut self, name: &'core core::Name, ty_val: value::Value<'core>) {
-        self.env.push(value::Value::Rigid(self.depth()));
+        self.env.push(value::Value::Rigid(self.depth().as_lvl()));
         self.types.push(ty_val);
         self.names.push(name);
     }
@@ -96,10 +97,10 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Look up a variable by name, returning its (index, type as Value).
     /// Searches from the most recently pushed variable inward to handle shadowing.
-    pub fn lookup_local(&self, name: &'_ core::Name) -> Option<(Ix, &value::Value<'core>)> {
+    pub fn lookup_local(&self, name: &'_ core::Name) -> Option<(de_bruijn::Ix, &value::Value<'core>)> {
         for (i, local_name) in self.names.iter().enumerate().rev() {
             if *local_name == name {
-                let ix = Lvl(i).ix_at_depth(self.depth());
+                let ix = de_bruijn::Lvl::new(i).ix_at_depth(self.depth());
                 let ty = self
                     .types
                     .get(i)

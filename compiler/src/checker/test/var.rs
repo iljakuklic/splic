@@ -13,8 +13,8 @@ fn infer_var_in_scope_returns_its_type() {
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let (core_term, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    // With one local "x", infer returns Var(Ix(0)) — innermost (only) binder.
-    assert!(matches!(core_term, core::Term::Var(Ix(0))));
+    // With one local "x", infer returns Var(de_bruijn::Ix(0)) — innermost (only) binder.
+    assert_eq!(core_term, &core::Term::Var(de_bruijn::Ix::new(0)));
     assert!(matches!(
         ty_val,
         value::Value::Prim(Prim::IntTy(IntType {
@@ -48,8 +48,8 @@ fn infer_var_returns_correct_index() {
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("y")));
     let (core_term, _) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    // "y" is innermost, so Ix(0).
-    assert!(matches!(core_term, core::Term::Var(Ix(0))));
+    // "y" is innermost, so de_bruijn::Ix(0).
+    assert_eq!(core_term, &core::Term::Var(de_bruijn::Ix::new(0)));
 }
 
 // Shadowing: the innermost binding wins.
@@ -65,8 +65,8 @@ fn infer_var_shadowed_returns_innermost() {
 
     let term = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let (core_term, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    // Innermost "x" is at Ix(0).
-    assert!(matches!(core_term, core::Term::Var(Ix(0))));
+    // Innermost "x" is at de_bruijn::Ix(0).
+    assert_eq!(core_term, &core::Term::Var(de_bruijn::Ix::new(0)));
     assert!(matches!(
         ty_val,
         value::Value::Prim(Prim::IntTy(IntType {
