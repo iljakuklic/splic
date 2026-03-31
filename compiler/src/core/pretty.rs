@@ -48,7 +48,7 @@ impl<'a> Term<'a> {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
             Term::Var(ix) => {
-                let lvl = ix.lvl_at_depth(de_bruijn::Depth::new(env.len()));
+                let lvl = ix.lvl_at(de_bruijn::Depth::new(env.len()));
                 let i = lvl.as_usize();
                 let name = env
                     .get(i)

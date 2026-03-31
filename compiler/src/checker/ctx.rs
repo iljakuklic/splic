@@ -103,7 +103,7 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
     ) -> Option<(de_bruijn::Ix, &value::Value<'core>)> {
         for (i, local_name) in self.names.iter().enumerate().rev() {
             if *local_name == name {
-                let ix = de_bruijn::Lvl::new(i).ix_at_depth(self.depth());
+                let ix = de_bruijn::Lvl::new(i).ix_at(self.depth());
                 let ty = self
                     .types
                     .get(i)

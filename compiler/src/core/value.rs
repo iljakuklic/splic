@@ -77,7 +77,7 @@ pub struct Closure<'a> {
 pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value<'a> {
     match term {
         Term::Var(ix) => {
-            let lvl = ix.lvl_at_depth(de_bruijn::Depth::new(env.len()));
+            let lvl = ix.lvl_at(de_bruijn::Depth::new(env.len()));
             let i = lvl.as_usize();
             env.get(i)
                 .expect("De Bruijn index out of environment bounds")
@@ -287,7 +287,7 @@ fn quote_telescope<'a>(
 pub fn quote<'a>(arena: &'a Bump, depth: de_bruijn::Depth, val: &Value<'a>) -> &'a Term<'a> {
     match val {
         Value::Rigid(lvl) => {
-            let ix = lvl.ix_at_depth(depth);
+            let ix = lvl.ix_at(depth);
             arena.alloc(Term::Var(ix))
         }
         Value::Global(name) => arena.alloc(Term::Global(name)),

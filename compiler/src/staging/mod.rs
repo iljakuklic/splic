@@ -73,7 +73,7 @@ impl<'out, 'eval> Env<'out, 'eval> {
     /// Look up the binding for `Var(Ix(ix))`.
     fn get_ix(&self, ix: de_bruijn::Ix) -> &Binding<'out, 'eval> {
         let depth = de_bruijn::Depth::new(self.bindings.len());
-        let lvl = ix.lvl_at_depth(depth);
+        let lvl = ix.lvl_at(depth);
         let i = lvl.as_usize();
         self.bindings
             .get(i)
