@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
-use crate::core::{self, value};
 use crate::common::de_bruijn;
+use crate::core::{self, value};
 
 /// Elaboration context.
 ///
@@ -97,7 +97,10 @@ impl<'core, 'globals> Ctx<'core, 'globals> {
 
     /// Look up a variable by name, returning its (index, type as Value).
     /// Searches from the most recently pushed variable inward to handle shadowing.
-    pub fn lookup_local(&self, name: &'_ core::Name) -> Option<(de_bruijn::Ix, &value::Value<'core>)> {
+    pub fn lookup_local(
+        &self,
+        name: &'_ core::Name,
+    ) -> Option<(de_bruijn::Ix, &value::Value<'core>)> {
         for (i, local_name) in self.names.iter().enumerate().rev() {
             if *local_name == name {
                 let ix = de_bruijn::Lvl::new(i).ix_at_depth(self.depth());

@@ -3,10 +3,8 @@ use std::collections::HashMap;
 use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
-use crate::core::{
-    Arm, Function, IntType, IntWidth, Lam, Name, Pat, Pi, Prim, Program, Term,
-};
 use crate::common::de_bruijn;
+use crate::core::{Arm, Function, IntType, IntWidth, Lam, Name, Pat, Pi, Prim, Program, Term};
 use crate::parser::ast::Phase;
 
 // ── Value types ───────────────────────────────────────────────────────────────
@@ -540,9 +538,12 @@ fn unstage_obj<'out, 'eval>(
                 let out_ix = de_bruijn::Ix::new(env.obj_depth.as_usize() - out_lvl.as_usize() - 1);
                 Ok(arena.alloc(Term::Var(out_ix)))
             }
-            Binding::Meta(MetaVal::Code { term, depth }) => {
-                Ok(shift_free_ix(arena, term, env.obj_depth.as_usize() - depth.as_usize(), 0))
-            }
+            Binding::Meta(MetaVal::Code { term, depth }) => Ok(shift_free_ix(
+                arena,
+                term,
+                env.obj_depth.as_usize() - depth.as_usize(),
+                0,
+            )),
             Binding::Meta(MetaVal::Lit(_)) => unreachable!(
                 "integer meta variable at index {} referenced in object context \
                  (typechecker invariant)",
@@ -586,9 +587,12 @@ fn unstage_obj<'out, 'eval>(
         Term::Splice(inner) => {
             let meta_val = eval_meta(arena, eval_arena, globals, env, inner)?;
             match meta_val {
-                MetaVal::Code { term, depth } => {
-                    Ok(shift_free_ix(arena, term, env.obj_depth.as_usize() - depth.as_usize(), 0))
-                }
+                MetaVal::Code { term, depth } => Ok(shift_free_ix(
+                    arena,
+                    term,
+                    env.obj_depth.as_usize() - depth.as_usize(),
+                    0,
+                )),
                 MetaVal::Lit(_) | MetaVal::Ty | MetaVal::Closure { .. } => {
                     unreachable!("splice evaluated to non-code value (typechecker invariant)")
                 }

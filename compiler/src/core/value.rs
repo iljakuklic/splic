@@ -261,7 +261,11 @@ fn quote_telescope<'a>(
     arena: &'a Bump,
     initial_depth: de_bruijn::Depth,
     params: &[(&'a Name, Closure<'a>)],
-) -> (Vec<(&'a Name, &'a Term<'a>)>, de_bruijn::Depth, Vec<Value<'a>>) {
+) -> (
+    Vec<(&'a Name, &'a Term<'a>)>,
+    de_bruijn::Depth,
+    Vec<Value<'a>>,
+) {
     let mut rigid_vals = Vec::new();
     let mut quoted_params = Vec::new();
     let mut d = initial_depth;

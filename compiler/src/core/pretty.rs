@@ -1,7 +1,7 @@
 use std::fmt;
 
-use crate::parser::ast::Phase;
 use crate::common::de_bruijn;
+use crate::parser::ast::Phase;
 
 use super::{Arm, Function, Name, Pat, Program, Term};
 

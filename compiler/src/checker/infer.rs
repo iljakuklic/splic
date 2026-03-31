@@ -1,7 +1,7 @@
 use anyhow::{Context as _, Result, anyhow, bail, ensure};
 
-use crate::core::{self, IntType, IntWidth, Lam, Phase, Pi, Prim, value};
 use crate::common::de_bruijn;
+use crate::core::{self, IntType, IntWidth, Lam, Phase, Pi, Prim, value};
 use crate::parser::ast;
 
 use super::{Ctx, builtin_prim_ty};
@@ -709,7 +709,8 @@ fn check_val_impl<'src, 'core>(
             // have the expected type as a core term, refine per-arm by re-evaluating
             // that term with the arm's literal substituted for the scrutinee variable.
             let scrut_val = ctx.eval(core_scrutinee);
-            let scrut_refine: Option<(de_bruijn::Lvl, IntType)> = match (&scrut_val, &scrut_ty_val) {
+            let scrut_refine: Option<(de_bruijn::Lvl, IntType)> = match (&scrut_val, &scrut_ty_val)
+            {
                 (value::Value::Rigid(lvl), value::Value::Prim(Prim::IntTy(it))) => {
                     Some((*lvl, *it))
                 }
