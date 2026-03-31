@@ -1,0 +1,11 @@
+fn repeat(f@0: fn(_: [[u64]]) -> [[u64]], n@1: u64, x@2: [[u64]]) -> [[u64]] {
+    match n@1 {
+        0 => x@2,
+        n@3 => repeat(f@0, @sub_u64(n@3, 1_u64), f@0(x@2)),
+    }
+}
+
+code fn square_twice(x@0: u64) -> u64 {
+    $(repeat(|y@1: [[u64]]| #(@mul_u64($(y@1), $(y@1))), 2_u64, #(x@0)))
+}
+

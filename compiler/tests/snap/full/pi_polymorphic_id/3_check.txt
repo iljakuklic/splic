@@ -1,0 +1,20 @@
+fn id(A@0: Type, x@1: A@0) -> A@0 {
+    x@1
+}
+
+fn test_u64() -> u64 {
+    id(u64, 42_u64)
+}
+
+fn test_u8() -> u8 {
+    id(u8, 7_u8)
+}
+
+code fn result_u64() -> u64 {
+    $(@embed_u64(test_u64()))
+}
+
+code fn result_u8() -> u8 {
+    $(@embed_u8(test_u8()))
+}
+

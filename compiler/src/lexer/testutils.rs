@@ -9,7 +9,7 @@ const IDENTIFIERS: &[&str] = &[
 
 pub fn gen_token() -> impl bolero::ValueGenerator<Output = Token<'static>> {
     one_of((
-        one_value_of(IDENTIFIERS).map_gen(|s| Token::Ident(Name(s))),
+        one_value_of(IDENTIFIERS).map_gen(|s| Token::Ident(Name::new(s))),
         one_value_of(KEYWORDS).map_gen(|(_, t)| t),
         one_value_of(SYMBOLS).map_gen(|(_, t)| t),
         any::<u64>().map_gen(Token::Num),

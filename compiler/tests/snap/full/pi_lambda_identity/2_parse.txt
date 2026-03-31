@@ -1,0 +1,182 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "test_id",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "id",
+                        ty: None,
+                        expr: Lam {
+                            params: [
+                                Param {
+                                    name: "T",
+                                    ty: Var(
+                                        "Type",
+                                    ),
+                                },
+                            ],
+                            body: Lam {
+                                params: [
+                                    Param {
+                                        name: "x",
+                                        ty: Var(
+                                            "T",
+                                        ),
+                                    },
+                                ],
+                                body: Var(
+                                    "x",
+                                ),
+                            },
+                        },
+                    },
+                    Let {
+                        name: "_",
+                        ty: None,
+                        expr: App {
+                            func: App {
+                                func: Var(
+                                    "id",
+                                ),
+                                args: [
+                                    Var(
+                                        "u32",
+                                    ),
+                                ],
+                            },
+                            args: [
+                                Lit(
+                                    67,
+                                ),
+                            ],
+                        },
+                    },
+                ],
+                expr: App {
+                    func: App {
+                        func: Var(
+                            "id",
+                        ),
+                        args: [
+                            Var(
+                                "u64",
+                            ),
+                        ],
+                    },
+                    args: [
+                        Lit(
+                            42,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test_id_u8",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "id",
+                        ty: None,
+                        expr: Lam {
+                            params: [
+                                Param {
+                                    name: "T",
+                                    ty: Var(
+                                        "Type",
+                                    ),
+                                },
+                            ],
+                            body: Lam {
+                                params: [
+                                    Param {
+                                        name: "x",
+                                        ty: Var(
+                                            "T",
+                                        ),
+                                    },
+                                ],
+                                body: Var(
+                                    "x",
+                                ),
+                            },
+                        },
+                    },
+                    Let {
+                        name: "id_u8",
+                        ty: None,
+                        expr: App {
+                            func: Var(
+                                "id",
+                            ),
+                            args: [
+                                Var(
+                                    "u8",
+                                ),
+                            ],
+                        },
+                    },
+                ],
+                expr: App {
+                    func: Var(
+                        "id_u8",
+                    ),
+                    args: [
+                        Lit(
+                            7,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result_u64",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: Var(
+                            "test_id",
+                        ),
+                        args: [],
+                    },
+                ),
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result_u8",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: Var(
+                            "test_id_u8",
+                        ),
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

@@ -37,7 +37,9 @@ Program {
                                 func: Add,
                                 args: [
                                     App {
-                                        func: "sum_n",
+                                        func: Var(
+                                            "sum_n",
+                                        ),
                                         args: [
                                             App {
                                                 func: Sub,
@@ -73,7 +75,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "sum_n",
+                        func: Var(
+                            "sum_n",
+                        ),
                         args: [
                             Lit(
                                 5,

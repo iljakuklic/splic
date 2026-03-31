@@ -8,8 +8,18 @@ Splic is a Rust-based experimental programming language targeting zkVMs, built o
 
 ```
 splic/
-├── compiler/          # Main compiler crate
+├── compiler/          # Main compiler library crate
+│   └── src/
+│       ├── lexer/     # Tokenization
+│       ├── parser/    # Parsing (string → AST)
+│       ├── checker/   # Type checking, elaboration, dependent types (uses NbE)
+│       ├── core/      # Core language abstractions
+│       ├── staging/   # Meta-level staging (NbE-based code generation)
+│       └── common/    # Shared utilities
+├── cli/               # CLI binary crate (depends on compiler)
 ├── docs/              # Documentation
+│   ├── README.md      # Language design and user-facing docs
+│   └── bs/            # Implementation notes and proposals
 ├── Cargo.toml         # Workspace configuration
 └── Cargo.lock         # Dependency lock file
 ```
@@ -59,10 +69,11 @@ cargo bolero test           # Run bolero fuzz tests
 ## Testing & Quality
 
 ### Test Structure
-- Tests located in `compiler/src/test/`
+- Unit tests located throughout `compiler/src/` in `test` modules (e.g., `compiler/src/lexer/test/`, `compiler/src/parser/test/`)
+- Integration tests in `compiler/tests/`
 - Uses **rstest** for parameterized tests
 - Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `UPDATE_EXPECT=1 cargo test` to regenerate snapshots and verify actual state)
-- Fuzz tests in `fuzz.rs`
+- Fuzz tests with **bolero** in component `test` modules
 - Note: When adding new `.input.txt` test files, run `cargo clean -p splic-compiler` first to ensure they're picked up by the test framework
 
 ### Clippy
@@ -84,11 +95,23 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 ### Memory Management
 - Use `bumpalo` arena allocator wherever practical
 - For arena-allocated structures, refer to other objects using plain references rather than `Box`
+- In NbE (semantic evaluation), use slices `&'a [Value<'a>]` for environment snapshots captured in closures, not vectors
 
 ### 2LTT Patterns
 - No syntactic separation between type-level and term-level expressions
 - Quotations (`#(e)`, `#{...}`) and splices (`$(e)`, `${...}`) for metaprogramming
 - Lifting with `[[e]]`
+
+## Documentation
+
+Splic documentation is organized in two main locations:
+
+- **`docs/README.md`** — Overview and index of language design and user-facing docs (CONCEPT, SYNTAX, examples)
+- **`docs/bs/README.md`** — Index of implementation notes, proposals, and architecture documentation
+
+**Guidelines for writing docs:**
+- Focus on architectural concepts and design decisions ("what" and "why") rather than implementation-specific details (function names, parameter types, exact APIs). This keeps docs resilient to code changes.
+- Keep doc indices up to date: when adding new files, add entries to the appropriate `README.md` with a brief description.
 
 ## Language Design
 
@@ -96,5 +119,4 @@ Splic is built on **two-level type theory (2LTT)**:
 - **Meta-level**: Purely functional dependently typed language
 - **Object-level**: Low-level language for zkvm bytecode
 - Connected through quotations and splices for type-safe metaprogramming
-
-See `docs/CONCEPT.md` and `docs/SYNTAX.md` for detailed language specifications.
+- See the 2ltt skill for more detail

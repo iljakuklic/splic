@@ -1,5 +1,7 @@
 App {
-    func: "f",
+    func: Var(
+        "f",
+    ),
     args: [
         Var(
             "x",

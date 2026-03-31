@@ -1,0 +1,13 @@
+// Function composition (monomorphic)
+fn compose(f: fn(_: u64) -> u64, g: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
+    |x: u64| f(g(x))
+}
+
+fn double(x: u64) -> u64 { x + x }
+fn inc(x: u64) -> u64 { x + 1 }
+
+fn test() -> u64 {
+    compose(double, inc)(5)
+}
+
+code fn result() -> u64 { $(test()) }

@@ -48,3 +48,12 @@ Use me when you are:
 - Prefer an object-level definitional equality that is **simple and syntax-directed** (often: *no* β/η for object lambdas), so typechecking and unstaging stay predictable.
 - Unstaging should be an evaluation procedure: **run meta**, construct **object AST**, eliminate splices.
 - Avoid "intensional analysis of object code" (pattern matching on AST) if you want the semantic/parametricity properties these papers rely on.
+
+## Elaboration guardrails
+
+These invariants prevent whole classes of bugs; see `implementation-guide.md §13` for detail.
+
+- **`infer` returns `(Term, VTy)`** — always return the elaborated term *and* its type. Never recover types after the fact by pattern-matching on the elaborated term (`typeOf`-style helpers are a red flag).
+- **`checkU` / `check_universe`** — when a term must be a type, check it against the appropriate universe directly (`check t (VU s)`). Don't infer and then ad-hoc test whether the returned type is a universe.
+- **Stuck splices are a neutral** — `Value` needs a `Splice(v)` neutral alongside `Rigid`. Without it, `eval(Quote(Splice(v)))` silently drops the splice. Cancellation rules: `eval(Quote(Splice(v))) = v` and `eval(Splice(Quote(v))) = v`.
+- **Stage-check variables** — record each binding's stage in the context; check it against the current elaboration stage on lookup (`guardStage` in the reference). Otherwise meta variables leak into object code and produce confusing type errors instead of clear stage errors.

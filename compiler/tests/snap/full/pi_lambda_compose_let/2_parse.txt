@@ -1,0 +1,243 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "double",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "to_u8",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: Var(
+                        "x",
+                    ),
+                    arms: [
+                        MatchArm {
+                            pat: Lit(
+                                0,
+                            ),
+                            body: Lit(
+                                0,
+                            ),
+                        },
+                        MatchArm {
+                            pat: Lit(
+                                1,
+                            ),
+                            body: Lit(
+                                1,
+                            ),
+                        },
+                        MatchArm {
+                            pat: Lit(
+                                2,
+                            ),
+                            body: Lit(
+                                2,
+                            ),
+                        },
+                        MatchArm {
+                            pat: Name(
+                                "_",
+                            ),
+                            body: Lit(
+                                3,
+                            ),
+                        },
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "compose",
+                        ty: None,
+                        expr: Lam {
+                            params: [
+                                Param {
+                                    name: "A",
+                                    ty: Var(
+                                        "Type",
+                                    ),
+                                },
+                                Param {
+                                    name: "B",
+                                    ty: Var(
+                                        "Type",
+                                    ),
+                                },
+                                Param {
+                                    name: "C",
+                                    ty: Var(
+                                        "Type",
+                                    ),
+                                },
+                            ],
+                            body: Lam {
+                                params: [
+                                    Param {
+                                        name: "f",
+                                        ty: Pi {
+                                            params: [
+                                                Param {
+                                                    name: "_",
+                                                    ty: Var(
+                                                        "B",
+                                                    ),
+                                                },
+                                            ],
+                                            ret_ty: Var(
+                                                "C",
+                                            ),
+                                        },
+                                    },
+                                    Param {
+                                        name: "g",
+                                        ty: Pi {
+                                            params: [
+                                                Param {
+                                                    name: "_",
+                                                    ty: Var(
+                                                        "A",
+                                                    ),
+                                                },
+                                            ],
+                                            ret_ty: Var(
+                                                "B",
+                                            ),
+                                        },
+                                    },
+                                ],
+                                body: Lam {
+                                    params: [
+                                        Param {
+                                            name: "x",
+                                            ty: Var(
+                                                "A",
+                                            ),
+                                        },
+                                    ],
+                                    body: App {
+                                        func: Var(
+                                            "f",
+                                        ),
+                                        args: [
+                                            App {
+                                                func: Var(
+                                                    "g",
+                                                ),
+                                                args: [
+                                                    Var(
+                                                        "x",
+                                                    ),
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                },
+                            },
+                        },
+                    },
+                ],
+                expr: App {
+                    func: App {
+                        func: App {
+                            func: Var(
+                                "compose",
+                            ),
+                            args: [
+                                Var(
+                                    "u64",
+                                ),
+                                Var(
+                                    "u64",
+                                ),
+                                Var(
+                                    "u8",
+                                ),
+                            ],
+                        },
+                        args: [
+                            Var(
+                                "to_u8",
+                            ),
+                            Var(
+                                "double",
+                            ),
+                        ],
+                    },
+                    args: [
+                        Lit(
+                            5,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result",
+            params: [],
+            ret_ty: Var(
+                "u8",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: Var(
+                            "test",
+                        ),
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

@@ -1,0 +1,37 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "test",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "x",
+                        ty: Some(
+                            Var(
+                                "u64",
+                            ),
+                        ),
+                        expr: Lit(
+                            42,
+                        ),
+                    },
+                ],
+                expr: App {
+                    func: Var(
+                        "x",
+                    ),
+                    args: [
+                        Lit(
+                            1,
+                        ),
+                    ],
+                },
+            },
+        },
+    ],
+}

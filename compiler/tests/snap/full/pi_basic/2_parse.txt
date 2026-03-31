@@ -1,0 +1,120 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "apply",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Var(
+                                    "u64",
+                                ),
+                            },
+                        ],
+                        ret_ty: Var(
+                            "u64",
+                        ),
+                    },
+                },
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Var(
+                        "f",
+                    ),
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "inc",
+            params: [
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        Var(
+                            "x",
+                        ),
+                        Lit(
+                            1,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Meta,
+            name: "test",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Var(
+                        "apply",
+                    ),
+                    args: [
+                        Var(
+                            "inc",
+                        ),
+                        Lit(
+                            42,
+                        ),
+                    ],
+                },
+            },
+        },
+        Function {
+            phase: Object,
+            name: "result",
+            params: [],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: Var(
+                            "test",
+                        ),
+                        args: [],
+                    },
+                ),
+            },
+        },
+    ],
+}

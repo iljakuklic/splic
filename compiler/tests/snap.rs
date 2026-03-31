@@ -2,7 +2,7 @@ use bumpalo::Bump;
 use expect_test::expect_file;
 use rstest::rstest;
 use splic_compiler::{
-    checker::elaborate_program, eval::unstage_program, lexer::Lexer, parser::Parser,
+    checker::elaborate_program, lexer::Lexer, parser::Parser, staging::unstage_program,
 };
 use std::path::PathBuf;
 

@@ -8,18 +8,17 @@ fn infer_global_call_no_args_returns_ret_ty() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
     let mut globals = HashMap::new();
-    globals.insert(Name::new("f"), sig_no_params_returns_u64());
+    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
-    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(result);
+    let (_, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -34,7 +33,7 @@ fn infer_global_call_unknown_name_fails() {
     let mut ctx = test_ctx(&core_arena);
 
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("unknown")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("unknown")))),
         args: &[],
     });
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
@@ -48,11 +47,11 @@ fn infer_global_call_wrong_arity_fails() {
     let extra_arg = src_arena.alloc(ast::Term::Lit(99));
     let args = src_arena.alloc_slice_fill_iter([extra_arg as &ast::Term]);
     let mut globals = HashMap::new();
-    globals.insert(Name::new("f"), sig_no_params_returns_u64());
+    globals.insert(Name::new("f"), sig_no_params_returns_u64(&core_arena));
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args,
     });
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
@@ -67,19 +66,17 @@ fn infer_global_call_phase_mismatch_fails() {
     // `code fn f() -> u64` — object-phase function
     let u64_obj = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::U64_OBJ)));
     let mut globals = HashMap::new();
-    globals.insert(
-        Name::new("f"),
-        FunSig {
-            params: &[],
-            ret_ty: u64_obj,
-            phase: Phase::Object,
-        },
-    );
+    let f_ty: &core::Pi = core_arena.alloc(Pi {
+        params: &[],
+        body_ty: u64_obj,
+        phase: Phase::Object,
+    });
+    globals.insert(Name::new("f"), f_ty);
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     // Call `f()` from meta phase — should be rejected.
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args: &[],
     });
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
@@ -98,14 +95,13 @@ fn infer_global_call_with_arg_checks_arg_type() {
     let arg = src_arena.alloc(ast::Term::Lit(42));
     let args = src_arena.alloc_slice_fill_iter([arg as &ast::Term]);
     let term = src_arena.alloc(ast::Term::App {
-        func: FunName::Name(ast::Name::new("f")),
+        func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("f")))),
         args,
     });
-    let result = infer(&mut ctx, Phase::Meta, term).expect("should infer");
-    let ty = ctx.type_of(result);
+    let (_, ty_val) = infer(&mut ctx, Phase::Meta, term).expect("should infer");
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
@@ -124,8 +120,8 @@ fn check_binop_add_against_u32_succeeds() {
     let mut ctx = test_ctx(&core_arena);
     let u32_obj = core::Term::int_ty(IntWidth::U32, Phase::Object);
     // push two object-phase u32 locals to use as operands
-    ctx.push_local("a", u32_obj);
-    ctx.push_local("b", u32_obj);
+    ctx.push_local(core::Name::new("a"), u32_obj);
+    ctx.push_local(core::Name::new("b"), u32_obj);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -140,7 +136,7 @@ fn check_binop_add_against_u32_succeeds() {
     assert!(matches!(
         result,
         core::Term::App(core::App {
-            head: Head::Prim(Prim::Add(IntType {
+            func: core::Term::Prim(Prim::Add(IntType {
                 width: IntWidth::U32,
                 ..
             })),
@@ -156,8 +152,8 @@ fn infer_comparison_op_returns_u1() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     let u64_obj = core::Term::int_ty(IntWidth::U64, Phase::Object);
-    ctx.push_local("a", u64_obj);
-    ctx.push_local("b", u64_obj);
+    ctx.push_local(core::Name::new("a"), u64_obj);
+    ctx.push_local(core::Name::new("b"), u64_obj);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -168,12 +164,11 @@ fn infer_comparison_op_returns_u1() {
     });
 
     // Eq is inferable: result is u1, prim carries the operand type (u64).
-    let core_term = infer(&mut ctx, Phase::Object, term).expect("should infer");
-    let ty = ctx.type_of(core_term);
+    let (core_term, ty_val) = infer(&mut ctx, Phase::Object, term).expect("should infer");
     assert!(matches!(
         core_term,
         core::Term::App(core::App {
-            head: Head::Prim(Prim::Eq(IntType {
+            func: core::Term::Prim(Prim::Eq(IntType {
                 width: IntWidth::U64,
                 ..
             })),
@@ -181,8 +176,8 @@ fn infer_comparison_op_returns_u1() {
         })
     ));
     assert!(matches!(
-        ty,
-        core::Term::Prim(Prim::IntTy(IntType {
+        ty_val,
+        value::Value::Prim(Prim::IntTy(IntType {
             width: IntWidth::U1,
             ..
         }))
@@ -197,8 +192,8 @@ fn infer_comparison_op_mismatched_operands_fails() {
     let mut ctx = test_ctx(&core_arena);
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("a", u64_ty);
-    ctx.push_local("b", u32_ty); // different type
+    ctx.push_local(core::Name::new("a"), u64_ty);
+    ctx.push_local(core::Name::new("b"), u32_ty); // different type
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -218,8 +213,8 @@ fn infer_binop_add_without_expected_type_fails() {
     let core_arena = bumpalo::Bump::new();
     let mut ctx = test_ctx(&core_arena);
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("a", u32_ty);
-    ctx.push_local("b", u32_ty);
+    ctx.push_local(core::Name::new("a"), u32_ty);
+    ctx.push_local(core::Name::new("b"), u32_ty);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -241,8 +236,8 @@ fn check_binop_add_with_mismatched_operand_types_fails() {
     // push a (u64) and b (u32) — they don't match the expected u32 for 'a'
     let u64_ty = &core::Term::U64_META;
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local("a", u64_ty); // u64, but op expects u32
-    ctx.push_local("b", u32_ty);
+    ctx.push_local(core::Name::new("a"), u64_ty); // u64, but op expects u32
+    ctx.push_local(core::Name::new("b"), u32_ty);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -265,8 +260,8 @@ fn check_eq_op_produces_u1() {
     let mut ctx = test_ctx(&core_arena);
     // Use meta-phase locals so the phase is consistent throughout.
     let u64_ty = &core::Term::U64_META; // u64 at meta phase
-    ctx.push_local("a", u64_ty);
-    ctx.push_local("b", u64_ty);
+    ctx.push_local(core::Name::new("a"), u64_ty);
+    ctx.push_local(core::Name::new("b"), u64_ty);
 
     let a = src_arena.alloc(ast::Term::Var(ast::Name::new("a")));
     let b = src_arena.alloc(ast::Term::Var(ast::Name::new("b")));
@@ -283,7 +278,7 @@ fn check_eq_op_produces_u1() {
     assert!(matches!(
         result,
         core::Term::App(core::App {
-            head: Head::Prim(Prim::Eq(IntType {
+            func: core::Term::Prim(Prim::Eq(IntType {
                 width: IntWidth::U64,
                 ..
             })),

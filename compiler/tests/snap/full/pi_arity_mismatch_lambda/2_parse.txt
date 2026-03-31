@@ -1,0 +1,62 @@
+Program {
+    functions: [
+        Function {
+            phase: Meta,
+            name: "too_few",
+            params: [
+                Param {
+                    name: "f",
+                    ty: Pi {
+                        params: [
+                            Param {
+                                name: "_",
+                                ty: Var(
+                                    "u64",
+                                ),
+                            },
+                            Param {
+                                name: "_",
+                                ty: Var(
+                                    "u64",
+                                ),
+                            },
+                        ],
+                        ret_ty: Var(
+                            "u64",
+                        ),
+                    },
+                },
+                Param {
+                    name: "x",
+                    ty: Var(
+                        "u64",
+                    ),
+                },
+            ],
+            ret_ty: Var(
+                "u64",
+            ),
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "foo",
+                        ty: None,
+                        expr: App {
+                            func: Var(
+                                "f",
+                            ),
+                            args: [
+                                Var(
+                                    "x",
+                                ),
+                            ],
+                        },
+                    },
+                ],
+                expr: Lit(
+                    1337,
+                ),
+            },
+        },
+    ],
+}

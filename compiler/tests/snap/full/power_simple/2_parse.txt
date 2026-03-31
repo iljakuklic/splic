@@ -61,7 +61,9 @@ Program {
                                         args: [
                                             Splice(
                                                 App {
-                                                    func: "power",
+                                                    func: Var(
+                                                        "power",
+                                                    ),
                                                     args: [
                                                         Var(
                                                             "x",
@@ -112,7 +114,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Var(
@@ -145,7 +149,9 @@ Program {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: "power",
+                        func: Var(
+                            "power",
+                        ),
                         args: [
                             Quote(
                                 Var(

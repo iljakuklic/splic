@@ -50,7 +50,7 @@ fn parse_simple_fn() {
     let program = parser.parse_program().unwrap();
     assert_eq!(program.functions.len(), 1);
     let f = &program.functions[0];
-    assert_eq!(f.name.0, "add");
+    assert_eq!(f.name.as_str(), "add");
     assert_eq!(f.params.len(), 2);
 }
 
@@ -72,7 +72,7 @@ fn parse_expr_prec() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            assert_eq!(func, &FunName::BinOp(BinOp::Add));
+            assert!(matches!(func, FunName::BinOp(BinOp::Add)));
         }
         _ => panic!("expected App"),
     }
@@ -87,7 +87,7 @@ fn parse_expr_prec2() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            assert_eq!(func, &FunName::BinOp(BinOp::Add));
+            assert!(matches!(func, FunName::BinOp(BinOp::Add)));
         }
         _ => panic!("expected App"),
     }
@@ -102,7 +102,7 @@ fn parse_expr_paren() {
     match expr {
         Term::App { func, args } => {
             assert_eq!(args.len(), 2);
-            assert_eq!(func, &FunName::BinOp(BinOp::Mul));
+            assert!(matches!(func, FunName::BinOp(BinOp::Mul)));
         }
         _ => panic!("expected App"),
     }

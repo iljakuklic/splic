@@ -10,6 +10,7 @@ workspace = true
 [dependencies]
 anyhow.workspace = true
 bumpalo.workspace = true
+ref-cast.workspace = true
 
 [dev-dependencies]
 bolero.workspace = true

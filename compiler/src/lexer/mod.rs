@@ -43,7 +43,7 @@ pub enum Token<'a> {
     DoubleRBracket,
     DArrow,
     Num(u64),
-    Ident(Name<'a>),
+    Ident(&'a Name),
 }
 
 const KEYWORDS: &[(&str, Token<'static>)] = &[
@@ -134,7 +134,7 @@ impl<'a> Lexer<'a> {
         KEYWORDS
             .iter()
             .find(|(kw, _)| *kw == ident)
-            .map_or(Token::Ident(Name(ident)), |(_, tok)| *tok)
+            .map_or(Token::Ident(Name::new(ident)), |(_, tok)| *tok)
     }
 
     #[inline]

@@ -2,7 +2,7 @@ use std::fmt;
 
 use crate::parser::ast::Phase;
 
-use super::{App, Arm, Function, Head, Pat, Program, Term};
+use super::{Arm, Function, Name, Pat, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -18,7 +18,7 @@ impl<'a> Term<'a> {
     /// (the caller is responsible for any surrounding braces).
     fn fmt_term(
         &self,
-        env: &mut Vec<&'a str>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -26,13 +26,7 @@ impl<'a> Term<'a> {
             // Let and Match manage their own indentation internally.
             Term::Let(_) | Term::Match(_) => self.fmt_term_inline(env, indent, f),
             // Everything else gets a leading indent.
-            Term::Var(_)
-            | Term::Prim(_)
-            | Term::Lit(..)
-            | Term::App(_)
-            | Term::Lift(_)
-            | Term::Quote(_)
-            | Term::Splice(_) => {
+            _ => {
                 write_indent(f, indent)?;
                 self.fmt_term_inline(env, indent, f)
             }
@@ -46,15 +40,19 @@ impl<'a> Term<'a> {
     /// a new indented block (e.g. `Let` / `Match`).
     fn fmt_term_inline(
         &self,
-        env: &mut Vec<&'a str>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
-            Term::Var(lvl) => {
-                let name = *env.get(lvl.0).expect("De Bruijn level in env bounds");
-                write!(f, "{name}@{}", lvl.0)
+            Term::Var(ix) => {
+                let lvl = ix.lvl_at_depth(super::Lvl(env.len()));
+                let i = lvl.0;
+                let name = env
+                    .get(i)
+                    .expect("De Bruijn level out of environment bounds");
+                write!(f, "{name}@{i}")
             }
 
             // ── Literal ──────────────────────────────────────────────────────────
@@ -63,8 +61,61 @@ impl<'a> Term<'a> {
             // ── Primitive type / universe ─────────────────────────────────────────
             Term::Prim(p) => write!(f, "{p}"),
 
-            // ── Application ──────────────────────────────────────────────────────
-            Term::App(app) => app.fmt_app(env, indent, f),
+            // ── Global reference ──────────────────────────────────────────────────
+            Term::Global(name) => write!(f, "{name}"),
+
+            // ── Application ───────────────────────────────────────────────────────
+            Term::App(app) => {
+                app.func.fmt_expr(env, indent, f)?;
+                write!(f, "(")?;
+                for (i, arg) in app.args.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    arg.fmt_expr(env, indent, f)?;
+                }
+                write!(f, ")")
+            }
+
+            // ── Pi type ───────────────────────────────────────────────────────────
+            Term::Pi(pi) => {
+                let env_before = env.len();
+                write!(f, "fn(")?;
+                for (i, &(name, ty)) in pi.params.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    if name.as_str() == "_" {
+                        write!(f, "_: ")?;
+                    } else {
+                        write!(f, "{}@{}: ", name, env.len())?;
+                    }
+                    ty.fmt_expr(env, indent, f)?;
+                    env.push(name);
+                }
+                write!(f, ") -> ")?;
+                pi.body_ty.fmt_expr(env, indent, f)?;
+                env.truncate(env_before);
+                Ok(())
+            }
+
+            // ── Lambda ────────────────────────────────────────────────────────────
+            Term::Lam(lam) => {
+                let env_before = env.len();
+                write!(f, "|")?;
+                for (i, &(name, ty)) in lam.params.iter().enumerate() {
+                    if i > 0 {
+                        write!(f, ", ")?;
+                    }
+                    write!(f, "{}@{}: ", name, env.len())?;
+                    ty.fmt_expr(env, indent, f)?;
+                    env.push(name);
+                }
+                write!(f, "| ")?;
+                lam.body.fmt_expr(env, indent, f)?;
+                env.truncate(env_before);
+                Ok(())
+            }
 
             // ── Lift / Quote / Splice ─────────────────────────────────────────────
             Term::Lift(inner) => {
@@ -119,7 +170,7 @@ impl<'a> Term<'a> {
     /// syntactically valid as sub-expressions.
     fn fmt_expr(
         &self,
-        env: &mut Vec<&'a str>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -134,50 +185,13 @@ impl<'a> Term<'a> {
             Term::Var(_)
             | Term::Prim(_)
             | Term::Lit(..)
+            | Term::Global(_)
             | Term::App(_)
+            | Term::Pi(_)
+            | Term::Lam(_)
             | Term::Lift(_)
             | Term::Quote(_)
             | Term::Splice(_) => self.fmt_term_inline(env, indent, f),
-        }
-    }
-}
-
-impl<'a> App<'a> {
-    /// Print an application.
-    ///
-    /// All primitives use `@name(arg, arg, ...)` function-call syntax. No infix
-    /// operators are emitted in the core pretty-printer.
-    fn fmt_app(
-        &self,
-        env: &mut Vec<&'a str>,
-        indent: usize,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        match &self.head {
-            // ── Global function call ──────────────────────────────────────────────
-            Head::Global(name) => {
-                write!(f, "{name}(")?;
-                for (i, arg) in self.args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    arg.fmt_expr(env, indent, f)?;
-                }
-                write!(f, ")")
-            }
-
-            // ── Primitive operation ───────────────────────────────────────────────
-            // All builtins use `@name(args...)` function-call syntax.
-            Head::Prim(prim) => {
-                write!(f, "{prim}(")?;
-                for (i, arg) in self.args.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    arg.fmt_expr(env, indent, f)?;
-                }
-                write!(f, ")")
-            }
         }
     }
 }
@@ -186,7 +200,7 @@ impl<'a> Arm<'a> {
     /// Print a single match arm.
     fn fmt_arm(
         &self,
-        env: &mut Vec<&'a str>,
+        env: &mut Vec<&'a Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -197,7 +211,7 @@ impl<'a> Arm<'a> {
             Pat::Bind(name) => {
                 let lvl = env.len();
                 write!(f, "{name}@{lvl} => ")?;
-                env.push(name);
+                env.push(*name);
                 self.body.fmt_expr(env, indent, f)?;
                 env.pop();
                 return writeln!(f, ",");
@@ -224,11 +238,13 @@ impl fmt::Display for Program<'_> {
 
 impl fmt::Display for Function<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let pi = self.pi();
+
         // Build the name environment for the body: one entry per parameter.
-        let mut env: Vec<&str> = Vec::with_capacity(self.sig.params.len());
+        let mut env: Vec<&Name> = Vec::with_capacity(pi.params.len());
 
         // Phase prefix.
-        match self.sig.phase {
+        match pi.phase {
             Phase::Object => write!(f, "code ")?,
             Phase::Meta => {}
         }
@@ -236,17 +252,17 @@ impl fmt::Display for Function<'_> {
 
         // Parameters: types are printed with the env as built so far (dependent
         // function types: earlier params are in scope for later param types).
-        for (i, (name, ty)) in self.sig.params.iter().enumerate() {
+        for (i, (name, ty)) in pi.params.iter().enumerate() {
             if i > 0 {
                 write!(f, ", ")?;
             }
             write!(f, "{name}@{i}: ")?;
             ty.fmt_expr(&mut env, 1, f)?;
-            env.push(name);
+            env.push(*name);
         }
 
         write!(f, ") -> ")?;
-        self.sig.ret_ty.fmt_expr(&mut env, 1, f)?;
+        pi.body_ty.fmt_expr(&mut env, 1, f)?;
         writeln!(f, " {{")?;
 
         // Body in statement position at indent depth 1.

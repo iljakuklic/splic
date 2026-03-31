@@ -159,16 +159,17 @@ When applying a lambda, push the argument onto a spine; only force evaluation wh
 
 ### 6. Literal Type Annotation — Defer Until Normalizer ✅
 
-**Decision**: Leave `Lit(u64)` as-is for now. Add width annotation (`Lit(u64, IntType)`)
-when implementing the normalizer for dependent types.
+**Decision**: During elaboration, the type of literals is provided by context. Type recovery from
+syntax alone is deferred until the normalizer is implemented (when dependent types are added).
 
 **Rationale**:
-- Currently not needed; `check` provides the expected type.
-- When a `type_of(term) -> Value` function is needed (for the normalizer), `Lit` is one of the few variants that can't self-type.
-- The change is minimal (one line to IR, one line to elaborator).
-- The `IntType` is already in hand at the elaboration site (it's in the `expected` type passed to `check`), so adding it costs nothing.
+- During elaboration, literals are checked against an expected type provided by the caller.
+- Most term variants carry enough information for type recovery (self-typed); literals are the exception.
+- Once NbE is implemented and types become semantic values, the need to recover types from syntax diminishes.
+- Adds no runtime cost (the type information is already in hand during elaboration).
 
-**Timeline**: Add after refactoring to spines, before dependent types.
+**Implementation**: Currently handled via context-threaded types. Will be revisited if IR redesign
+is needed for dependent types.
 
 ---
 

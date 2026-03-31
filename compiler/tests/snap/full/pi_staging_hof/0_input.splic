@@ -1,0 +1,8 @@
+// Higher-order staging: meta function that transforms code via a lambda
+fn map_code(f: fn(_: [[u64]]) -> [[u64]], x: [[u64]]) -> [[u64]] {
+    f(x)
+}
+
+code fn double(x: u64) -> u64 {
+    $(map_code(|y: [[u64]]| #($(y) + $(y)), #(x)))
+}

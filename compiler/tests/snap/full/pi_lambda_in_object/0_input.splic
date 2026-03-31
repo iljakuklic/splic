@@ -1,0 +1,4 @@
+// ERROR: lambda in object-level function body (meta-level only)
+code fn test(x: u64) -> u64 {
+    |y: u64| y
+}
