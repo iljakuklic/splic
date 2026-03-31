@@ -18,8 +18,12 @@ impl Lvl {
     }
 
     #[must_use]
-    pub const fn ix_at_depth(self, depth: Depth) -> Ix {
-        Ix(depth.0 - self.0 - 1)
+    pub fn ix_at_depth(self, depth: Depth) -> Ix {
+        let result = depth
+            .0
+            .checked_sub(self.0 + 1)
+            .expect("De Bruijn level out of range for depth (level must be < depth)");
+        Ix(result)
     }
 }
 
@@ -43,8 +47,12 @@ impl Ix {
     }
 
     #[must_use]
-    pub const fn lvl_at_depth(self, depth: Depth) -> Self {
-        Self(depth.0 - self.0 - 1)
+    pub fn lvl_at_depth(self, depth: Depth) -> Self {
+        let result = depth
+            .0
+            .checked_sub(self.0 + 1)
+            .expect("De Bruijn index out of range for depth (index must be < depth)");
+        Self(result)
     }
 }
 
