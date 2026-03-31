@@ -18,7 +18,7 @@ impl Lvl {
     }
 
     #[must_use]
-    pub fn ix_at(self, depth: Depth) -> Ix {
+    pub const fn ix_at(self, depth: Depth) -> Ix {
         let result = depth
             .0
             .checked_sub(self.0 + 1)
@@ -47,7 +47,7 @@ impl Ix {
     }
 
     #[must_use]
-    pub fn lvl_at(self, depth: Depth) -> Self {
+    pub const fn lvl_at(self, depth: Depth) -> Self {
         let result = depth
             .0
             .checked_sub(self.0 + 1)
