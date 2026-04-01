@@ -64,9 +64,9 @@ fn infer_lit_fails() {
 #[rstest::rstest]
 #[case(IntWidth::U0, 1)] // u0 max is 0
 #[case(IntWidth::U1, 2)] // u1 max is 1
-#[case(IntWidth::U8, 256)] // u8 max is 255
-#[case(IntWidth::U16, 65536)] // u16 max is 65535
-#[case(IntWidth::U32, 4294967296)] // u32 max is 4294967295
+#[case(IntWidth::U8, u64::from(u8::MAX) + 1)]
+#[case(IntWidth::U16, u64::from(u16::MAX) + 1)]
+#[case(IntWidth::U32, u64::from(u32::MAX) + 1)]
 fn check_lit_exceeds_max_fails(#[case] width: IntWidth, #[case] value: u64) {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
@@ -81,10 +81,10 @@ fn check_lit_exceeds_max_fails(#[case] width: IntWidth, #[case] value: u64) {
 #[rstest::rstest]
 #[case(IntWidth::U0, 0)]
 #[case(IntWidth::U1, 1)]
-#[case(IntWidth::U8, 255)]
-#[case(IntWidth::U16, 65535)]
-#[case(IntWidth::U32, 4294967295)]
-#[case(IntWidth::U64, 18446744073709551615)]
+#[case(IntWidth::U8, u64::from(u8::MAX))]
+#[case(IntWidth::U16, u64::from(u16::MAX))]
+#[case(IntWidth::U32, u64::from(u32::MAX))]
+#[case(IntWidth::U64, u64::MAX)]
 fn check_lit_at_max_succeeds(#[case] width: IntWidth, #[case] value: u64) {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();

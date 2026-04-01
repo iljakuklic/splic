@@ -1,7 +1,8 @@
 #![allow(
     clippy::get_first,
-    clippy::wildcard_enum_match_arm,
-    clippy::indexing_slicing
+    clippy::indexing_slicing,
+    clippy::use_debug,
+    clippy::wildcard_enum_match_arm
 )]
 
 use std::path::PathBuf;

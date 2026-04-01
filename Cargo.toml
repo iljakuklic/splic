@@ -36,6 +36,7 @@ trivially_copy_pass_by_ref = "deny"
 cast_possible_truncation = "deny"
 explicit_iter_loop = "deny"
 wildcard_enum_match_arm = "allow"
+single_match_else = "allow"
 indexing_slicing = "deny"
 self_named_module_files = "deny"
 precedence_bits = "deny"
@@ -47,6 +48,10 @@ wildcard_imports = "deny"
 enum_glob_use = "deny"
 cargo = { level = "deny", priority = -1 }
 cargo_common_metadata = "allow"
+pedantic = { level = "deny", priority = -1 }
+must_use_candidate = "allow"
+missing_panics_doc = "allow"
+missing_errors_doc = "allow"
 
 [profile.fuzz]
 inherits = "dev"

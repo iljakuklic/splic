@@ -24,10 +24,13 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
     // ── Phase 1: Lex ────────────────────────────────────────────────────────
     let lex_result: Result<Vec<_>, _> = Lexer::new(&input).collect();
     let lex_snap = match &lex_result {
-        Ok(tokens) => tokens
-            .iter()
-            .map(|t| format!("{t:?}\n"))
-            .collect::<String>(),
+        Ok(tokens) => {
+            use std::fmt::Write as _;
+            tokens.iter().fold(String::new(), |mut s, t| {
+                writeln!(s, "{t:?}").unwrap();
+                s
+            })
+        }
         Err(e) => format!("ERROR\n{e:#}\n"),
     };
     expect_file![dir.join("1_lex.txt")].assert_eq(&lex_snap);
