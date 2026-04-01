@@ -1,3 +1,4 @@
+pub mod de_bruijn;
 pub mod name;
 pub mod operators;
 pub mod phase;

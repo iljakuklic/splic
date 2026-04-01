@@ -1,5 +1,6 @@
 use std::fmt;
 
+use crate::common::de_bruijn;
 use crate::parser::ast::Phase;
 
 use super::{Arm, Function, Name, Pat, Program, Term};
@@ -47,8 +48,8 @@ impl<'a> Term<'a> {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
             Term::Var(ix) => {
-                let lvl = ix.lvl_at_depth(super::Lvl(env.len()));
-                let i = lvl.0;
+                let lvl = ix.lvl_at(de_bruijn::Depth::new(env.len()));
+                let i = lvl.as_usize();
                 let name = env
                     .get(i)
                     .expect("De Bruijn level out of environment bounds");

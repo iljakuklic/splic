@@ -1,6 +1,7 @@
 use anyhow::{Context as _, Result, anyhow, bail, ensure};
 
-use crate::core::{self, IntType, IntWidth, Lam, Lvl, Phase, Pi, Prim, value};
+use crate::common::de_bruijn;
+use crate::core::{self, IntType, IntWidth, Lam, Phase, Pi, Prim, value};
 use crate::parser::ast;
 
 use super::{Ctx, builtin_prim_ty};
@@ -677,8 +678,9 @@ fn check_val_impl<'src, 'core>(
                      than the expected function type"
                 );
                 elaborated_params.push((param_name, annotated_ty));
+                let lvl = ctx.depth().as_lvl();
                 ctx.push_local_val(param_name, expected_domain);
-                arg_vals.push(value::Value::Rigid(Lvl(ctx.depth().0 - 1)));
+                arg_vals.push(value::Value::Rigid(lvl));
             }
 
             let body_ty_val = value::inst_n(ctx.arena, &vpi.ret_closure, &arg_vals);
@@ -707,7 +709,8 @@ fn check_val_impl<'src, 'core>(
             // have the expected type as a core term, refine per-arm by re-evaluating
             // that term with the arm's literal substituted for the scrutinee variable.
             let scrut_val = ctx.eval(core_scrutinee);
-            let scrut_refine: Option<(Lvl, IntType)> = match (&scrut_val, &scrut_ty_val) {
+            let scrut_refine: Option<(de_bruijn::Lvl, IntType)> = match (&scrut_val, &scrut_ty_val)
+            {
                 (value::Value::Rigid(lvl), value::Value::Prim(Prim::IntTy(it))) => {
                     Some((*lvl, *it))
                 }
@@ -722,7 +725,7 @@ fn check_val_impl<'src, 'core>(
                         let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
                             (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
                                 let mut env = ctx.env.clone();
-                                *env.get_mut(lvl.0)
+                                *env.get_mut(lvl.as_usize())
                                     .expect("scrutinee level must be in scope") =
                                     value::Value::Lit(*n, *int_ty);
                                 value::eval(ctx.arena, &env, ety)

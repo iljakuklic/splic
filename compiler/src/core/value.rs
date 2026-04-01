@@ -7,8 +7,8 @@
 use bumpalo::Bump;
 
 use super::prim::IntType;
-use super::{Lam, Lvl, Name, Pat, Pi, Prim, Term};
-use crate::common::Phase;
+use super::{Lam, Name, Pat, Pi, Prim, Term};
+use crate::common::{Phase, de_bruijn};
 
 /// Working evaluation environment: index 0 = outermost binding, last = innermost.
 /// `Var(Ix(i))` maps to `env[env.len() - 1 - i]`.
@@ -18,7 +18,7 @@ pub type Env<'a> = Vec<Value<'a>>;
 #[derive(Clone, Debug)]
 pub enum Value<'a> {
     /// Neutral: stuck on a local variable (identified by De Bruijn level)
-    Rigid(Lvl),
+    Rigid(de_bruijn::Lvl),
     /// Neutral: global function reference (not inlined during type-checking)
     Global(&'a Name),
     /// Neutral: unapplied or partially applied primitive
@@ -77,8 +77,8 @@ pub struct Closure<'a> {
 pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value<'a> {
     match term {
         Term::Var(ix) => {
-            let lvl = ix.lvl_at_depth(Lvl(env.len()));
-            let i = lvl.0;
+            let lvl = ix.lvl_at(de_bruijn::Depth::new(env.len()));
+            let i = lvl.as_usize();
             env.get(i)
                 .expect("De Bruijn index out of environment bounds")
                 .clone()
@@ -259,9 +259,13 @@ pub fn inst_n<'a>(arena: &'a Bump, closure: &Closure<'a>, args: &[Value<'a>]) ->
 /// Returns the quoted parameters, final depth, and the rigid values built during the process.
 fn quote_telescope<'a>(
     arena: &'a Bump,
-    initial_depth: Lvl,
+    initial_depth: de_bruijn::Depth,
     params: &[(&'a Name, Closure<'a>)],
-) -> (Vec<(&'a Name, &'a Term<'a>)>, Lvl, Vec<Value<'a>>) {
+) -> (
+    Vec<(&'a Name, &'a Term<'a>)>,
+    de_bruijn::Depth,
+    Vec<Value<'a>>,
+) {
     let mut rigid_vals = Vec::new();
     let mut quoted_params = Vec::new();
     let mut d = initial_depth;
@@ -270,7 +274,7 @@ fn quote_telescope<'a>(
         let param_val = inst_n(arena, param_cl, &rigid_vals);
         let param_term = quote(arena, d, &param_val);
         quoted_params.push((*name, param_term));
-        rigid_vals.push(Value::Rigid(d));
+        rigid_vals.push(Value::Rigid(d.as_lvl()));
         d = d.succ();
     }
 
@@ -279,11 +283,11 @@ fn quote_telescope<'a>(
 
 /// Convert a value back to a term (for error reporting and definitional equality).
 ///
-/// `depth` is the current De Bruijn level (number of locally-bound variables in scope).
-pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
+/// `depth` is the current De Bruijn depth (number of locally-bound variables in scope).
+pub fn quote<'a>(arena: &'a Bump, depth: de_bruijn::Depth, val: &Value<'a>) -> &'a Term<'a> {
     match val {
         Value::Rigid(lvl) => {
-            let ix = lvl.ix_at_depth(depth);
+            let ix = lvl.ix_at(depth);
             arena.alloc(Term::Var(ix))
         }
         Value::Global(name) => arena.alloc(Term::Global(name)),
@@ -334,7 +338,7 @@ pub fn quote<'a>(arena: &'a Bump, depth: Lvl, val: &Value<'a>) -> &'a Term<'a> {
 }
 
 /// Definitional equality: quote both values and compare structurally.
-pub fn val_eq<'a>(arena: &'a Bump, depth: Lvl, a: &Value<'a>, b: &Value<'a>) -> bool {
+pub fn val_eq<'a>(arena: &'a Bump, depth: de_bruijn::Depth, a: &Value<'a>, b: &Value<'a>) -> bool {
     let ta = quote(arena, depth, a);
     let tb = quote(arena, depth, b);
     super::alpha_eq::alpha_eq(ta, tb)
