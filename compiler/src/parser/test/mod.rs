@@ -2,7 +2,7 @@
     clippy::get_first,
     clippy::indexing_slicing,
     clippy::use_debug,
-    clippy::wildcard_enum_match_arm,
+    clippy::wildcard_enum_match_arm
 )]
 
 use std::path::PathBuf;
