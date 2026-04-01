@@ -8,6 +8,7 @@ use super::{Ctx, builtin_prim_ty};
 
 /// Infer the type of a surface term, returning both the elaborated core term
 /// and its type as a semantic value.
+#[expect(clippy::too_many_lines)]
 pub fn infer<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
     phase: Phase,
@@ -151,11 +152,10 @@ pub fn infer<'src, 'core>(
                 width: IntWidth::U1,
                 phase: op_int_ty.phase,
             }));
-            let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
             Ok((
                 ctx.alloc(core::Term::new_app(
                     ctx.alloc(core::Term::Prim(prim)),
-                    core_args,
+                    ctx.alloc_slice([core_arg0, core_arg1]),
                 )),
                 result_ty,
             ))
@@ -501,6 +501,7 @@ pub fn check_val<'src, 'core>(
 
 /// Internal implementation — `expected_term` carries the original core term for the expected
 /// type, enabling dependent-type arm refinement (re-evaluating under a modified env).
+#[expect(clippy::too_many_lines)]
 fn check_val_impl<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
     phase: Phase,
@@ -542,12 +543,12 @@ fn check_val_impl<'src, 'core>(
                 | ast::BinOp::Ge
         ) =>
         {
+            use ast::BinOp;
             let int_ty = match &expected {
                 value::Value::Prim(Prim::IntTy(it)) => *it,
                 _ => bail!("primitive operation requires an integer type"),
             };
 
-            use ast::BinOp;
             let prim = match op {
                 BinOp::Add => Prim::Add(int_ty),
                 BinOp::Sub => Prim::Sub(int_ty),
@@ -568,10 +569,9 @@ fn check_val_impl<'src, 'core>(
             let core_arg0 = check(ctx, phase, lhs, expected_term)?;
             let core_arg1 = check(ctx, phase, rhs, expected_term)?;
 
-            let core_args = ctx.alloc_slice([core_arg0, core_arg1]);
             Ok(ctx.alloc(core::Term::new_app(
                 ctx.alloc(core::Term::Prim(prim)),
-                core_args,
+                ctx.alloc_slice([core_arg0, core_arg1]),
             )))
         }
 

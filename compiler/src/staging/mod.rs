@@ -254,6 +254,7 @@ fn apply_closure_n<'out, 'eval>(
 }
 
 /// Evaluate a primitive operation at meta level.
+#[expect(clippy::too_many_lines)]
 fn eval_meta_prim<'out, 'eval>(
     arena: &'out Bump,
     eval_arena: &'eval Bump,
