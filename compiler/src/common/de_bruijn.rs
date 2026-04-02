@@ -84,4 +84,9 @@ impl Depth {
     pub const fn succ(self) -> Self {
         Self(self.0 + 1)
     }
+
+    #[must_use]
+    pub const fn pred(self) -> Self {
+        Self(self.0.checked_sub(1).expect("Depth underflow"))
+    }
 }

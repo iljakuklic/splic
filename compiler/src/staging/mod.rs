@@ -137,12 +137,7 @@ impl<'eval> Env<'eval> {
     fn pop(&mut self) {
         match self.bindings.pop().expect("pop on empty environment") {
             Binding::Obj(_) => {
-                self.obj_depth = de_bruijn::Depth::new(
-                    self.obj_depth
-                        .as_usize()
-                        .checked_sub(1)
-                        .expect("obj_depth underflow on pop"),
-                );
+                self.obj_depth = self.obj_depth.pred();
             }
             Binding::Meta(_) => {}
         }
