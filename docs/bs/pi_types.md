@@ -58,10 +58,11 @@ Lambda expressions use Rust's closure syntax:
 
 ```
 |x: A| body          // type annotation required
-|x: A, y: B| body    // multi-parameter (desugars to nested lambdas)
+|x: A, y: B| body    // multi-parameter
+|| body              // nullary: produces a fn() -> T value
 ```
 
-Type annotations on lambda parameters are **mandatory**. This makes lambdas inferable — the typechecker can construct the full Pi type from the annotation and the inferred body type, without needing an expected type pushed down from context. This is a deliberate simplification for the prototype; unannotated `|x| body` syntax may be added later when check-mode lambdas are needed.
+Type annotations on lambda parameters are **mandatory**. This makes lambdas inferable — the typechecker can construct the full Pi type from the annotation and the inferred body type, without needing an expected type pushed down from context. Check-mode (unannotated) lambdas are also supported when the expected Pi type is known from context.
 
 **Rationale.** The `|...|` syntax is familiar to Rust users. It reuses the existing `|` token. Disambiguation with bitwise OR is positional: `|` at the start of an atom is a lambda; `|` after an expression is bitwise OR.
 
@@ -97,25 +98,32 @@ The parameter type `A` comes from the annotation; the body type `B` is inferred 
 
 ### Elimination (Application)
 
-Application is inferable when the function is inferable:
+Application is inferable when the function is inferable. For a call `f(a₁, ..., aₙ)`, the number of arguments must **exactly match** the arity of the callee's Pi type:
 
 ```
-Γ ⊢ f ⇒ fn(x: A) -> B    Γ ⊢ arg ⇐ A
-─────────────────────────────────────────
-       Γ ⊢ f(arg) ⇒ B[arg/x]
+Γ ⊢ f ⇒ fn(x₁: A₁, ..., xₙ: Aₙ) -> B    Γ ⊢ aᵢ ⇐ Aᵢ[a₁/x₁, ..., aᵢ₋₁/xᵢ₋₁]
+──────────────────────────────────────────────────────────────────────────────────
+                  Γ ⊢ f(a₁, ..., aₙ) ⇒ B[a₁/x₁, ..., aₙ/xₙ]
 ```
 
-The return type `B[arg/x]` is the body type with the argument substituted for the parameter. For non-dependent functions this is just `B`.
+Each argument is checked against its domain, which may depend on prior arguments (supporting dependent telescopes). The return type has all parameters substituted. For non-dependent functions the types simplify to plain `B`.
 
-Multi-argument calls desugar to curried application: `f(a, b)` = `f(a)(b)`.
+**No partial application.** `f(a)` on a two-argument function `fn(A, B) -> C` is a type error — the arity must match exactly. To partially apply, the programmer must write an explicit eta-expansion: `|b: B| f(a, b)`.
+
+**Nullary functions.** `fn() -> T` is a distinct type from `T`. A value `f: fn() -> T` must be called explicitly with `f()` to produce a `T`. A bare reference to `f` does not evaluate the body.
 
 ## Core IR Design
 
 ### Term Representation
 
-**Variadic Design.** Pi and Lam carry a parameter list rather than a single parameter. This preserves arity information:
-- `fn(x: u64, y: u64) -> u64` is a single Pi with 2 params, not nested Pi types.
-- Application checking evaluates the domain, checks the argument, then advances via closure instantiation.
+**Variadic design (divergence from Kovacs).** In the Kovacs 2022 reference implementation, multi-param Pi types are represented as iterated single-param Pi types (currying): `fn(A, B) -> C` is stored as `fn(A) -> fn(B) -> C`. Splic diverges from this: Pi and Lam carry a parameter list, preserving the original arity:
+
+- `fn(x: u64, y: u64) -> u64` is a single Pi with 2 params, not two nested single-param Pi types.
+- `fn() -> T` is a Pi with 0 params, distinct from `T`.
+- Arity checking at call sites is strict: the argument list must have exactly as many elements as the Pi's parameter list.
+- Dependent telescopes are supported: the type of each parameter may depend on the values of preceding parameters.
+
+This design makes arity errors detectable without any runtime information, and avoids the ambiguity between `fn(A) -> fn(B) -> C` and `fn(A, B) -> C` that would arise from currying.
 
 **Phase field.** Pi types carry a phase distinguishing meta-level (printed as `fn`) from object-level (printed as `code fn`) function types.
 
@@ -180,7 +188,7 @@ fn use_id() -> u64 { id(u64, 42) }
 ### Const combinator
 
 ```splic
-fn const_(A: Type, B: Type) -> fn(A) -> fn(B) -> A {
+fn const_(A: Type, B: Type) -> fn(_: A) -> fn(_: B) -> A {
     |a: A| |b: B| a
 }
 ```
@@ -188,7 +196,7 @@ fn const_(A: Type, B: Type) -> fn(A) -> fn(B) -> A {
 ### Function composition
 
 ```splic
-fn compose(A: Type, B: Type, C: Type, f: fn(B) -> C, g: fn(A) -> B) -> fn(A) -> C {
+fn compose(A: Type, B: Type, C: Type, f: fn(_: B) -> C, g: fn(_: A) -> B) -> fn(_: A) -> C {
     |x: A| f(g(x))
 }
 ```
@@ -196,7 +204,7 @@ fn compose(A: Type, B: Type, C: Type, f: fn(B) -> C, g: fn(A) -> B) -> fn(A) -> 
 ### Higher-order staging
 
 ```splic
-fn map_code(f: fn([[u64]]) -> [[u64]], x: [[u64]]) -> [[u64]] {
+fn map_code(f: fn(_: [[u64]]) -> [[u64]], x: [[u64]]) -> [[u64]] {
     f(x)
 }
 
