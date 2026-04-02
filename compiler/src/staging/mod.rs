@@ -600,22 +600,22 @@ fn eval_obj<'eval>(
 /// Names are copied into the output arena here — `eval_obj` stores bare references
 /// into the (temporary) eval arena; this is the single place they migrate to `'out`.
 fn quote_obj<'out>(
-    arena: &'out Bump,
+    out_arena: &'out Bump,
     depth: de_bruijn::Depth,
     val: &ObjVal<'_>,
 ) -> &'out Term<'out> {
     match val {
-        ObjVal::Var(lvl) => arena.alloc(Term::Var(lvl.ix_at(depth))),
-        ObjVal::Lit(n, it) => arena.alloc(Term::Lit(*n, *it)),
-        ObjVal::Prim(p) => arena.alloc(Term::Prim(*p)),
+        ObjVal::Var(lvl) => out_arena.alloc(Term::Var(lvl.ix_at(depth))),
+        ObjVal::Lit(n, it) => out_arena.alloc(Term::Lit(*n, *it)),
+        ObjVal::Prim(p) => out_arena.alloc(Term::Prim(*p)),
         ObjVal::Global(name) => {
-            arena.alloc(Term::Global(Name::new(arena.alloc_str(name.as_str()))))
+            out_arena.alloc(Term::Global(Name::new(out_arena.alloc_str(name.as_str()))))
         }
         ObjVal::App(func, args) => {
-            let qfunc = quote_obj(arena, depth, func);
-            let qargs =
-                arena.alloc_slice_fill_iter(args.iter().map(|a| quote_obj(arena, depth, a)));
-            arena.alloc(Term::new_app(qfunc, qargs))
+            let qfunc = quote_obj(out_arena, depth, func);
+            let qargs = out_arena
+                .alloc_slice_fill_iter(args.iter().map(|a| quote_obj(out_arena, depth, a)));
+            out_arena.alloc(Term::new_app(qfunc, qargs))
         }
         ObjVal::Let {
             name,
@@ -623,15 +623,15 @@ fn quote_obj<'out>(
             expr,
             body,
         } => {
-            let qty = quote_obj(arena, depth, ty);
-            let qexpr = quote_obj(arena, depth, expr);
-            let qbody = quote_obj(arena, depth.succ(), body);
-            let out_name = Name::new(arena.alloc_str(name.as_str()));
-            arena.alloc(Term::new_let(out_name, qty, qexpr, qbody))
+            let qty = quote_obj(out_arena, depth, ty);
+            let qexpr = quote_obj(out_arena, depth, expr);
+            let qbody = quote_obj(out_arena, depth.succ(), body);
+            let out_name = Name::new(out_arena.alloc_str(name.as_str()));
+            out_arena.alloc(Term::new_let(out_name, qty, qexpr, qbody))
         }
         ObjVal::Match { scrutinee, arms } => {
-            let qscrutinee = quote_obj(arena, depth, scrutinee);
-            let qarms = arena.alloc_slice_fill_iter(arms.iter().map(|arm| {
+            let qscrutinee = quote_obj(out_arena, depth, scrutinee);
+            let qarms = out_arena.alloc_slice_fill_iter(arms.iter().map(|arm| {
                 let arm_depth = if arm.pat.bound_name().is_some() {
                     depth.succ()
                 } else {
@@ -639,15 +639,15 @@ fn quote_obj<'out>(
                 };
                 let out_pat = match &arm.pat {
                     Pat::Lit(n) => Pat::Lit(*n),
-                    Pat::Bind(name) => Pat::Bind(Name::new(arena.alloc_str(name.as_str()))),
+                    Pat::Bind(name) => Pat::Bind(Name::new(out_arena.alloc_str(name.as_str()))),
                     Pat::Wildcard => Pat::Wildcard,
                 };
                 Arm {
                     pat: out_pat,
-                    body: quote_obj(arena, arm_depth, arm.body),
+                    body: quote_obj(out_arena, arm_depth, arm.body),
                 }
             }));
-            arena.alloc(Term::new_match(qscrutinee, qarms))
+            out_arena.alloc(Term::new_match(qscrutinee, qarms))
         }
     }
 }
@@ -656,17 +656,12 @@ fn quote_obj<'out>(
 
 /// Unstage an elaborated program.
 ///
-/// - `arena`: output arena; the returned `Program<'out>` is allocated here.
+/// - `out_arena`: output arena; the returned `Program<'out>` is allocated here.
 /// - `program`: input core program; may be dropped once this function returns.
 pub fn unstage_program<'out, 'core>(
-    arena: &'out Bump,
+    out_arena: &'out Bump,
     program: &'core Program<'core>,
 ) -> Result<Program<'out>> {
-    // Temporary arena for all intermediate `ObjVal` nodes and eval-phase data.
-    // Everything allocated here is discarded once staging is complete; only the
-    // final `Term` output written to `arena` survives.
-    let eval_bump = Bump::new();
-
     let globals: Globals<'_> = program
         .functions
         .iter()
@@ -686,27 +681,31 @@ pub fn unstage_program<'out, 'core>(
         .iter()
         .filter(|f| f.pi().phase == Phase::Object)
         .map(|f| -> Result<_> {
+            // Per-function eval arena: all intermediate `ObjVal` nodes are
+            // allocated here and freed automatically when this closure returns.
+            let eval_arena = Bump::new();
+
             let pi = f.pi();
             let mut env = Env::new(de_bruijn::Depth::ZERO);
 
-            let staged_params = arena.alloc_slice_try_fill_iter(pi.params.iter().map(
+            let staged_params = out_arena.alloc_slice_try_fill_iter(pi.params.iter().map(
                 |(n, ty)| -> Result<(&'out Name, &'out Term<'out>)> {
-                    let ty_val = eval_obj(&eval_bump, &globals, &mut env, ty)?;
-                    let staged_ty = quote_obj(arena, env.obj_depth, ty_val);
+                    let ty_val = eval_obj(&eval_arena, &globals, &mut env, ty)?;
+                    let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
                     env.push_obj();
-                    Ok((Name::new(arena.alloc_str(n.as_str())), staged_ty))
+                    Ok((Name::new(out_arena.alloc_str(n.as_str())), staged_ty))
                 },
             ))?;
 
-            let ret_ty_val = eval_obj(&eval_bump, &globals, &mut env, pi.body_ty)?;
-            let staged_ret_ty = quote_obj(arena, env.obj_depth, ret_ty_val);
+            let ret_ty_val = eval_obj(&eval_arena, &globals, &mut env, pi.body_ty)?;
+            let staged_ret_ty = quote_obj(out_arena, env.obj_depth, ret_ty_val);
 
-            let body_val = eval_obj(&eval_bump, &globals, &mut env, f.body)?;
-            let staged_body = quote_obj(arena, env.obj_depth, body_val);
+            let body_val = eval_obj(&eval_arena, &globals, &mut env, f.body)?;
+            let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
 
             Ok(Function {
-                name: Name::new(arena.alloc_str(f.name.as_str())),
-                ty: arena.alloc(Pi {
+                name: Name::new(out_arena.alloc_str(f.name.as_str())),
+                ty: out_arena.alloc(Pi {
                     params: staged_params,
                     body_ty: staged_ret_ty,
                     phase: Phase::Object,
@@ -716,6 +715,6 @@ pub fn unstage_program<'out, 'core>(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let functions = arena.alloc_slice_fill_iter(staged_fns);
+    let functions = out_arena.alloc_slice_fill_iter(staged_fns);
     Ok(Program { functions })
 }
