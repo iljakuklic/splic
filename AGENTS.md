@@ -46,7 +46,7 @@ cargo test -p splic-compiler <FILTER>  # Run matching tests
 
 Use `--quiet` to suppress per-test output and only show the summary lines; errors still appear in full.
 
-Note: `just test` adds `--locked` and snapshot drift detection; prefer `cargo test` directly during development for flexibility.
+Note: `just test` adds `--locked`; `just test-full` additionally checks for snapshot drift and is used in CI. Prefer `cargo test` directly during development for flexibility.
 
 ### Checking / building
 ```bash
