@@ -298,7 +298,10 @@ where
         Ok(lhs)
     }
 
-    #[expect(clippy::wildcard_enum_match_arm)]
+    #[expect(
+        clippy::wildcard_enum_match_arm,
+        reason = "unrecognised tokens are intentionally caught by the wildcard arm"
+    )]
     fn match_unop(&mut self) -> Option<UnOp> {
         match self.peek()? {
             Token::Bang => Some(UnOp::Not),
@@ -306,7 +309,10 @@ where
         }
     }
 
-    #[expect(clippy::wildcard_enum_match_arm)]
+    #[expect(
+        clippy::wildcard_enum_match_arm,
+        reason = "unrecognised tokens are intentionally caught by the wildcard arm"
+    )]
     fn match_binop(&mut self) -> Option<BinOp> {
         match self.peek()? {
             // `|` after an expression is bitwise OR (never lambda — lambdas are atoms)
@@ -405,7 +411,10 @@ where
         Ok(Term::Lam { params, body })
     }
 
-    #[expect(clippy::wildcard_enum_match_arm)]
+    #[expect(
+        clippy::wildcard_enum_match_arm,
+        reason = "unrecognised tokens are intentionally caught by the wildcard arm"
+    )]
     fn parse_atom_owned(&mut self) -> Result<Term<'a>> {
         let token = self.next().context("expected expression")??;
         match token {
@@ -452,7 +461,10 @@ where
         Ok(arms)
     }
 
-    #[expect(clippy::wildcard_enum_match_arm)]
+    #[expect(
+        clippy::wildcard_enum_match_arm,
+        reason = "unrecognised tokens are intentionally caught by the wildcard arm"
+    )]
     fn parse_pattern(&mut self) -> Result<Pat<'a>> {
         let token = self.next().context("expected pattern")??;
         match token {
