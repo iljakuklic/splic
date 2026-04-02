@@ -19,8 +19,17 @@ warnings = "deny"
 
 [workspace.lints.clippy]
 # nursery
+branches_sharing_code = "deny"
+clear_with_drain = "deny"
+debug_assert_with_mut_call = "deny"
 derive_partial_eq_without_eq = "deny"
+literal_string_with_formatting_args = "deny"
 missing_const_for_fn = "deny"
+needless_pass_by_ref_mut = "deny"
+nonstandard_macro_braces = "deny"
+redundant_clone = "deny"
+too_long_first_doc_paragraph = "deny"
+trait_duplication_in_bounds = "deny"
 use_self = "deny"
 
 # restriction
