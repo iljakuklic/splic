@@ -563,8 +563,8 @@ fn eval_obj<'eval>(
         // ── Match ────────────────────────────────────────────────────────────
         Term::Match(match_) => {
             let scrutinee_val = eval_obj(eval_arena, globals, env, match_.scrutinee)?;
-            let arm_vals: &'eval [ObjArm<'eval>] =
-                eval_arena.alloc_slice_try_fill_iter(match_.arms.iter().map(|arm| -> Result<_> {
+            let arm_vals: &'eval [ObjArm<'eval>] = eval_arena.alloc_slice_try_fill_iter(
+                match_.arms.iter().map(|arm| -> Result<_> {
                     let has_binding = arm.pat.bound_name().is_some();
                     if has_binding {
                         env.push_obj();
@@ -577,7 +577,8 @@ fn eval_obj<'eval>(
                         pat: arm.pat.clone(),
                         body: body_val?,
                     })
-                }))?;
+                }),
+            )?;
             Ok(eval_arena.alloc(ObjVal::Match {
                 scrutinee: scrutinee_val,
                 arms: arm_vals,
