@@ -66,13 +66,11 @@ This keeps object typechecking simple; object code is *data* during meta computa
 ```rust
 enum Binding<'a> {
     Meta(MetaVal<'a>),
-    Obj(ObjVal<'a>),
-}
-
-struct Env<'a> {
-    vars: Vec<(&'a str, Binding<'a>)>,  // indexed by De Bruijn level
+    Obj(Lvl),           // object variable tracks its De Bruijn level in the output
 }
 ```
+
+Variables are indexed by De Bruijn level (oldest binding first); variable names are not stored in the environment — they are only kept in terms for pretty-printing.
 
 **Rationale**:
 - Cleaner when meta needs to reference object bindings via quotation (single lookup).
@@ -82,61 +80,22 @@ struct Env<'a> {
 
 ---
 
-### 4. Lambda Evaluation Strategy — Substitution First, Spines Later ✅
+### 4. Lambda Evaluation Strategy — NbE with Environment Closures ✅
 
-**Decision**: Use explicit substitution (Option 1) for the initial prototype. Refactor to
-spine-based evaluation (Option 3) before introducing dependent types.
+**Decision**: Use Normalization by Evaluation (NbE) with environment-captured closures throughout, for both the type checker and the staging evaluator.
 
-**Initial approach (substitution)**:
-```rust
-enum MetaVal<'a> {
-    VVar(Lvl),
-    VLam(&'a str, &'a MetaTm<'a>),  // unevaluated body
-    VCode(&'a ObjVal<'a>),
-    // ... literals, prims, etc.
-}
+**Actual approach (NbE)**:
+- Lambdas and Pi types evaluate to semantic values carrying a snapshot of the environment at creation time (closures).
+- Application extends the captured environment with argument values and re-evaluates the body.
+- `quote` converts semantic values back to terms by introducing fresh rigid variables.
+- Definitional equality is checked by quoting both sides and comparing structurally (α-equivalence).
 
-fn eval_meta_app(func: MetaVal, arg: MetaVal, env: &Env, arena: &Bump) -> MetaVal {
-    match func {
-        MetaVal::VLam(name, body) => {
-            // extend env with arg, re-evaluate body
-            let extended_env = env.extend(arena, name, arg);
-            eval_meta(arena, &extended_env, body)
-        }
-        // ... other cases
-    }
-}
-```
+This approach was chosen over the substitution-first → spine-based path originally planned because:
+- NbE is well-suited to the dependent type checking needed for Pi types.
+- It handles all three concerns (staging evaluator, type checker, definitional equality) with a single uniform mechanism.
+- The multi-param variadic design (see `pi_types.md`) fits naturally: domain closures for each parameter share a base environment snapshot and accumulate argument values incrementally.
 
-**Rationale for starting with substitution**:
-- Simplest to implement correctly and test.
-- Easy to debug and reason about.
-- Fits naturally with arena allocation (extend env, re-eval).
-- Good enough for initial staging without optimization.
-- Allows rapid prototyping and testing of staging semantics.
-
-**Why refactor to spines before dependent types**:
-- With dependent types, you have dependent elimination (fold, recursor, etc.) that evaluates under binders.
-- Re-evaluation on each application becomes painful in that context (redundant work, no memoization).
-- Spine-based evaluation (lazy, tracking pending operations) is the *proven* approach in dependently typed languages (Agda, Lean, etc.).
-- Unification with spines is standard and more efficient.
-- If you refactor later, you're refactoring with an existing test corpus and staging semantics already validated.
-
-**Spine-based approach (future)**:
-```rust
-enum MetaSpine<'a> {
-    SId,
-    SApp(Box<MetaSpine<'a>>, MetaVal<'a>),
-}
-
-enum MetaVal<'a> {
-    VVar(Lvl, MetaSpine<'a>),        // stuck variable + pending ops
-    VLam(&'a str, &'a MetaTm<'a>),   // lambda (unevaluated)
-    // ... other values
-}
-```
-
-When applying a lambda, push the argument onto a spine; only force evaluation when needed.
+**Spine-based evaluation** remains an option for future optimization (lazy forcing under binders, more efficient unification), but is not currently required.
 
 ---
 
@@ -175,33 +134,29 @@ is needed for dependent types.
 
 ## Implementation Sequence
 
-See [prototype_next.md](prototype_next.md) for the full roadmap, but the evaluator-specific sequence is:
+The original plan described three phases. The actual path differed: Phase 2 (spine refactor) was skipped; the implementation went directly to NbE with environment closures, which subsumes both Phase 1 and Phase 2.
 
-1. **Phase 1: Substitution-based evaluator + staging**
-   - Implement `eval_meta`, `eval_obj`, unified `Env`.
-   - Implement `unstage` entry point: `eval_obj(arena, Env::empty(), program) -> Term` (splice-free).
-   - Test corpus: snapshots of staged programs (e.g., `repeat` example).
-   - Goal: Staging works; splice elimination is validated.
+1. **Phase 1: Staging evaluator** ✅
+   - Implemented `eval_meta`, unified `Env`, `unstage_program` entry point.
+   - Test corpus: snapshots of staged programs.
 
-2. **Phase 2: Refactor to spine-based evaluation**
-   - Restructure evaluator to use spines; lazy application.
-   - Implement `force` / `quote` for re-normalization when needed.
-   - All existing tests should still pass (change is internal to evaluator).
-   - Goal: Prepared for dependent types; potential performance improvements.
+2. **Phase 2: Spine-based refactor** — *skipped*
+   - Original plan was to refactor to spines before dependent types.
+   - Instead, NbE with closures was implemented directly (see Decision 4), which handles dependent types without a separate refactor step.
 
-3. **Phase 3: Introduce dependent types**
-   - Add `Π` (dependent function type).
-   - Implement dependent elimination (fold, recursor, or general elimination).
-   - Implement unification with spines.
-   - Add normalizer for conversion checking (using spine-based evaluator).
-   - Annotate `Lit` with `IntType` (now required for `type_of`).
-   - Goal: Full dependent meta level.
+3. **Phase 3: Dependent Pi types** ✅
+   - NbE type checker with `eval` / `quote` / definitional equality.
+   - Multi-param variadic Pi and Lam (no currying; strict arity checking).
+   - Dependent telescopes via domain closures.
+   - See `pi_types.md` for the design.
+
+**Remaining future work**: spine-based evaluation (optimization), implicit arguments, object-level closures. See `prototype_next.md`.
 
 ---
 
 ## References
 
-- **2LTT Overview**: [../../.opencode/skills/2ltt/implementation-guide.md](../../.opencode/skills/2ltt/implementation-guide.md)
+- **Pi Types Design**: [pi_types.md](pi_types.md)
 - **Reference Implementation**: https://github.com/AndrasKovacs/staged
 - **Kovács 2022**: Staged Compilation with Two-Level Type Theory (ICFP)
 - **Kovács 2024**: Closure-Free Functional Programming in a Two-Level Type Theory
