@@ -2,7 +2,8 @@
     clippy::get_first,
     clippy::wildcard_enum_match_arm,
     clippy::indexing_slicing,
-    clippy::similar_names
+    clippy::similar_names,
+    reason = "test code"
 )]
 
 use std::collections::HashMap;

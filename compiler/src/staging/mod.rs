@@ -253,8 +253,41 @@ fn apply_closure_n<'out, 'eval>(
     }
 }
 
+fn eval_lit<'out, 'eval>(
+    arena: &'out Bump,
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    env: &mut Env<'out, 'eval>,
+    arg: &'eval Term<'eval>,
+) -> Result<u64> {
+    eval_meta(arena, eval_arena, globals, env, arg).map(|v| match v {
+        MetaVal::Lit(n) => n,
+        MetaVal::Code { .. } | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
+            "expected integer meta value for primitive operand (typechecker invariant)"
+        ),
+    })
+}
+
+fn eval_bin_args<'out, 'eval>(
+    arena: &'out Bump,
+    eval_arena: &'eval Bump,
+    globals: &Globals<'eval>,
+    env: &mut Env<'out, 'eval>,
+    args: &'eval [&'eval Term<'eval>],
+) -> Result<(u64, u64)> {
+    let [lhs, rhs] = args else {
+        panic!("binary primitive requires exactly 2 arguments (typechecker invariant)")
+    };
+    let a = eval_lit(arena, eval_arena, globals, env, lhs)?;
+    let b = eval_lit(arena, eval_arena, globals, env, rhs)?;
+    Ok((a, b))
+}
+
 /// Evaluate a primitive operation at meta level.
-#[expect(clippy::too_many_lines)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "large match over all primitive operations"
+)]
 fn eval_meta_prim<'out, 'eval>(
     arena: &'out Bump,
     eval_arena: &'eval Bump,
@@ -263,25 +296,10 @@ fn eval_meta_prim<'out, 'eval>(
     prim: Prim,
     args: &'eval [&'eval Term<'eval>],
 ) -> Result<MetaVal<'out, 'eval>> {
-    let eval_lit = |arena: &'out Bump,
-                    eval_arena: &'eval Bump,
-                    globals: &Globals<'eval>,
-                    env: &mut Env<'out, 'eval>,
-                    arg: &'eval Term<'eval>| {
-        eval_meta(arena, eval_arena, globals, env, arg).map(|v| match v {
-            MetaVal::Lit(n) => n,
-            MetaVal::Code { .. } | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
-                "expected integer meta value for primitive operand (typechecker invariant)"
-            ),
-        })
-    };
-
-    #[expect(clippy::indexing_slicing)]
     match prim {
         // ── Arithmetic ────────────────────────────────────────────────────────
         Prim::Add(IntType { width, .. }) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             let result = a
                 .checked_add(b)
                 .filter(|&r| r <= width.max_value())
@@ -296,8 +314,7 @@ fn eval_meta_prim<'out, 'eval>(
             Ok(MetaVal::Lit(result))
         }
         Prim::Sub(IntType { width, .. }) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             let result = a.checked_sub(b).ok_or_else(|| {
                 anyhow!(
                     "arithmetic overflow during staging: \
@@ -307,8 +324,7 @@ fn eval_meta_prim<'out, 'eval>(
             Ok(MetaVal::Lit(result))
         }
         Prim::Mul(IntType { width, .. }) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             let result = a
                 .checked_mul(b)
                 .filter(|&r| r <= width.max_value())
@@ -323,63 +339,60 @@ fn eval_meta_prim<'out, 'eval>(
             Ok(MetaVal::Lit(result))
         }
         Prim::Div(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             ensure!(b != 0, "division by zero during staging");
             Ok(MetaVal::Lit(a / b))
         }
 
         // ── Bitwise ───────────────────────────────────────────────────────────
         Prim::BitAnd(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(a & b))
         }
         Prim::BitOr(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(a | b))
         }
         Prim::BitNot(IntType { width, .. }) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let [arg] = args else {
+                panic!("unary primitive requires exactly 1 argument (typechecker invariant)")
+            };
+            let a = eval_lit(arena, eval_arena, globals, env, arg)?;
             Ok(MetaVal::Lit(mask_to_width(width, !a)))
         }
 
         // ── Comparison ────────────────────────────────────────────────────────
         Prim::Eq(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(u64::from(a == b)))
         }
         Prim::Ne(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(u64::from(a != b)))
         }
         Prim::Lt(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(u64::from(a < b)))
         }
         Prim::Gt(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(u64::from(a > b)))
         }
         Prim::Le(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(u64::from(a <= b)))
         }
         Prim::Ge(_) => {
-            let a = eval_lit(arena, eval_arena, globals, env, args[0])?;
-            let b = eval_lit(arena, eval_arena, globals, env, args[1])?;
+            let (a, b) = eval_bin_args(arena, eval_arena, globals, env, args)?;
             Ok(MetaVal::Lit(u64::from(a >= b)))
         }
 
         // ── Embed: meta integer → object code ─────────────────────────────────
         Prim::Embed(width) => {
-            let n = eval_lit(arena, eval_arena, globals, env, args[0])?;
+            let [arg] = args else {
+                panic!("unary primitive requires exactly 1 argument (typechecker invariant)")
+            };
+            let n = eval_lit(arena, eval_arena, globals, env, arg)?;
             let phase = Phase::Object;
             let lit_term = arena.alloc(Term::Lit(n, IntType { width, phase }));
             Ok(MetaVal::Code {

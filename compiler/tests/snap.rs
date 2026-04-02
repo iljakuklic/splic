@@ -1,3 +1,5 @@
+#![allow(clippy::unwrap_used, reason = "test code")]
+
 use bumpalo::Bump;
 use expect_test::expect_file;
 use rstest::rstest;

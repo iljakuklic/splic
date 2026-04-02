@@ -8,7 +8,10 @@ use super::{Ctx, builtin_prim_ty};
 
 /// Infer the type of a surface term, returning both the elaborated core term
 /// and its type as a semantic value.
-#[expect(clippy::too_many_lines)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "large match over all surface term variants"
+)]
 pub fn infer<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
     phase: Phase,
@@ -501,7 +504,10 @@ pub fn check_val<'src, 'core>(
 
 /// Internal implementation — `expected_term` carries the original core term for the expected
 /// type, enabling dependent-type arm refinement (re-evaluating under a modified env).
-#[expect(clippy::too_many_lines)]
+#[expect(
+    clippy::too_many_lines,
+    reason = "large match over all surface term variants"
+)]
 fn check_val_impl<'src, 'core>(
     ctx: &mut Ctx<'core, '_>,
     phase: Phase,

@@ -166,8 +166,10 @@ impl<'a> Lexer<'a> {
     fn read_token(&mut self) -> Option<Result<Token<'a>>> {
         let orig_len = self.input.len();
         let result = self.read_token_impl();
-        // Ensure lexer either made progress or reports an end of input
-        assert!(result.is_none() || self.input.len() < orig_len);
+        assert!(
+            result.is_none() || self.input.len() < orig_len,
+            "lexer made no progress and did not return None (infinite loop guard)"
+        );
         result
     }
 
