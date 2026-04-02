@@ -4,31 +4,69 @@ use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
 use crate::common::de_bruijn;
-use crate::core::{Arm, Function, IntType, IntWidth, Lam, Name, Pat, Pi, Prim, Program, Term};
+use crate::core::{Arm, Function, IntType, IntWidth, Name, Pat, Pi, Prim, Program, Term};
 use crate::parser::ast::Phase;
 
-// ── Value types ───────────────────────────────────────────────────────────────
+// ── Object-level semantic values ──────────────────────────────────────────────
+
+/// A fully-evaluated object-level value using De Bruijn **levels**.
+///
+/// Variables are represented as absolute levels (not indices), so splicing a
+/// value into any depth requires no index shifting.  A final `quote_obj` pass
+/// converts levels back to De Bruijn indices.
+///
+/// No closures are needed here because object-level lambdas and Pi types are
+/// forbidden in Splic (the type-checker enforces this); `eval_obj` eagerly
+/// evaluates under binders by extending the environment with fresh level variables.
+#[derive(Clone, Debug)]
+enum ObjVal<'a> {
+    /// Local variable identified by De Bruijn level (absolute, context-independent).
+    Var(de_bruijn::Lvl),
+    /// Integer literal.
+    Lit(u64, IntType),
+    /// Unapplied primitive.
+    Prim(Prim),
+    /// Global function reference.
+    Global(&'a Name),
+    /// Application.
+    App(&'a Self, &'a [Self]),
+    /// Let binding.
+    Let {
+        name: &'a Name,
+        ty: &'a Self,
+        expr: &'a Self,
+        body: &'a Self,
+    },
+    /// Pattern match.
+    Match {
+        scrutinee: &'a Self,
+        arms: &'a [ObjArm<'a>],
+    },
+}
+
+#[derive(Clone, Debug)]
+struct ObjArm<'a> {
+    pat: Pat<'a>,
+    body: &'a ObjVal<'a>,
+}
+
+// ── Meta-level values ─────────────────────────────────────────────────────────
 
 /// A value produced by meta-level evaluation.
 ///
 /// Two lifetime parameters:
-/// - `'out`: lifetime of the output arena (for `Code` values that appear in the result).
+/// - `'out`: lifetime of the output arena (for `Quote` values that appear in the result).
 /// - `'eval`: lifetime of the evaluation phase — covers both the input program data (`'core`)
 ///   and any temporary terms allocated in the local eval arena.  Since `Term` is covariant
-///   in its lifetime, `'core` data can be coerced to `'eval` at call sites.
+///   in its lifetime, `'core` data can be coercible to `'eval` at call sites.
 #[derive(Clone, Debug)]
 enum MetaVal<'out, 'eval> {
     /// A concrete integer value computed at meta (compile) time.
     Lit(u64),
-    /// Quoted object-level code, tagged with the output depth at creation time.
+    /// Quoted object-level code as a semantic value.
     ///
-    /// The embedded term's `Var(Ix(i))` nodes are valid relative to `depth` object bindings in
-    /// scope.  When the code value is later spliced into a deeper context, free variable indices
-    /// must be shifted by `(current_depth - depth)` before the term can be used.
-    Code {
-        term: &'out Term<'out>,
-        depth: de_bruijn::Depth,
-    },
+    /// Uses De Bruijn levels internally, so it can be spliced into any depth without adjustment.
+    Quote(&'out ObjVal<'out>),
     /// A type term passed as a type argument (dependent types: types are values).
     /// The type term itself is not inspected during evaluation.
     Ty,
@@ -173,11 +211,8 @@ fn eval_meta<'out, 'eval>(
 
         // ── Quote: #(t) ──────────────────────────────────────────────────────
         Term::Quote(inner) => {
-            let obj_term = unstage_obj(arena, eval_arena, globals, env, inner)?;
-            Ok(MetaVal::Code {
-                term: obj_term,
-                depth: env.obj_depth,
-            })
+            let obj_val = eval_obj(arena, eval_arena, globals, env, inner)?;
+            Ok(MetaVal::Quote(obj_val))
         }
 
         // ── Let binding ──────────────────────────────────────────────────────
@@ -194,7 +229,7 @@ fn eval_meta<'out, 'eval>(
             let scrut_val = eval_meta(arena, eval_arena, globals, env, match_.scrutinee)?;
             let n = match scrut_val {
                 MetaVal::Lit(n) => n,
-                MetaVal::Code { .. } | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
+                MetaVal::Quote(_) | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
                     "cannot match on non-integer at meta level (typechecker invariant)"
                 ),
             };
@@ -247,7 +282,7 @@ fn apply_closure_n<'out, 'eval>(
             }
             eval_meta(arena, eval_arena, globals, &mut callee_env, body)
         }
-        MetaVal::Lit(_) | MetaVal::Code { .. } | MetaVal::Ty => {
+        MetaVal::Lit(_) | MetaVal::Quote(_) | MetaVal::Ty => {
             unreachable!("applying a non-function value (typechecker invariant)")
         }
     }
@@ -262,7 +297,7 @@ fn eval_lit<'out, 'eval>(
 ) -> Result<u64> {
     eval_meta(arena, eval_arena, globals, env, arg).map(|v| match v {
         MetaVal::Lit(n) => n,
-        MetaVal::Code { .. } | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
+        MetaVal::Quote(_) | MetaVal::Ty | MetaVal::Closure { .. } => unreachable!(
             "expected integer meta value for primitive operand (typechecker invariant)"
         ),
     })
@@ -284,10 +319,6 @@ fn eval_bin_args<'out, 'eval>(
 }
 
 /// Evaluate a primitive operation at meta level.
-#[expect(
-    clippy::too_many_lines,
-    reason = "large match over all primitive operations"
-)]
 fn eval_meta_prim<'out, 'eval>(
     arena: &'out Bump,
     eval_arena: &'eval Bump,
@@ -394,11 +425,8 @@ fn eval_meta_prim<'out, 'eval>(
             };
             let n = eval_lit(arena, eval_arena, globals, env, arg)?;
             let phase = Phase::Object;
-            let lit_term = arena.alloc(Term::Lit(n, IntType { width, phase }));
-            Ok(MetaVal::Code {
-                term: lit_term,
-                depth: env.obj_depth,
-            })
+            let lit_val = arena.alloc(ObjVal::Lit(n, IntType { width, phase }));
+            Ok(MetaVal::Quote(lit_val))
         }
 
         // ── Type-level prims are unreachable ──────────────────────────────────
@@ -449,115 +477,26 @@ fn eval_meta_match<'out, 'eval>(
     ))
 }
 
-// ── Index shifting ────────────────────────────────────────────────────────────
+// ── Object-level evaluator ────────────────────────────────────────────────────
 
-/// Shift all free (>= `cutoff`) De Bruijn indices in `term` upward by `shift`.
+/// Evaluate an object-level `term` to an `ObjVal`, eliminating all `Splice` nodes.
 ///
-/// Used when splicing a `Code` value that was created at a shallower output depth into a deeper
-/// context: every free variable index must increase by the depth difference.
-fn shift_free_ix<'out>(
-    arena: &'out Bump,
-    term: &'out Term<'out>,
-    shift: usize,
-    cutoff: usize,
-) -> &'out Term<'out> {
-    if shift == 0 {
-        return term;
-    }
-    match term {
-        Term::Var(ix) => {
-            if ix.as_usize() >= cutoff {
-                arena.alloc(Term::Var(de_bruijn::Ix::new(ix.as_usize() + shift)))
-            } else {
-                term
-            }
-        }
-        Term::Prim(_) | Term::Lit(_, _) | Term::Global(_) => term,
-        Term::App(app) => {
-            let new_func = shift_free_ix(arena, app.func, shift, cutoff);
-            let new_args = arena.alloc_slice_fill_iter(
-                app.args
-                    .iter()
-                    .map(|a| shift_free_ix(arena, a, shift, cutoff)),
-            );
-            arena.alloc(Term::new_app(new_func, new_args))
-        }
-        Term::Lam(lam) => {
-            let mut c = cutoff;
-            let new_params = arena.alloc_slice_fill_iter(lam.params.iter().map(|&(name, ty)| {
-                let new_ty = shift_free_ix(arena, ty, shift, c);
-                c += 1;
-                (name, new_ty as &'out Term<'out>)
-            }));
-            let new_body = shift_free_ix(arena, lam.body, shift, c);
-            arena.alloc(Term::Lam(Lam {
-                params: new_params,
-                body: new_body,
-            }))
-        }
-        Term::Pi(pi) => {
-            let mut c = cutoff;
-            let new_params = arena.alloc_slice_fill_iter(pi.params.iter().map(|&(name, ty)| {
-                let new_ty = shift_free_ix(arena, ty, shift, c);
-                c += 1;
-                (name, new_ty as &'out Term<'out>)
-            }));
-            let new_body_ty = shift_free_ix(arena, pi.body_ty, shift, c);
-            arena.alloc(Term::Pi(Pi {
-                params: new_params,
-                body_ty: new_body_ty,
-                phase: pi.phase,
-            }))
-        }
-        Term::Lift(inner) => arena.alloc(Term::Lift(shift_free_ix(arena, inner, shift, cutoff))),
-        Term::Quote(inner) => arena.alloc(Term::Quote(shift_free_ix(arena, inner, shift, cutoff))),
-        Term::Splice(inner) => {
-            arena.alloc(Term::Splice(shift_free_ix(arena, inner, shift, cutoff)))
-        }
-        Term::Let(let_) => {
-            let new_ty = shift_free_ix(arena, let_.ty, shift, cutoff);
-            let new_expr = shift_free_ix(arena, let_.expr, shift, cutoff);
-            let new_body = shift_free_ix(arena, let_.body, shift, cutoff + 1);
-            arena.alloc(Term::new_let(let_.name, new_ty, new_expr, new_body))
-        }
-        Term::Match(match_) => {
-            let new_scrutinee = shift_free_ix(arena, match_.scrutinee, shift, cutoff);
-            let new_arms = arena.alloc_slice_fill_iter(match_.arms.iter().map(|arm| {
-                let arm_cutoff = cutoff + usize::from(arm.pat.bound_name().is_some());
-                Arm {
-                    pat: arm.pat.clone(),
-                    body: shift_free_ix(arena, arm.body, shift, arm_cutoff),
-                }
-            }));
-            arena.alloc(Term::new_match(new_scrutinee, new_arms))
-        }
-    }
-}
-
-// ── Object-level unstager ─────────────────────────────────────────────────────
-
-/// Unstage an object-level `term`, eliminating all `Splice` nodes.
-fn unstage_obj<'out, 'eval>(
+/// Variables are stored as De Bruijn levels so the result can be spliced into any
+/// depth without index shifting.  Call `quote_obj` to convert back to a `Term`.
+fn eval_obj<'out, 'eval>(
     arena: &'out Bump,
     eval_arena: &'eval Bump,
     globals: &Globals<'eval>,
     env: &mut Env<'out, 'eval>,
     term: &'eval Term<'eval>,
-) -> Result<&'out Term<'out>> {
+) -> Result<&'out ObjVal<'out>> {
     match term {
         // ── Variable ─────────────────────────────────────────────────────────
         Term::Var(ix) => match env.get_ix(*ix) {
-            Binding::Obj(out_lvl) => {
-                // Convert output level → De Bruijn index relative to current output depth.
-                let out_ix = de_bruijn::Ix::new(env.obj_depth.as_usize() - out_lvl.as_usize() - 1);
-                Ok(arena.alloc(Term::Var(out_ix)))
-            }
-            Binding::Meta(MetaVal::Code { term, depth }) => Ok(shift_free_ix(
-                arena,
-                term,
-                env.obj_depth.as_usize() - depth.as_usize(),
-                0,
-            )),
+            Binding::Obj(lvl) => Ok(arena.alloc(ObjVal::Var(*lvl))),
+            // A spliced code value stored as a Quote: return the ObjVal directly.
+            // No index shifting needed — the value uses absolute levels.
+            Binding::Meta(MetaVal::Quote(v)) => Ok(v),
             Binding::Meta(MetaVal::Lit(_)) => unreachable!(
                 "integer meta variable at index {} referenced in object context \
                  (typechecker invariant)",
@@ -576,37 +515,33 @@ fn unstage_obj<'out, 'eval>(
         },
 
         // ── Literal ──────────────────────────────────────────────────────────
-        Term::Lit(n, it) => Ok(arena.alloc(Term::Lit(*n, *it))),
+        Term::Lit(n, it) => Ok(arena.alloc(ObjVal::Lit(*n, *it))),
 
         // ── Primitive ────────────────────────────────────────────────────────
-        Term::Prim(p) => Ok(arena.alloc(Term::Prim(*p))),
+        Term::Prim(p) => Ok(arena.alloc(ObjVal::Prim(*p))),
 
-        // ── Global reference (in object terms, e.g. object-level function call) ──
+        // ── Global reference ─────────────────────────────────────────────────
         Term::Global(name) => {
-            Ok(arena.alloc(Term::Global(Name::new(arena.alloc_str(name.as_str())))))
+            Ok(arena.alloc(ObjVal::Global(Name::new(arena.alloc_str(name.as_str())))))
         }
 
         // ── App ───────────────────────────────────────────────────────────────
         Term::App(app) => {
-            let staged_func = unstage_obj(arena, eval_arena, globals, env, app.func)?;
-            let staged_args: &'out [&'out Term<'out>] = arena.alloc_slice_try_fill_iter(
+            let func_val = eval_obj(arena, eval_arena, globals, env, app.func)?;
+            let arg_vals: &'out [ObjVal<'out>] = arena.alloc_slice_try_fill_iter(
                 app.args
                     .iter()
-                    .map(|arg| unstage_obj(arena, eval_arena, globals, env, arg)),
+                    .map(|arg| eval_obj(arena, eval_arena, globals, env, arg).cloned()),
             )?;
-            Ok(arena.alloc(Term::new_app(staged_func, staged_args)))
+            Ok(arena.alloc(ObjVal::App(func_val, arg_vals)))
         }
 
         // ── Splice: $(t) — the key staging step ──────────────────────────────
         Term::Splice(inner) => {
             let meta_val = eval_meta(arena, eval_arena, globals, env, inner)?;
             match meta_val {
-                MetaVal::Code { term, depth } => Ok(shift_free_ix(
-                    arena,
-                    term,
-                    env.obj_depth.as_usize() - depth.as_usize(),
-                    0,
-                )),
+                // Return the ObjVal directly — no index shifting, levels are absolute.
+                MetaVal::Quote(v) => Ok(v),
                 MetaVal::Lit(_) | MetaVal::Ty | MetaVal::Closure { .. } => {
                     unreachable!("splice evaluated to non-code value (typechecker invariant)")
                 }
@@ -615,25 +550,25 @@ fn unstage_obj<'out, 'eval>(
 
         // ── Let binding ──────────────────────────────────────────────────────
         Term::Let(let_) => {
-            let staged_ty = unstage_obj(arena, eval_arena, globals, env, let_.ty)?;
-            let staged_expr = unstage_obj(arena, eval_arena, globals, env, let_.expr)?;
+            let ty_val = eval_obj(arena, eval_arena, globals, env, let_.ty)?;
+            let expr_val = eval_obj(arena, eval_arena, globals, env, let_.expr)?;
             env.push_obj();
-            let staged_body = unstage_obj(arena, eval_arena, globals, env, let_.body);
+            let body_val = eval_obj(arena, eval_arena, globals, env, let_.body);
             env.pop();
-            Ok(arena.alloc(Term::new_let(
-                Name::new(arena.alloc_str(let_.name.as_str())),
-                staged_ty,
-                staged_expr,
-                staged_body?,
-            )))
+            Ok(arena.alloc(ObjVal::Let {
+                name: Name::new(arena.alloc_str(let_.name.as_str())),
+                ty: ty_val,
+                expr: expr_val,
+                body: body_val?,
+            }))
         }
 
         // ── Match ────────────────────────────────────────────────────────────
         Term::Match(match_) => {
-            let staged_scrutinee = unstage_obj(arena, eval_arena, globals, env, match_.scrutinee)?;
-            let staged_arms: &'out [Arm<'out>] =
+            let scrutinee_val = eval_obj(arena, eval_arena, globals, env, match_.scrutinee)?;
+            let arm_vals: &'out [ObjArm<'out>] =
                 arena.alloc_slice_try_fill_iter(match_.arms.iter().map(|arm| -> Result<_> {
-                    let staged_pat = match &arm.pat {
+                    let pat = match &arm.pat {
                         Pat::Lit(n) => Pat::Lit(*n),
                         Pat::Bind(name) => Pat::Bind(Name::new(arena.alloc_str(name.as_str()))),
                         Pat::Wildcard => Pat::Wildcard,
@@ -642,22 +577,75 @@ fn unstage_obj<'out, 'eval>(
                     if has_binding {
                         env.push_obj();
                     }
-                    let staged_body = unstage_obj(arena, eval_arena, globals, env, arm.body);
+                    let body_val = eval_obj(arena, eval_arena, globals, env, arm.body);
                     if has_binding {
                         env.pop();
                     }
-                    Ok(Arm {
-                        pat: staged_pat,
-                        body: staged_body?,
+                    Ok(ObjArm {
+                        pat,
+                        body: body_val?,
                     })
                 }))?;
-            Ok(arena.alloc(Term::new_match(staged_scrutinee, staged_arms)))
+            Ok(arena.alloc(ObjVal::Match {
+                scrutinee: scrutinee_val,
+                arms: arm_vals,
+            }))
         }
 
         // ── Unreachable in well-typed object terms ───────────────────────────
         Term::Quote(_) => unreachable!("Quote in object context (typechecker invariant)"),
         Term::Lift(_) | Term::Pi(_) | Term::Lam(_) => {
             unreachable!("meta-only term in object context (typechecker invariant)")
+        }
+    }
+}
+
+// ── Object-level readback ─────────────────────────────────────────────────────
+
+/// Convert an `ObjVal` back to a `Term` by translating De Bruijn levels to indices.
+///
+/// `depth` is the number of object-level variables currently in scope.
+fn quote_obj<'out>(
+    arena: &'out Bump,
+    depth: de_bruijn::Depth,
+    val: &ObjVal<'out>,
+) -> &'out Term<'out> {
+    match val {
+        ObjVal::Var(lvl) => arena.alloc(Term::Var(lvl.ix_at(depth))),
+        ObjVal::Lit(n, it) => arena.alloc(Term::Lit(*n, *it)),
+        ObjVal::Prim(p) => arena.alloc(Term::Prim(*p)),
+        ObjVal::Global(name) => arena.alloc(Term::Global(name)),
+        ObjVal::App(func, args) => {
+            let qfunc = quote_obj(arena, depth, func);
+            let qargs =
+                arena.alloc_slice_fill_iter(args.iter().map(|a| quote_obj(arena, depth, a)));
+            arena.alloc(Term::new_app(qfunc, qargs))
+        }
+        ObjVal::Let {
+            name,
+            ty,
+            expr,
+            body,
+        } => {
+            let qty = quote_obj(arena, depth, ty);
+            let qexpr = quote_obj(arena, depth, expr);
+            let qbody = quote_obj(arena, depth.succ(), body);
+            arena.alloc(Term::new_let(name, qty, qexpr, qbody))
+        }
+        ObjVal::Match { scrutinee, arms } => {
+            let qscrutinee = quote_obj(arena, depth, scrutinee);
+            let qarms = arena.alloc_slice_fill_iter(arms.iter().map(|arm| {
+                let arm_depth = if arm.pat.bound_name().is_some() {
+                    depth.succ()
+                } else {
+                    depth
+                };
+                Arm {
+                    pat: arm.pat.clone(),
+                    body: quote_obj(arena, arm_depth, arm.body),
+                }
+            }));
+            arena.alloc(Term::new_match(qscrutinee, qarms))
         }
     }
 }
@@ -702,14 +690,18 @@ pub fn unstage_program<'out, 'core>(
 
             let staged_params = arena.alloc_slice_try_fill_iter(pi.params.iter().map(
                 |(n, ty)| -> Result<(&'out Name, &'out Term<'out>)> {
-                    let staged_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, ty)?;
+                    let ty_val = eval_obj(arena, &eval_bump, &globals, &mut env, ty)?;
+                    let staged_ty = quote_obj(arena, env.obj_depth, ty_val);
                     env.push_obj();
                     Ok((Name::new(arena.alloc_str(n.as_str())), staged_ty))
                 },
             ))?;
 
-            let staged_ret_ty = unstage_obj(arena, &eval_bump, &globals, &mut env, pi.body_ty)?;
-            let staged_body = unstage_obj(arena, &eval_bump, &globals, &mut env, f.body)?;
+            let ret_ty_val = eval_obj(arena, &eval_bump, &globals, &mut env, pi.body_ty)?;
+            let staged_ret_ty = quote_obj(arena, env.obj_depth, ret_ty_val);
+
+            let body_val = eval_obj(arena, &eval_bump, &globals, &mut env, f.body)?;
+            let staged_body = quote_obj(arena, env.obj_depth, body_val);
 
             Ok(Function {
                 name: Name::new(arena.alloc_str(f.name.as_str())),
