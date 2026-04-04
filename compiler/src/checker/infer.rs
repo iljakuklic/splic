@@ -157,7 +157,7 @@ pub fn infer<'src, 'core>(
             }));
             Ok((
                 ctx.alloc(core::Term::new_app(
-                    ctx.alloc(core::Term::Prim(prim)),
+                    ctx.alloc(prim.into()),
                     ctx.alloc_slice([core_arg0, core_arg1]),
                 )),
                 result_ty,
@@ -576,7 +576,7 @@ fn check_val_impl<'src, 'core>(
             let core_arg1 = check(ctx, phase, rhs, expected_term)?;
 
             Ok(ctx.alloc(core::Term::new_app(
-                ctx.alloc(core::Term::Prim(prim)),
+                ctx.alloc(prim.into()),
                 ctx.alloc_slice([core_arg0, core_arg1]),
             )))
         }
@@ -602,7 +602,7 @@ fn check_val_impl<'src, 'core>(
             let core_arg = check(ctx, phase, arg, expected_term)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
             Ok(ctx.alloc(core::Term::new_app(
-                ctx.alloc(core::Term::Prim(prim)),
+                ctx.alloc(prim.into()),
                 core_args,
             )))
         }
