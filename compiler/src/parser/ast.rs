@@ -11,9 +11,11 @@ pub enum FunName<'a> {
     UnOp(UnOp),
 }
 
-#[derive(Debug)]
+#[derive(derive_more::Debug)]
 pub enum Pat<'a> {
+    #[debug("{_0:?}")]
     Name(&'a Name),
+    #[debug("{_0:?}")]
     Lit(u64),
 }
 
@@ -50,9 +52,11 @@ pub struct Program<'a> {
     pub functions: &'a [Function<'a>],
 }
 
-#[derive(Debug)]
+#[derive(derive_more::Debug)]
 pub enum Term<'a> {
+    #[debug("{_0:?}")]
     Lit(u64),
+    #[debug("{_0:?}")]
     Var(&'a Name),
     App {
         func: FunName<'a>,

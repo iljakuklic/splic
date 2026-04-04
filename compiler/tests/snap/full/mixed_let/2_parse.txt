@@ -4,9 +4,7 @@ Program {
             phase: Object,
             name: "foo",
             params: [],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [],
                 expr: Splice(
@@ -15,13 +13,9 @@ Program {
                             Let {
                                 name: "y",
                                 ty: Some(
-                                    Var(
-                                        "u32",
-                                    ),
+                                    "u32",
                                 ),
-                                expr: Lit(
-                                    1337,
-                                ),
+                                expr: 1337,
                             },
                         ],
                         expr: Quote(
@@ -30,18 +24,12 @@ Program {
                                     Let {
                                         name: "z",
                                         ty: Some(
-                                            Var(
-                                                "u32",
-                                            ),
+                                            "u32",
                                         ),
-                                        expr: Lit(
-                                            42,
-                                        ),
+                                        expr: 42,
                                     },
                                 ],
-                                expr: Var(
-                                    "z",
-                                ),
+                                expr: "z",
                             },
                         ),
                     },

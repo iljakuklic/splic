@@ -6,25 +6,17 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: App {
                     func: Add,
                     args: [
-                        Var(
-                            "x",
-                        ),
-                        Var(
-                            "x",
-                        ),
+                        "x",
+                        "x",
                     ],
                 },
             },
@@ -35,52 +27,30 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [],
                 expr: Match {
-                    scrutinee: Var(
-                        "x",
-                    ),
+                    scrutinee: "x",
                     arms: [
                         MatchArm {
-                            pat: Lit(
-                                0,
-                            ),
-                            body: Lit(
-                                0,
-                            ),
+                            pat: 0,
+                            body: 0,
                         },
                         MatchArm {
-                            pat: Lit(
-                                1,
-                            ),
-                            body: Lit(
-                                1,
-                            ),
+                            pat: 1,
+                            body: 1,
                         },
                         MatchArm {
-                            pat: Lit(
-                                2,
-                            ),
-                            body: Lit(
-                                2,
-                            ),
+                            pat: 2,
+                            body: 2,
                         },
                         MatchArm {
-                            pat: Name(
-                                "_",
-                            ),
-                            body: Lit(
-                                3,
-                            ),
+                            pat: "_",
+                            body: 3,
                         },
                     ],
                 },
@@ -90,9 +60,7 @@ Program {
             phase: Meta,
             name: "test",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [
                     Let {
@@ -102,21 +70,15 @@ Program {
                             params: [
                                 Param {
                                     name: "A",
-                                    ty: Var(
-                                        "Type",
-                                    ),
+                                    ty: "Type",
                                 },
                                 Param {
                                     name: "B",
-                                    ty: Var(
-                                        "Type",
-                                    ),
+                                    ty: "Type",
                                 },
                                 Param {
                                     name: "C",
-                                    ty: Var(
-                                        "Type",
-                                    ),
+                                    ty: "Type",
                                 },
                             ],
                             body: Lam {
@@ -127,14 +89,10 @@ Program {
                                             params: [
                                                 Param {
                                                     name: "_",
-                                                    ty: Var(
-                                                        "B",
-                                                    ),
+                                                    ty: "B",
                                                 },
                                             ],
-                                            ret_ty: Var(
-                                                "C",
-                                            ),
+                                            ret_ty: "C",
                                         },
                                     },
                                     Param {
@@ -143,14 +101,10 @@ Program {
                                             params: [
                                                 Param {
                                                     name: "_",
-                                                    ty: Var(
-                                                        "A",
-                                                    ),
+                                                    ty: "A",
                                                 },
                                             ],
-                                            ret_ty: Var(
-                                                "B",
-                                            ),
+                                            ret_ty: "B",
                                         },
                                     },
                                 ],
@@ -158,24 +112,16 @@ Program {
                                     params: [
                                         Param {
                                             name: "x",
-                                            ty: Var(
-                                                "A",
-                                            ),
+                                            ty: "A",
                                         },
                                     ],
                                     body: App {
-                                        func: Var(
-                                            "f",
-                                        ),
+                                        func: "f",
                                         args: [
                                             App {
-                                                func: Var(
-                                                    "g",
-                                                ),
+                                                func: "g",
                                                 args: [
-                                                    Var(
-                                                        "x",
-                                                    ),
+                                                    "x",
                                                 ],
                                             },
                                         ],
@@ -188,34 +134,20 @@ Program {
                 expr: App {
                     func: App {
                         func: App {
-                            func: Var(
-                                "compose",
-                            ),
+                            func: "compose",
                             args: [
-                                Var(
-                                    "u64",
-                                ),
-                                Var(
-                                    "u64",
-                                ),
-                                Var(
-                                    "u8",
-                                ),
+                                "u64",
+                                "u64",
+                                "u8",
                             ],
                         },
                         args: [
-                            Var(
-                                "to_u8",
-                            ),
-                            Var(
-                                "double",
-                            ),
+                            "to_u8",
+                            "double",
                         ],
                     },
                     args: [
-                        Lit(
-                            5,
-                        ),
+                        5,
                     ],
                 },
             },
@@ -224,16 +156,12 @@ Program {
             phase: Object,
             name: "result",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "test",
-                        ),
+                        func: "test",
                         args: [],
                     },
                 ),

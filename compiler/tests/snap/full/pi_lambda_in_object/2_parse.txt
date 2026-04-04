@@ -6,28 +6,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Lam {
                     params: [
                         Param {
                             name: "y",
-                            ty: Var(
-                                "u64",
-                            ),
+                            ty: "u64",
                         },
                     ],
-                    body: Var(
-                        "y",
-                    ),
+                    body: "y",
                 },
             },
         },

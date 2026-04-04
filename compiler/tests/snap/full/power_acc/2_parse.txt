@@ -7,68 +7,46 @@ Program {
                 Param {
                     name: "x",
                     ty: Lift(
-                        Var(
-                            "u64",
-                        ),
-                    ),
-                },
-                Param {
-                    name: "k",
-                    ty: Var(
                         "u64",
                     ),
                 },
                 Param {
+                    name: "k",
+                    ty: "u64",
+                },
+                Param {
                     name: "r",
                     ty: Lift(
-                        Var(
-                            "u64",
-                        ),
+                        "u64",
                     ),
                 },
             ],
             ret_ty: Lift(
-                Var(
-                    "u64",
-                ),
+                "u64",
             ),
             body: Block {
                 stmts: [],
                 expr: Match {
-                    scrutinee: Var(
-                        "k",
-                    ),
+                    scrutinee: "k",
                     arms: [
                         MatchArm {
-                            pat: Lit(
-                                0,
-                            ),
-                            body: Var(
-                                "r",
-                            ),
+                            pat: 0,
+                            body: "r",
                         },
                         MatchArm {
-                            pat: Name(
-                                "k",
-                            ),
+                            pat: "k",
                             body: Block {
                                 stmts: [
                                     Let {
                                         name: "odd",
                                         ty: Some(
-                                            Var(
-                                                "u64",
-                                            ),
+                                            "u64",
                                         ),
                                         expr: App {
                                             func: BitAnd,
                                             args: [
-                                                Var(
-                                                    "k",
-                                                ),
-                                                Lit(
-                                                    1,
-                                                ),
+                                                "k",
+                                                1,
                                             ],
                                         },
                                     },
@@ -79,14 +57,10 @@ Program {
                                             Let {
                                                 name: "x1",
                                                 ty: Some(
-                                                    Var(
-                                                        "u64",
-                                                    ),
+                                                    "u64",
                                                 ),
                                                 expr: Splice(
-                                                    Var(
-                                                        "x",
-                                                    ),
+                                                    "x",
                                                 ),
                                             },
                                         ],
@@ -95,89 +69,59 @@ Program {
                                                 scrutinee: App {
                                                     func: Eq,
                                                     args: [
-                                                        Var(
-                                                            "odd",
-                                                        ),
-                                                        Lit(
-                                                            1,
-                                                        ),
+                                                        "odd",
+                                                        1,
                                                     ],
                                                 },
                                                 arms: [
                                                     MatchArm {
-                                                        pat: Lit(
-                                                            0,
-                                                        ),
+                                                        pat: 0,
                                                         body: App {
-                                                            func: Var(
-                                                                "power_acc",
-                                                            ),
+                                                            func: "power_acc",
                                                             args: [
                                                                 Quote(
                                                                     App {
                                                                         func: Mul,
                                                                         args: [
-                                                                            Var(
-                                                                                "x1",
-                                                                            ),
-                                                                            Var(
-                                                                                "x1",
-                                                                            ),
+                                                                            "x1",
+                                                                            "x1",
                                                                         ],
                                                                     },
                                                                 ),
                                                                 App {
                                                                     func: Div,
                                                                     args: [
-                                                                        Var(
-                                                                            "k",
-                                                                        ),
-                                                                        Lit(
-                                                                            2,
-                                                                        ),
+                                                                        "k",
+                                                                        2,
                                                                     ],
                                                                 },
-                                                                Var(
-                                                                    "r",
-                                                                ),
+                                                                "r",
                                                             ],
                                                         },
                                                     },
                                                     MatchArm {
-                                                        pat: Lit(
-                                                            1,
-                                                        ),
+                                                        pat: 1,
                                                         body: Quote(
                                                             Block {
                                                                 stmts: [],
                                                                 expr: Splice(
                                                                     App {
-                                                                        func: Var(
-                                                                            "power_acc",
-                                                                        ),
+                                                                        func: "power_acc",
                                                                         args: [
                                                                             Quote(
                                                                                 App {
                                                                                     func: Mul,
                                                                                     args: [
-                                                                                        Var(
-                                                                                            "x1",
-                                                                                        ),
-                                                                                        Var(
-                                                                                            "x1",
-                                                                                        ),
+                                                                                        "x1",
+                                                                                        "x1",
                                                                                     ],
                                                                                 },
                                                                             ),
                                                                             App {
                                                                                 func: Div,
                                                                                 args: [
-                                                                                    Var(
-                                                                                        "k",
-                                                                                    ),
-                                                                                    Lit(
-                                                                                        2,
-                                                                                    ),
+                                                                                    "k",
+                                                                                    2,
                                                                                 ],
                                                                             },
                                                                             Quote(
@@ -185,13 +129,9 @@ Program {
                                                                                     func: Mul,
                                                                                     args: [
                                                                                         Splice(
-                                                                                            Var(
-                                                                                                "r",
-                                                                                            ),
+                                                                                            "r",
                                                                                         ),
-                                                                                        Var(
-                                                                                            "x1",
-                                                                                        ),
+                                                                                        "x1",
                                                                                     ],
                                                                                 },
                                                                             ),
@@ -219,62 +159,42 @@ Program {
                 Param {
                     name: "x",
                     ty: Lift(
-                        Var(
-                            "u64",
-                        ),
+                        "u64",
                     ),
                 },
                 Param {
                     name: "k",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
             ret_ty: Lift(
-                Var(
-                    "u64",
-                ),
+                "u64",
             ),
             body: Block {
                 stmts: [],
                 expr: Match {
-                    scrutinee: Var(
-                        "k",
-                    ),
+                    scrutinee: "k",
                     arms: [
                         MatchArm {
-                            pat: Lit(
-                                0,
-                            ),
+                            pat: 0,
                             body: Quote(
-                                Lit(
-                                    1,
-                                ),
+                                1,
                             ),
                         },
                         MatchArm {
-                            pat: Name(
-                                "k",
-                            ),
+                            pat: "k",
                             body: Block {
                                 stmts: [
                                     Let {
                                         name: "odd",
                                         ty: Some(
-                                            Var(
-                                                "u64",
-                                            ),
+                                            "u64",
                                         ),
                                         expr: App {
                                             func: BitAnd,
                                             args: [
-                                                Var(
-                                                    "k",
-                                                ),
-                                                Lit(
-                                                    1,
-                                                ),
+                                                "k",
+                                                1,
                                             ],
                                         },
                                     },
@@ -285,14 +205,10 @@ Program {
                                             Let {
                                                 name: "x1",
                                                 ty: Some(
-                                                    Var(
-                                                        "u64",
-                                                    ),
+                                                    "u64",
                                                 ),
                                                 expr: Splice(
-                                                    Var(
-                                                        "x",
-                                                    ),
+                                                    "x",
                                                 ),
                                             },
                                         ],
@@ -301,88 +217,58 @@ Program {
                                                 scrutinee: App {
                                                     func: Eq,
                                                     args: [
-                                                        Var(
-                                                            "odd",
-                                                        ),
-                                                        Lit(
-                                                            1,
-                                                        ),
+                                                        "odd",
+                                                        1,
                                                     ],
                                                 },
                                                 arms: [
                                                     MatchArm {
-                                                        pat: Lit(
-                                                            0,
-                                                        ),
+                                                        pat: 0,
                                                         body: App {
-                                                            func: Var(
-                                                                "power_acc_1",
-                                                            ),
+                                                            func: "power_acc_1",
                                                             args: [
                                                                 Quote(
                                                                     App {
                                                                         func: Mul,
                                                                         args: [
-                                                                            Var(
-                                                                                "x1",
-                                                                            ),
-                                                                            Var(
-                                                                                "x1",
-                                                                            ),
+                                                                            "x1",
+                                                                            "x1",
                                                                         ],
                                                                     },
                                                                 ),
                                                                 App {
                                                                     func: Div,
                                                                     args: [
-                                                                        Var(
-                                                                            "k",
-                                                                        ),
-                                                                        Lit(
-                                                                            2,
-                                                                        ),
+                                                                        "k",
+                                                                        2,
                                                                     ],
                                                                 },
                                                             ],
                                                         },
                                                     },
                                                     MatchArm {
-                                                        pat: Lit(
-                                                            1,
-                                                        ),
+                                                        pat: 1,
                                                         body: App {
-                                                            func: Var(
-                                                                "power_acc",
-                                                            ),
+                                                            func: "power_acc",
                                                             args: [
                                                                 Quote(
                                                                     App {
                                                                         func: Mul,
                                                                         args: [
-                                                                            Var(
-                                                                                "x1",
-                                                                            ),
-                                                                            Var(
-                                                                                "x1",
-                                                                            ),
+                                                                            "x1",
+                                                                            "x1",
                                                                         ],
                                                                     },
                                                                 ),
                                                                 App {
                                                                     func: Div,
                                                                     args: [
-                                                                        Var(
-                                                                            "k",
-                                                                        ),
-                                                                        Lit(
-                                                                            2,
-                                                                        ),
+                                                                        "k",
+                                                                        2,
                                                                     ],
                                                                 },
                                                                 Quote(
-                                                                    Var(
-                                                                        "x1",
-                                                                    ),
+                                                                    "x1",
                                                                 ),
                                                             ],
                                                         },
@@ -405,36 +291,24 @@ Program {
                 Param {
                     name: "x",
                     ty: Lift(
-                        Var(
-                            "u64",
-                        ),
+                        "u64",
                     ),
                 },
                 Param {
                     name: "k",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
             ret_ty: Lift(
-                Var(
-                    "u64",
-                ),
+                "u64",
             ),
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: Var(
-                        "power_acc_1",
-                    ),
+                    func: "power_acc_1",
                     args: [
-                        Var(
-                            "x",
-                        ),
-                        Var(
-                            "k",
-                        ),
+                        "x",
+                        "k",
                     ],
                 },
             },
@@ -445,30 +319,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
-                            Lit(
-                                1,
-                            ),
+                            1,
                         ],
                     },
                 ),
@@ -480,30 +344,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
-                            Lit(
-                                5,
-                            ),
+                            5,
                         ],
                     },
                 ),
@@ -515,21 +369,15 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
                                 Block {
@@ -537,31 +385,21 @@ Program {
                                         Let {
                                             name: "y",
                                             ty: Some(
-                                                Var(
-                                                    "u64",
-                                                ),
+                                                "u64",
                                             ),
                                             expr: App {
                                                 func: Add,
                                                 args: [
-                                                    Var(
-                                                        "x",
-                                                    ),
-                                                    Lit(
-                                                        1,
-                                                    ),
+                                                    "x",
+                                                    1,
                                                 ],
                                             },
                                         },
                                     ],
-                                    expr: Var(
-                                        "y",
-                                    ),
+                                    expr: "y",
                                 },
                             ),
-                            Lit(
-                                11,
-                            ),
+                            11,
                         ],
                     },
                 ),
@@ -573,30 +411,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
-                            Lit(
-                                15,
-                            ),
+                            15,
                         ],
                     },
                 ),
@@ -608,30 +436,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
-                            Lit(
-                                16,
-                            ),
+                            16,
                         ],
                     },
                 ),
@@ -643,30 +461,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
-                            Lit(
-                                17,
-                            ),
+                            17,
                         ],
                     },
                 ),

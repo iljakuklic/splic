@@ -6,38 +6,28 @@ Program {
             params: [
                 Param {
                     name: "A",
-                    ty: Var(
-                        "Type",
-                    ),
+                    ty: "Type",
                 },
                 Param {
                     name: "B",
-                    ty: Var(
-                        "Type",
-                    ),
+                    ty: "Type",
                 },
             ],
             ret_ty: Pi {
                 params: [
                     Param {
                         name: "_",
-                        ty: Var(
-                            "A",
-                        ),
+                        ty: "A",
                     },
                 ],
                 ret_ty: Pi {
                     params: [
                         Param {
                             name: "_",
-                            ty: Var(
-                                "B",
-                            ),
+                            ty: "B",
                         },
                     ],
-                    ret_ty: Var(
-                        "A",
-                    ),
+                    ret_ty: "A",
                 },
             },
             body: Block {
@@ -46,23 +36,17 @@ Program {
                     params: [
                         Param {
                             name: "a",
-                            ty: Var(
-                                "A",
-                            ),
+                            ty: "A",
                         },
                     ],
                     body: Lam {
                         params: [
                             Param {
                                 name: "b",
-                                ty: Var(
-                                    "B",
-                                ),
+                                ty: "B",
                             },
                         ],
-                        body: Var(
-                            "a",
-                        ),
+                        body: "a",
                     },
                 },
             },
@@ -71,36 +55,24 @@ Program {
             phase: Meta,
             name: "test",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: App {
                     func: App {
                         func: App {
-                            func: Var(
-                                "const_",
-                            ),
+                            func: "const_",
                             args: [
-                                Var(
-                                    "u64",
-                                ),
-                                Var(
-                                    "u8",
-                                ),
+                                "u64",
+                                "u8",
                             ],
                         },
                         args: [
-                            Lit(
-                                42,
-                            ),
+                            42,
                         ],
                     },
                     args: [
-                        Lit(
-                            7,
-                        ),
+                        7,
                     ],
                 },
             },
@@ -109,16 +81,12 @@ Program {
             phase: Object,
             name: "result",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "test",
-                        ),
+                        func: "test",
                         args: [],
                     },
                 ),

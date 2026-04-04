@@ -4,30 +4,22 @@ Program {
             phase: Meta,
             name: "val",
             params: [],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [],
-                expr: Lit(
-                    42,
-                ),
+                expr: 42,
             },
         },
         Function {
             phase: Object,
             name: "use_val",
             params: [],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "val",
-                        ),
+                        func: "val",
                         args: [],
                     },
                 ),

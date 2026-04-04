@@ -7,52 +7,34 @@ Program {
                 Param {
                     name: "x",
                     ty: Lift(
-                        Var(
-                            "u64",
-                        ),
+                        "u64",
                     ),
                 },
                 Param {
                     name: "exp",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
             ret_ty: Lift(
-                Var(
-                    "u64",
-                ),
+                "u64",
             ),
             body: Block {
                 stmts: [],
                 expr: Match {
-                    scrutinee: Var(
-                        "exp",
-                    ),
+                    scrutinee: "exp",
                     arms: [
                         MatchArm {
-                            pat: Lit(
-                                0,
-                            ),
+                            pat: 0,
                             body: Quote(
-                                Lit(
-                                    1,
-                                ),
-                            ),
-                        },
-                        MatchArm {
-                            pat: Lit(
                                 1,
                             ),
-                            body: Var(
-                                "x",
-                            ),
                         },
                         MatchArm {
-                            pat: Name(
-                                "exp",
-                            ),
+                            pat: 1,
+                            body: "x",
+                        },
+                        MatchArm {
+                            pat: "exp",
                             body: Block {
                                 stmts: [],
                                 expr: Quote(
@@ -61,31 +43,21 @@ Program {
                                         args: [
                                             Splice(
                                                 App {
-                                                    func: Var(
-                                                        "power",
-                                                    ),
+                                                    func: "power",
                                                     args: [
-                                                        Var(
-                                                            "x",
-                                                        ),
+                                                        "x",
                                                         App {
                                                             func: Sub,
                                                             args: [
-                                                                Var(
-                                                                    "exp",
-                                                                ),
-                                                                Lit(
-                                                                    1,
-                                                                ),
+                                                                "exp",
+                                                                1,
                                                             ],
                                                         },
                                                     ],
                                                 },
                                             ),
                                             Splice(
-                                                Var(
-                                                    "x",
-                                                ),
+                                                "x",
                                             ),
                                         ],
                                     },
@@ -102,30 +74,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
-                            Lit(
-                                5,
-                            ),
+                            5,
                         ],
                     },
                 ),
@@ -137,30 +99,20 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "power",
-                        ),
+                        func: "power",
                         args: [
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
-                            Lit(
-                                11,
-                            ),
+                            11,
                         ],
                     },
                 ),

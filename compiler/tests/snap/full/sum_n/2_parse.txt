@@ -6,57 +6,37 @@ Program {
             params: [
                 Param {
                     name: "n",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Match {
-                    scrutinee: Var(
-                        "n",
-                    ),
+                    scrutinee: "n",
                     arms: [
                         MatchArm {
-                            pat: Lit(
-                                0,
-                            ),
-                            body: Lit(
-                                0,
-                            ),
+                            pat: 0,
+                            body: 0,
                         },
                         MatchArm {
-                            pat: Name(
-                                "n",
-                            ),
+                            pat: "n",
                             body: App {
                                 func: Add,
                                 args: [
                                     App {
-                                        func: Var(
-                                            "sum_n",
-                                        ),
+                                        func: "sum_n",
                                         args: [
                                             App {
                                                 func: Sub,
                                                 args: [
-                                                    Var(
-                                                        "n",
-                                                    ),
-                                                    Lit(
-                                                        1,
-                                                    ),
+                                                    "n",
+                                                    1,
                                                 ],
                                             },
                                         ],
                                     },
-                                    Var(
-                                        "n",
-                                    ),
+                                    "n",
                                 ],
                             },
                         },
@@ -68,20 +48,14 @@ Program {
             phase: Object,
             name: "sum_to_five",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "sum_n",
-                        ),
+                        func: "sum_n",
                         args: [
-                            Lit(
-                                5,
-                            ),
+                            5,
                         ],
                     },
                 ),

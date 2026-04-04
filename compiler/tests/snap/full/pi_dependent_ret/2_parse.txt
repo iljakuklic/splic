@@ -6,65 +6,41 @@ Program {
             params: [
                 Param {
                     name: "A",
-                    ty: Var(
-                        "Type",
-                    ),
+                    ty: "Type",
                 },
                 Param {
                     name: "B",
-                    ty: Var(
-                        "Type",
-                    ),
+                    ty: "Type",
                 },
                 Param {
                     name: "a",
-                    ty: Var(
-                        "A",
-                    ),
+                    ty: "A",
                 },
                 Param {
                     name: "b",
-                    ty: Var(
-                        "B",
-                    ),
+                    ty: "B",
                 },
             ],
-            ret_ty: Var(
-                "A",
-            ),
+            ret_ty: "A",
             body: Block {
                 stmts: [],
-                expr: Var(
-                    "a",
-                ),
+                expr: "a",
             },
         },
         Function {
             phase: Meta,
             name: "test_u64",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: Var(
-                        "const_",
-                    ),
+                    func: "const_",
                     args: [
-                        Var(
-                            "u64",
-                        ),
-                        Var(
-                            "u8",
-                        ),
-                        Lit(
-                            10,
-                        ),
-                        Lit(
-                            7,
-                        ),
+                        "u64",
+                        "u8",
+                        10,
+                        7,
                     ],
                 },
             },
@@ -73,28 +49,16 @@ Program {
             phase: Meta,
             name: "test_u8",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: Var(
-                        "const_",
-                    ),
+                    func: "const_",
                     args: [
-                        Var(
-                            "u8",
-                        ),
-                        Var(
-                            "u64",
-                        ),
-                        Lit(
-                            7,
-                        ),
-                        Lit(
-                            10,
-                        ),
+                        "u8",
+                        "u64",
+                        7,
+                        10,
                     ],
                 },
             },
@@ -103,16 +67,12 @@ Program {
             phase: Object,
             name: "result_u64",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "test_u64",
-                        ),
+                        func: "test_u64",
                         args: [],
                     },
                 ),
@@ -122,16 +82,12 @@ Program {
             phase: Object,
             name: "result_u8",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "test_u8",
-                        ),
+                        func: "test_u8",
                         args: [],
                     },
                 ),
