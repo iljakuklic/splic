@@ -105,7 +105,7 @@ pub struct Match<'a> {
 }
 
 /// Core term / type (terms and types are unified)
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, derive_more::From)]
 pub enum Term<'a> {
     /// Local variable, identified by De Bruijn index (0 = innermost binder)
     Var(de_bruijn::Ix),
@@ -116,6 +116,7 @@ pub enum Term<'a> {
     /// Global function reference
     Global(&'a Name),
     /// Function or primitive application: func(args...)
+    #[from]
     App(App<'a>),
     /// Dependent function type: fn(x: A) -> B
     Pi(Pi<'a>),
@@ -128,8 +129,10 @@ pub enum Term<'a> {
     /// Splice: $(t) — run meta code and insert result into object context
     Splice(&'a Self),
     /// Let binding with explicit type annotation and a body
+    #[from]
     Let(Let<'a>),
     /// Pattern match
+    #[from]
     Match(Match<'a>),
 }
 
@@ -205,23 +208,5 @@ impl<'a> Term<'a> {
 
     pub const fn new_match(scrutinee: &'a Self, arms: &'a [Arm<'a>]) -> Self {
         Self::Match(Match { scrutinee, arms })
-    }
-}
-
-impl<'a> From<Let<'a>> for Term<'a> {
-    fn from(let_: Let<'a>) -> Self {
-        Self::Let(let_)
-    }
-}
-
-impl<'a> From<App<'a>> for Term<'a> {
-    fn from(app: App<'a>) -> Self {
-        Self::App(app)
-    }
-}
-
-impl<'a> From<Match<'a>> for Term<'a> {
-    fn from(match_: Match<'a>) -> Self {
-        Self::Match(match_)
     }
 }
