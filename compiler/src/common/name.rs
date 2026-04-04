@@ -26,12 +26,6 @@ impl Name {
     }
 }
 
-impl std::borrow::Borrow<str> for Name {
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
 impl<'a> From<&'a str> for &'a Name {
     fn from(s: &'a str) -> Self {
         Name::new(s)
