@@ -125,6 +125,16 @@ Each argument is checked against its domain, which may depend on prior arguments
 
 This design makes arity errors detectable without any runtime information, and avoids the ambiguity between `fn(A) -> fn(B) -> C` and `fn(A, B) -> C` that would arise from currying.
 
+**Theoretical equivalence via sigma types.** Splic's N-param functions are equivalent, from the perspective of type theory, to single-argument functions whose argument is a dependent sigma type (dependent tuple). The correspondence covers all arities uniformly:
+
+| Splic arity | Splic type | Theoretical equivalent |
+|-------------|-----------|------------------------|
+| 0 | `fn() -> T` | `Σ() → T` (unit / 0-tuple) |
+| 1 | `fn(x: A) -> T` | `Σ(x: A) → T` (1-tuple) |
+| N | `fn(x₁: A₁, x₂: A₂(x₁), ..., xₙ: Aₙ) -> T` | `Σ(x₁: A₁, x₂: A₂(x₁), ..., xₙ: Aₙ) → T` |
+
+The return type is a plain type in both formulations. Splic makes the parameter list explicit in the syntax and enforces arity at the call site, rather than encoding it in a nested sigma type or via currying.
+
 **Phase field.** Pi types carry a phase distinguishing meta-level (printed as `fn`) from object-level (printed as `code fn`) function types.
 
 ### Substitution → Normalization by Evaluation (NbE)
