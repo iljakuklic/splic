@@ -675,7 +675,7 @@ pub fn unstage_program<'out, 'core>(
     let staged_fns: Vec<Function<'out>> = program
         .functions
         .iter()
-        .filter(|f| f.pi().phase == Phase::Object)
+        .filter(|f| f.pi().phase.is_object())
         .map(|f| -> Result<_> {
             // Per-function eval arena: all intermediate `ObjVal` nodes are
             // allocated here and freed automatically when this closure returns.

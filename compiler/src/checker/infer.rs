@@ -173,7 +173,7 @@ pub fn infer<'src, 'core>(
         // ------------------------------------------------------------------ Pi
         ast::Term::Pi { params, ret_ty } => {
             ensure!(
-                phase == Phase::Meta,
+                phase.is_meta(),
                 "function types are only valid in meta-phase context"
             );
             let depth_before = ctx.depth();
@@ -207,7 +207,7 @@ pub fn infer<'src, 'core>(
         // ------------------------------------------------------------------ Lam (infer mode)
         ast::Term::Lam { params, body } => {
             ensure!(
-                phase == Phase::Meta,
+                phase.is_meta(),
                 "lambdas are only valid in meta-phase context"
             );
 
@@ -254,7 +254,7 @@ pub fn infer<'src, 'core>(
         // ------------------------------------------------------------------ Lift
         ast::Term::Lift(inner) => {
             ensure!(
-                phase == Phase::Meta,
+                phase.is_meta(),
                 "`[[...]]` is only valid in a meta-phase context"
             );
             let core_inner = check_universe(ctx, Phase::Object, inner)?;
@@ -267,7 +267,7 @@ pub fn infer<'src, 'core>(
         // ------------------------------------------------------------------ Quote
         ast::Term::Quote(inner) => {
             ensure!(
-                phase == Phase::Meta,
+                phase.is_meta(),
                 "`#(...)` is only valid in a meta-phase context"
             );
             let (core_inner, inner_ty) = infer(ctx, Phase::Object, inner)?;
@@ -280,7 +280,7 @@ pub fn infer<'src, 'core>(
         // ------------------------------------------------------------------ Splice
         ast::Term::Splice(inner) => {
             ensure!(
-                phase == Phase::Object,
+                phase.is_object(),
                 "`$(...)` is only valid in an object-phase context"
             );
             let (core_inner, inner_ty_val) = infer(ctx, Phase::Meta, inner)?;
@@ -620,7 +620,7 @@ fn check_val_impl<'src, 'core>(
         // ------------------------------------------------------------------ Splice (check mode)
         ast::Term::Splice(inner) => {
             ensure!(
-                phase == Phase::Object,
+                phase.is_object(),
                 "`$(...)` is only valid in an object-phase context"
             );
             if let value::Value::Prim(Prim::IntTy(IntType {
@@ -651,7 +651,7 @@ fn check_val_impl<'src, 'core>(
         // ------------------------------------------------------------------ Lam (check mode)
         ast::Term::Lam { params, body } => {
             ensure!(
-                phase == Phase::Meta,
+                phase.is_meta(),
                 "lambdas are only valid in meta-phase context"
             );
 
