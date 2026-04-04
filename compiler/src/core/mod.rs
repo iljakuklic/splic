@@ -110,6 +110,7 @@ pub enum Term<'a> {
     /// Local variable, identified by De Bruijn index (0 = innermost binder)
     Var(de_bruijn::Ix),
     /// Built-in type or operation (not applied)
+    #[from]
     Prim(Prim),
     /// Numeric literal with its integer type
     Lit(u64, IntType),
@@ -119,8 +120,10 @@ pub enum Term<'a> {
     #[from]
     App(App<'a>),
     /// Dependent function type: fn(x: A) -> B
+    #[from]
     Pi(Pi<'a>),
     /// Lambda abstraction: |x: A| body
+    #[from]
     Lam(Lam<'a>),
     /// Lift: [[T]] — meta type representing object-level code of type T
     Lift(&'a Self),
