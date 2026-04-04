@@ -56,29 +56,38 @@ pub struct Program<'a> {
 pub enum Term<'a> {
     #[debug("{_0:?}")]
     Lit(u64),
+
     #[debug("{_0:?}")]
     Var(&'a Name),
+
     App {
         func: FunName<'a>,
         args: &'a [&'a Self],
     },
+
     /// Function type: `fn(name: ty, ...) -> ret_ty`
     Pi {
         params: &'a [Param<'a>],
         ret_ty: &'a Self,
     },
+
     /// Lambda: `|params| body`
     Lam {
         params: &'a [Param<'a>],
         body: &'a Self,
     },
+
     Quote(&'a Self),
+
     Splice(&'a Self),
+
     Lift(&'a Self),
+
     Match {
         scrutinee: &'a Self,
         arms: &'a [MatchArm<'a>],
     },
+
     Block {
         stmts: &'a [Let<'a>],
         expr: &'a Self,
