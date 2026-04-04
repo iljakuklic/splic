@@ -601,10 +601,7 @@ fn check_val_impl<'src, 'core>(
             let expected_term = ctx.quote_val(&expected);
             let core_arg = check(ctx, phase, arg, expected_term)?;
             let core_args = std::slice::from_ref(ctx.arena.alloc(core_arg));
-            Ok(ctx.alloc(core::Term::new_app(
-                ctx.alloc(prim.into()),
-                core_args,
-            )))
+            Ok(ctx.alloc(core::Term::new_app(ctx.alloc(prim.into()), core_args)))
         }
 
         // ------------------------------------------------------------------ Quote (check mode)
