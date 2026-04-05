@@ -1,6 +1,4 @@
 Block {
     stmts: [],
-    expr: Lit(
-        1,
-    ),
+    expr: 1,
 }

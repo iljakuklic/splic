@@ -10,36 +10,24 @@ Program {
                         params: [
                             Param {
                                 name: "_",
-                                ty: Var(
-                                    "u64",
-                                ),
+                                ty: "u64",
                             },
                         ],
-                        ret_ty: Var(
-                            "u64",
-                        ),
+                        ret_ty: "u64",
                     },
                 },
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: Var(
-                        "f",
-                    ),
+                    func: "f",
                     args: [
-                        Var(
-                            "x",
-                        ),
+                        "x",
                     ],
                 },
             },
@@ -48,32 +36,22 @@ Program {
             phase: Meta,
             name: "test",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: Var(
-                        "apply",
-                    ),
+                    func: "apply",
                     args: [
                         Lam {
                             params: [
                                 Param {
                                     name: "x",
-                                    ty: Var(
-                                        "u32",
-                                    ),
+                                    ty: "u32",
                                 },
                             ],
-                            body: Var(
-                                "x",
-                            ),
+                            body: "x",
                         },
-                        Lit(
-                            42,
-                        ),
+                        42,
                     ],
                 },
             },

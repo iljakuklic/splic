@@ -1,18 +1,12 @@
 App {
     func: Add,
     args: [
-        Lit(
-            1,
-        ),
+        1,
         App {
             func: Mul,
             args: [
-                Lit(
-                    2,
-                ),
-                Lit(
-                    3,
-                ),
+                2,
+                3,
             ],
         },
     ],

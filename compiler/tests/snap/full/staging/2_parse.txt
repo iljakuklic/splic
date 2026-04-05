@@ -5,16 +5,12 @@ Program {
             name: "k",
             params: [],
             ret_ty: Lift(
-                Var(
-                    "u64",
-                ),
+                "u64",
             ),
             body: Block {
                 stmts: [],
                 expr: Quote(
-                    Lit(
-                        0,
-                    ),
+                    0,
                 ),
             },
         },
@@ -22,16 +18,12 @@ Program {
             phase: Object,
             name: "zero",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "k",
-                        ),
+                        func: "k",
                         args: [],
                     },
                 ),

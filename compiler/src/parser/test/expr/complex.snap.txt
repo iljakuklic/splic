@@ -7,39 +7,27 @@ App {
                 App {
                     func: Not,
                     args: [
-                        Var(
-                            "x",
-                        ),
+                        "x",
                     ],
                 },
-                Var(
-                    "y",
-                ),
+                "y",
             ],
         },
         App {
             func: Not,
             args: [
                 App {
-                    func: Var(
-                        "foo",
-                    ),
+                    func: "foo",
                     args: [
-                        Var(
-                            "z",
-                        ),
+                        "z",
                         App {
                             func: Not,
                             args: [
                                 App {
                                     func: Add,
                                     args: [
-                                        Lit(
-                                            1,
-                                        ),
-                                        Var(
-                                            "w",
-                                        ),
+                                        1,
+                                        "w",
                                     ],
                                 },
                             ],

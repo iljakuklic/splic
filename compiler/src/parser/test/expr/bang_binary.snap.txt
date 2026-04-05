@@ -4,13 +4,9 @@ App {
         App {
             func: Not,
             args: [
-                Var(
-                    "x",
-                ),
+                "x",
             ],
         },
-        Lit(
-            1,
-        ),
+        1,
     ],
 }

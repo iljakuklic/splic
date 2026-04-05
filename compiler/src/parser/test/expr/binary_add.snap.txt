@@ -1,11 +1,7 @@
 App {
     func: Add,
     args: [
-        Lit(
-            1,
-        ),
-        Lit(
-            2,
-        ),
+        1,
+        2,
     ],
 }

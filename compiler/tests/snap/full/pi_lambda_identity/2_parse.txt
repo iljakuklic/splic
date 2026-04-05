@@ -4,9 +4,7 @@ Program {
             phase: Meta,
             name: "test_id",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [
                     Let {
@@ -16,23 +14,17 @@ Program {
                             params: [
                                 Param {
                                     name: "T",
-                                    ty: Var(
-                                        "Type",
-                                    ),
+                                    ty: "Type",
                                 },
                             ],
                             body: Lam {
                                 params: [
                                     Param {
                                         name: "x",
-                                        ty: Var(
-                                            "T",
-                                        ),
+                                        ty: "T",
                                     },
                                 ],
-                                body: Var(
-                                    "x",
-                                ),
+                                body: "x",
                             },
                         },
                     },
@@ -41,38 +33,26 @@ Program {
                         ty: None,
                         expr: App {
                             func: App {
-                                func: Var(
-                                    "id",
-                                ),
+                                func: "id",
                                 args: [
-                                    Var(
-                                        "u32",
-                                    ),
+                                    "u32",
                                 ],
                             },
                             args: [
-                                Lit(
-                                    67,
-                                ),
+                                67,
                             ],
                         },
                     },
                 ],
                 expr: App {
                     func: App {
-                        func: Var(
-                            "id",
-                        ),
+                        func: "id",
                         args: [
-                            Var(
-                                "u64",
-                            ),
+                            "u64",
                         ],
                     },
                     args: [
-                        Lit(
-                            42,
-                        ),
+                        42,
                     ],
                 },
             },
@@ -81,9 +61,7 @@ Program {
             phase: Meta,
             name: "test_id_u8",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [
                     Let {
@@ -93,23 +71,17 @@ Program {
                             params: [
                                 Param {
                                     name: "T",
-                                    ty: Var(
-                                        "Type",
-                                    ),
+                                    ty: "Type",
                                 },
                             ],
                             body: Lam {
                                 params: [
                                     Param {
                                         name: "x",
-                                        ty: Var(
-                                            "T",
-                                        ),
+                                        ty: "T",
                                     },
                                 ],
-                                body: Var(
-                                    "x",
-                                ),
+                                body: "x",
                             },
                         },
                     },
@@ -117,25 +89,17 @@ Program {
                         name: "id_u8",
                         ty: None,
                         expr: App {
-                            func: Var(
-                                "id",
-                            ),
+                            func: "id",
                             args: [
-                                Var(
-                                    "u8",
-                                ),
+                                "u8",
                             ],
                         },
                     },
                 ],
                 expr: App {
-                    func: Var(
-                        "id_u8",
-                    ),
+                    func: "id_u8",
                     args: [
-                        Lit(
-                            7,
-                        ),
+                        7,
                     ],
                 },
             },
@@ -144,16 +108,12 @@ Program {
             phase: Object,
             name: "result_u64",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "test_id",
-                        ),
+                        func: "test_id",
                         args: [],
                     },
                 ),
@@ -163,16 +123,12 @@ Program {
             phase: Object,
             name: "result_u8",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "test_id_u8",
-                        ),
+                        func: "test_id_u8",
                         args: [],
                     },
                 ),

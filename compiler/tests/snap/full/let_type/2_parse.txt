@@ -4,53 +4,37 @@ Program {
             phase: Meta,
             name: "let_type",
             params: [],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [
                     Let {
                         name: "ty",
                         ty: Some(
-                            Var(
-                                "Type",
-                            ),
+                            "Type",
                         ),
-                        expr: Var(
-                            "u32",
-                        ),
+                        expr: "u32",
                     },
                     Let {
                         name: "x",
                         ty: Some(
-                            Var(
-                                "ty",
-                            ),
+                            "ty",
                         ),
-                        expr: Lit(
-                            1337,
-                        ),
+                        expr: 1337,
                     },
                 ],
-                expr: Var(
-                    "x",
-                ),
+                expr: "x",
             },
         },
         Function {
             phase: Object,
             name: "test",
             params: [],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "let_type",
-                        ),
+                        func: "let_type",
                         args: [],
                     },
                 ),

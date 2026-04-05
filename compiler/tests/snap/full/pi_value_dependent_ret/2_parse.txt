@@ -6,56 +6,34 @@ Program {
             params: [
                 Param {
                     name: "b",
-                    ty: Var(
-                        "u1",
-                    ),
+                    ty: "u1",
                 },
             ],
             ret_ty: Match {
-                scrutinee: Var(
-                    "b",
-                ),
+                scrutinee: "b",
                 arms: [
                     MatchArm {
-                        pat: Lit(
-                            0,
-                        ),
-                        body: Var(
-                            "u0",
-                        ),
+                        pat: 0,
+                        body: "u0",
                     },
                     MatchArm {
-                        pat: Lit(
-                            1,
-                        ),
-                        body: Var(
-                            "u16",
-                        ),
+                        pat: 1,
+                        body: "u16",
                     },
                 ],
             },
             body: Block {
                 stmts: [],
                 expr: Match {
-                    scrutinee: Var(
-                        "b",
-                    ),
+                    scrutinee: "b",
                     arms: [
                         MatchArm {
-                            pat: Lit(
-                                0,
-                            ),
-                            body: Lit(
-                                0,
-                            ),
+                            pat: 0,
+                            body: 0,
                         },
                         MatchArm {
-                            pat: Lit(
-                                1,
-                            ),
-                            body: Lit(
-                                42,
-                            ),
+                            pat: 1,
+                            body: 42,
                         },
                     ],
                 },
@@ -65,20 +43,14 @@ Program {
             phase: Object,
             name: "result_0",
             params: [],
-            ret_ty: Var(
-                "u0",
-            ),
+            ret_ty: "u0",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "get_value",
-                        ),
+                        func: "get_value",
                         args: [
-                            Lit(
-                                0,
-                            ),
+                            0,
                         ],
                     },
                 ),
@@ -88,20 +60,14 @@ Program {
             phase: Object,
             name: "result_1",
             params: [],
-            ret_ty: Var(
-                "u16",
-            ),
+            ret_ty: "u16",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "get_value",
-                        ),
+                        func: "get_value",
                         args: [
-                            Lit(
-                                1,
-                            ),
+                            1,
                         ],
                     },
                 ),

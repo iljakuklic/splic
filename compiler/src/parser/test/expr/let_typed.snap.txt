@@ -3,16 +3,10 @@ Block {
         Let {
             name: "x",
             ty: Some(
-                Var(
-                    "u32",
-                ),
+                "u32",
             ),
-            expr: Lit(
-                1,
-            ),
+            expr: 1,
         },
     ],
-    expr: Var(
-        "x",
-    ),
+    expr: "x",
 }

@@ -6,45 +6,31 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u32",
-                    ),
+                    ty: "u32",
                 },
                 Param {
                     name: "y",
-                    ty: Var(
-                        "u32",
-                    ),
+                    ty: "u32",
                 },
             ],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [
                     Let {
                         name: "d",
                         ty: Some(
-                            Var(
-                                "u32",
-                            ),
+                            "u32",
                         ),
                         expr: App {
                             func: Sub,
                             args: [
-                                Var(
-                                    "x",
-                                ),
-                                Var(
-                                    "y",
-                                ),
+                                "x",
+                                "y",
                             ],
                         },
                     },
                 ],
-                expr: Var(
-                    "d",
-                ),
+                expr: "d",
             },
         },
     ],

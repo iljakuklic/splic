@@ -1,15 +1,8 @@
 /// Compilation phase
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, derive_more::Display, derive_more::IsVariant)]
 pub enum Phase {
+    #[display("meta")]
     Meta,
+    #[display("object")]
     Object,
-}
-
-impl std::fmt::Display for Phase {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Meta => f.write_str("meta"),
-            Self::Object => f.write_str("object"),
-        }
-    }
 }

@@ -3,27 +3,19 @@ Block {
         Let {
             name: "x",
             ty: None,
-            expr: Lit(
-                1,
-            ),
+            expr: 1,
         },
         Let {
             name: "y",
             ty: None,
-            expr: Lit(
-                2,
-            ),
+            expr: 2,
         },
     ],
     expr: App {
         func: Add,
         args: [
-            Var(
-                "x",
-            ),
-            Var(
-                "y",
-            ),
+            "x",
+            "y",
         ],
     },
 }

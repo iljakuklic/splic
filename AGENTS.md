@@ -97,6 +97,9 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 - For arena-allocated structures, refer to other objects using plain references rather than `Box`
 - In NbE (semantic evaluation), use slices `&'a [Value<'a>]` for environment snapshots captured in closures, not vectors
 
+### Trait Implementations
+- Use `derive_more` for standard trait derives (`Display`, `Debug`, `From`, `AsRef`, `IsVariant`, etc.) instead of manual `impl` blocks
+
 ### 2LTT Patterns
 - No syntactic separation between type-level and term-level expressions
 - Quotations (`#(e)`, `#{...}`) and splices (`$(e)`, `${...}`) for metaprogramming

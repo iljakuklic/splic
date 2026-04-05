@@ -11,17 +11,22 @@ use crate::core::{self, value};
 ///
 /// Phase is not stored here — it is threaded as an argument to `infer`/`check`
 /// since it shifts locally when entering `Quote`, `Splice`, or `Lift`.
+#[derive(Debug)]
 pub struct Ctx<'core, 'globals> {
     /// Arena for allocating core terms
     pub arena: &'core bumpalo::Bump,
+
     /// Local variable names (oldest first), for error messages.
     pub names: Vec<&'core core::Name>,
+
     /// Evaluation environment (oldest first): values of locals.
     /// `env[env.len() - 1 - ix]` = value of `Var(Ix(ix))`.
     pub env: value::Env<'core>,
+
     /// Types of locals as semantic values (oldest first).
     /// `types[types.len() - 1 - ix]` = type of `Var(Ix(ix))`.
     pub types: Vec<value::Value<'core>>,
+
     /// Global function types: name -> Pi term.
     /// Storing `&Term` (always a Pi) unifies type lookup for globals and locals.
     /// Borrowed independently of the arena so the map can live on the stack.

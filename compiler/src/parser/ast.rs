@@ -1,26 +1,21 @@
 pub use crate::common::{Assoc, BinOp, Name, Phase, UnOp};
 
 /// Function or operator reference
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, derive_more::Debug)]
 pub enum FunName<'a> {
+    #[debug("{_0:?}")]
     Term(&'a Term<'a>),
+    #[debug("{_0:?}")]
     BinOp(BinOp),
+    #[debug("{_0:?}")]
     UnOp(UnOp),
 }
 
-impl std::fmt::Debug for FunName<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Term(t) => t.fmt(f),
-            Self::BinOp(o) => o.fmt(f),
-            Self::UnOp(o) => o.fmt(f),
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(derive_more::Debug)]
 pub enum Pat<'a> {
+    #[debug("{_0:?}")]
     Name(&'a Name),
+    #[debug("{_0:?}")]
     Lit(u64),
 }
 
@@ -57,31 +52,42 @@ pub struct Program<'a> {
     pub functions: &'a [Function<'a>],
 }
 
-#[derive(Debug)]
+#[derive(derive_more::Debug)]
 pub enum Term<'a> {
+    #[debug("{_0:?}")]
     Lit(u64),
+
+    #[debug("{_0:?}")]
     Var(&'a Name),
+
     App {
         func: FunName<'a>,
         args: &'a [&'a Self],
     },
+
     /// Function type: `fn(name: ty, ...) -> ret_ty`
     Pi {
         params: &'a [Param<'a>],
         ret_ty: &'a Self,
     },
+
     /// Lambda: `|params| body`
     Lam {
         params: &'a [Param<'a>],
         body: &'a Self,
     },
+
     Quote(&'a Self),
+
     Splice(&'a Self),
+
     Lift(&'a Self),
+
     Match {
         scrutinee: &'a Self,
         arms: &'a [MatchArm<'a>],
     },
+
     Block {
         stmts: &'a [Let<'a>],
         expr: &'a Self,

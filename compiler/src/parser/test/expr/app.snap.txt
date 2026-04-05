@@ -1,13 +1,7 @@
 App {
-    func: Var(
-        "f",
-    ),
+    func: "f",
     args: [
-        Var(
-            "x",
-        ),
-        Var(
-            "y",
-        ),
+        "x",
+        "y",
     ],
 }

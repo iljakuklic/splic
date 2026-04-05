@@ -4,20 +4,14 @@ Program {
             phase: Meta,
             name: "f",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [],
                 expr: App {
                     func: Add,
                     args: [
-                        Lit(
-                            200,
-                        ),
-                        Lit(
-                            100,
-                        ),
+                        200,
+                        100,
                     ],
                 },
             },
@@ -26,16 +20,12 @@ Program {
             phase: Object,
             name: "g",
             params: [],
-            ret_ty: Var(
-                "u8",
-            ),
+            ret_ty: "u8",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "f",
-                        ),
+                        func: "f",
                         args: [],
                     },
                 ),

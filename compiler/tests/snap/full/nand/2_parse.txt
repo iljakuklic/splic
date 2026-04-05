@@ -6,20 +6,14 @@ Program {
             params: [
                 Param {
                     name: "a",
-                    ty: Var(
-                        "u1",
-                    ),
+                    ty: "u1",
                 },
                 Param {
                     name: "b",
-                    ty: Var(
-                        "u1",
-                    ),
+                    ty: "u1",
                 },
             ],
-            ret_ty: Var(
-                "u1",
-            ),
+            ret_ty: "u1",
             body: Block {
                 stmts: [],
                 expr: App {
@@ -28,12 +22,8 @@ Program {
                         App {
                             func: BitAnd,
                             args: [
-                                Var(
-                                    "a",
-                                ),
-                                Var(
-                                    "b",
-                                ),
+                                "a",
+                                "b",
                             ],
                         },
                     ],

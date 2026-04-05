@@ -6,42 +6,26 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u32",
-                    ),
+                    ty: "u32",
                 },
                 Param {
                     name: "y",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [],
                 expr: Match {
-                    scrutinee: Var(
-                        "x",
-                    ),
+                    scrutinee: "x",
                     arms: [
                         MatchArm {
-                            pat: Lit(
-                                0,
-                            ),
-                            body: Var(
-                                "x",
-                            ),
+                            pat: 0,
+                            body: "x",
                         },
                         MatchArm {
-                            pat: Name(
-                                "n",
-                            ),
-                            body: Var(
-                                "y",
-                            ),
+                            pat: "n",
+                            body: "y",
                         },
                     ],
                 },

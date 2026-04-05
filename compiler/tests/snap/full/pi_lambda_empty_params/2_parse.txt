@@ -6,24 +6,18 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
             ret_ty: Pi {
                 params: [],
-                ret_ty: Var(
-                    "u64",
-                ),
+                ret_ty: "u64",
             },
             body: Block {
                 stmts: [],
                 expr: Lam {
                     params: [],
-                    body: Var(
-                        "x",
-                    ),
+                    body: "x",
                 },
             },
         },
@@ -31,20 +25,14 @@ Program {
             phase: Meta,
             name: "test",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: App {
                     func: App {
-                        func: Var(
-                            "make_thunk",
-                        ),
+                        func: "make_thunk",
                         args: [
-                            Lit(
-                                42,
-                            ),
+                            42,
                         ],
                     },
                     args: [],
@@ -55,16 +43,12 @@ Program {
             phase: Object,
             name: "result",
             params: [],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "test",
-                        ),
+                        func: "test",
                         args: [],
                     },
                 ),

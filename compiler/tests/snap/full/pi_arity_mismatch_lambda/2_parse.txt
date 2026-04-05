@@ -10,52 +10,36 @@ Program {
                         params: [
                             Param {
                                 name: "_",
-                                ty: Var(
-                                    "u64",
-                                ),
+                                ty: "u64",
                             },
                             Param {
                                 name: "_",
-                                ty: Var(
-                                    "u64",
-                                ),
+                                ty: "u64",
                             },
                         ],
-                        ret_ty: Var(
-                            "u64",
-                        ),
+                        ret_ty: "u64",
                     },
                 },
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [
                     Let {
                         name: "foo",
                         ty: None,
                         expr: App {
-                            func: Var(
-                                "f",
-                            ),
+                            func: "f",
                             args: [
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ],
                         },
                     },
                 ],
-                expr: Lit(
-                    1337,
-                ),
+                expr: 1337,
             },
         },
     ],

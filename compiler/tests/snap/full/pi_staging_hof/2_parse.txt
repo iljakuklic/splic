@@ -11,43 +11,31 @@ Program {
                             Param {
                                 name: "_",
                                 ty: Lift(
-                                    Var(
-                                        "u64",
-                                    ),
+                                    "u64",
                                 ),
                             },
                         ],
                         ret_ty: Lift(
-                            Var(
-                                "u64",
-                            ),
+                            "u64",
                         ),
                     },
                 },
                 Param {
                     name: "x",
                     ty: Lift(
-                        Var(
-                            "u64",
-                        ),
+                        "u64",
                     ),
                 },
             ],
             ret_ty: Lift(
-                Var(
-                    "u64",
-                ),
+                "u64",
             ),
             body: Block {
                 stmts: [],
                 expr: App {
-                    func: Var(
-                        "f",
-                    ),
+                    func: "f",
                     args: [
-                        Var(
-                            "x",
-                        ),
+                        "x",
                     ],
                 },
             },
@@ -58,30 +46,22 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u64",
-            ),
+            ret_ty: "u64",
             body: Block {
                 stmts: [],
                 expr: Splice(
                     App {
-                        func: Var(
-                            "map_code",
-                        ),
+                        func: "map_code",
                         args: [
                             Lam {
                                 params: [
                                     Param {
                                         name: "y",
                                         ty: Lift(
-                                            Var(
-                                                "u64",
-                                            ),
+                                            "u64",
                                         ),
                                     },
                                 ],
@@ -90,23 +70,17 @@ Program {
                                         func: Add,
                                         args: [
                                             Splice(
-                                                Var(
-                                                    "y",
-                                                ),
+                                                "y",
                                             ),
                                             Splice(
-                                                Var(
-                                                    "y",
-                                                ),
+                                                "y",
                                             ),
                                         ],
                                     },
                                 ),
                             },
                             Quote(
-                                Var(
-                                    "x",
-                                ),
+                                "x",
                             ),
                         ],
                     },

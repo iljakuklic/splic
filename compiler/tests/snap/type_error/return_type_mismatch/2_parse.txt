@@ -6,19 +6,13 @@ Program {
             params: [
                 Param {
                     name: "x",
-                    ty: Var(
-                        "u64",
-                    ),
+                    ty: "u64",
                 },
             ],
-            ret_ty: Var(
-                "u32",
-            ),
+            ret_ty: "u32",
             body: Block {
                 stmts: [],
-                expr: Var(
-                    "x",
-                ),
+                expr: "x",
             },
         },
     ],
