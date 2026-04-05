@@ -1,91 +1,11 @@
 use anyhow::{Result, anyhow};
 
 pub use crate::common::Name;
+pub use token::Token;
 
 #[cfg(test)]
 pub mod testutils;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Token<'a> {
-    Fn,
-    Code,
-    Let,
-    Match,
-    LParen,
-    RParen,
-    LBracket,
-    RBracket,
-    LBrace,
-    RBrace,
-    Arrow,
-    Colon,
-    Eq,
-    Comma,
-    Semi,
-    Bar,
-    Ampersand,
-    EqEq,
-    Ne,
-    Lt,
-    Gt,
-    Le,
-    Ge,
-    Plus,
-    Minus,
-    Star,
-    Slash,
-    Bang,
-    HashLParen,
-    HashLBrace,
-    DollarLParen,
-    DollarLBrace,
-    DoubleLBracket,
-    DoubleRBracket,
-    DArrow,
-    Num(u64),
-    Ident(&'a Name),
-}
-
-const KEYWORDS: &[(&str, Token<'static>)] = &[
-    ("fn", Token::Fn),
-    ("code", Token::Code),
-    ("let", Token::Let),
-    ("match", Token::Match),
-];
-
-const SYMBOLS: &[(&str, Token<'static>)] = &[
-    ("[[", Token::DoubleLBracket),
-    ("]]", Token::DoubleRBracket),
-    ("#(", Token::HashLParen),
-    ("#{", Token::HashLBrace),
-    ("$(", Token::DollarLParen),
-    ("${", Token::DollarLBrace),
-    ("=>", Token::DArrow),
-    (">=", Token::Ge),
-    ("<=", Token::Le),
-    ("==", Token::EqEq),
-    ("!=", Token::Ne),
-    ("->", Token::Arrow),
-    ("(", Token::LParen),
-    (")", Token::RParen),
-    ("[", Token::LBracket),
-    ("]", Token::RBracket),
-    ("{", Token::LBrace),
-    ("}", Token::RBrace),
-    (":", Token::Colon),
-    ("=", Token::Eq),
-    (",", Token::Comma),
-    (";", Token::Semi),
-    ("|", Token::Bar),
-    ("&", Token::Ampersand),
-    ("<", Token::Lt),
-    (">", Token::Gt),
-    ("+", Token::Plus),
-    ("-", Token::Minus),
-    ("*", Token::Star),
-    ("/", Token::Slash),
-    ("!", Token::Bang),
-];
+mod token;
 
 pub struct Lexer<'a> {
     input: &'a str,
@@ -131,7 +51,7 @@ impl<'a> Lexer<'a> {
 
     fn read_ident(&mut self) -> Token<'a> {
         let ident = self.split_pred(|c| !Self::is_ident_char(c));
-        KEYWORDS
+        Token::KEYWORDS
             .iter()
             .find(|(kw, _)| *kw == ident)
             .map_or(Token::Ident(Name::new(ident)), |(_, tok)| *tok)
@@ -142,7 +62,7 @@ impl<'a> Lexer<'a> {
         let c = self.input.chars().next()?;
 
         // Try matching symbols (longer first due to table order)
-        for (pfx, tok) in SYMBOLS {
+        for (pfx, tok) in Token::SYMBOLS {
             if let Some(remainder) = self.input.strip_prefix(pfx) {
                 self.input = remainder;
                 return Some(Ok(*tok));
