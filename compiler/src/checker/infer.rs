@@ -184,10 +184,9 @@ pub fn infer<'names, 'ast, 'core>(
             let mut elaborated_params: Vec<(&'names core::Name, &'core core::Term<'names, 'core>)> =
                 Vec::new();
             for p in *params {
-                let param_name = p.name;
                 let param_ty = check_universe(ctx, Phase::Meta, p.ty)?;
-                elaborated_params.push((param_name, param_ty));
-                ctx.push_local(param_name, param_ty);
+                elaborated_params.push((p.name, param_ty));
+                ctx.push_local(p.name, param_ty);
             }
 
             let core_ret_ty = check_universe(ctx, Phase::Meta, ret_ty)?;
@@ -219,10 +218,9 @@ pub fn infer<'names, 'ast, 'core>(
                 Vec::new();
 
             for p in *params {
-                let param_name = p.name;
                 let (param_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
-                elaborated_params.push((param_name, param_ty));
-                ctx.push_local(param_name, param_ty);
+                elaborated_params.push((p.name, param_ty));
+                ctx.push_local(p.name, param_ty);
             }
 
             let (core_body, body_ty) = infer(ctx, phase, body)?;
