@@ -44,6 +44,7 @@ fn stage(file: &PathBuf) -> Result<()> {
     let lexer = lexer::Lexer::new(&source, &names_arena);
     let mut parser = parser::Parser::new(lexer, &ast_arena);
     let program = parser.parse_program().context("failed to parse program")?;
+    drop(source);
 
     // Elaborate/typecheck into core_arena; the arena lives until staging
     // finishes consuming the core IR, then is dropped.

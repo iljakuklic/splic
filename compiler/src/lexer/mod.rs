@@ -7,13 +7,13 @@ pub use token::Token;
 pub mod testutils;
 mod token;
 
-pub struct Lexer<'names> {
-    input: &'names str,
+pub struct Lexer<'src, 'names> {
+    input: &'src str,
     names: &'names bumpalo::Bump,
 }
 
-impl<'names> Lexer<'names> {
-    pub const fn new(input: &'names str, names: &'names bumpalo::Bump) -> Self {
+impl<'src, 'names> Lexer<'src, 'names> {
+    pub const fn new(input: &'src str, names: &'names bumpalo::Bump) -> Self {
         Self { input, names }
     }
 
@@ -34,7 +34,7 @@ impl<'names> Lexer<'names> {
         }
     }
 
-    fn split_pred<F: Fn(char) -> bool>(&mut self, pred: F) -> &'names str {
+    fn split_pred<F: Fn(char) -> bool>(&mut self, pred: F) -> &'src str {
         let len = self.input.find(pred).unwrap_or(self.input.len());
         let (token, rest) = self.input.split_at(len);
         self.input = rest;
@@ -101,7 +101,7 @@ impl<'names> Lexer<'names> {
     }
 }
 
-impl<'names> Iterator for Lexer<'names> {
+impl<'names> Iterator for Lexer<'_, 'names> {
     type Item = Result<Token<'names>>;
 
     fn next(&mut self) -> Option<Result<Token<'names>>> {
