@@ -37,16 +37,32 @@ impl Phase {
 }
 
 /// The expected outcome of running the compiler pipeline on a test case.
+///
+/// `ok` and `last_phase` are orthogonal: `ok` says whether the last phase
+/// should succeed, and `last_phase` says which phase is last (either because
+/// the pipeline is intentionally stopped there, or because that phase fails).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum ExpectedOutcome {
-    /// All phases run and succeed.
-    Success,
-    /// Phases run only up to (and including) the given phase, which succeeds.
-    /// Later phases are intentionally skipped and must have no snapshot files on disk.
-    StopAfter(Phase),
-    /// Phases run until the given phase, which is expected to fail.
-    /// Later phases are skipped and must have no snapshot files on disk.
-    FailAt(Phase),
+struct ExpectedOutcome {
+    ok: bool,
+    last_phase: Phase,
+}
+
+impl ExpectedOutcome {
+    /// All phases run successfully up to and including `phase`.
+    const fn run_till(phase: Phase) -> Self {
+        Self {
+            ok: true,
+            last_phase: phase,
+        }
+    }
+
+    /// Phases run until `phase`, which is expected to fail.
+    const fn fail_at(phase: Phase) -> Self {
+        Self {
+            ok: false,
+            last_phase: phase,
+        }
+    }
 }
 
 /// Maps a top-level snap folder name to its expected compiler outcome.
@@ -54,12 +70,12 @@ enum ExpectedOutcome {
 /// When adding a new folder under `tests/snap/`, add a corresponding entry here.
 fn expected_outcome(folder: &str) -> ExpectedOutcome {
     match folder {
-        "full" => ExpectedOutcome::Success,
-        "lex" => ExpectedOutcome::StopAfter(Phase::Lex),
-        "lex_error" => ExpectedOutcome::FailAt(Phase::Lex),
-        "parse_error" => ExpectedOutcome::FailAt(Phase::Parse),
-        "type_error" => ExpectedOutcome::FailAt(Phase::Check),
-        "stage_error" => ExpectedOutcome::FailAt(Phase::Stage),
+        "full" => ExpectedOutcome::run_till(Phase::Stage),
+        "lex" => ExpectedOutcome::run_till(Phase::Lex),
+        "lex_error" => ExpectedOutcome::fail_at(Phase::Lex),
+        "parse_error" => ExpectedOutcome::fail_at(Phase::Parse),
+        "type_error" => ExpectedOutcome::fail_at(Phase::Check),
+        "stage_error" => ExpectedOutcome::fail_at(Phase::Stage),
         other => panic!(
             "unknown test folder {other:?}; add it to `expected_outcome` in compiler/tests/snap.rs"
         ),
@@ -68,52 +84,53 @@ fn expected_outcome(folder: &str) -> ExpectedOutcome {
 
 /// Asserts that the actual pipeline outcome matches the expected one, and that no
 /// snapshot files remain on disk for phases that should have been skipped.
-fn assert_outcome(
-    expected: ExpectedOutcome,
-    failed_at: Option<Phase>,
-    stopped_after: Phase,
-    dir: &Path,
-) {
-    match (expected, failed_at) {
-        (ExpectedOutcome::Success, None) => {}
-        (ExpectedOutcome::StopAfter(exp), None) => {
-            assert_eq!(
-                exp,
-                stopped_after,
-                "expected to stop after {exp:?} but stopped after {stopped_after:?} in {}",
-                dir.display(),
-            );
-        }
-        (ExpectedOutcome::FailAt(exp), Some(actual)) => {
-            assert_eq!(
-                exp,
-                actual,
-                "expected failure at {exp:?} but got failure at {actual:?} in {}",
-                dir.display(),
-            );
-        }
-        _ => {
-            let actual = match failed_at {
-                None => format!("Success (last phase: {stopped_after:?})"),
-                Some(p) => format!("FailAt({p:?})"),
-            };
-            panic!(
-                "compiler outcome mismatch in {}: expected {expected:?} but got {actual}",
-                dir.display()
-            );
-        }
-    }
-
-    // Ensure no stale snapshot files exist for skipped phases.
-    let skipped_after = failed_at.unwrap_or(stopped_after);
-    for &later in skipped_after.phases_after() {
+fn assert_outcome(expected: ExpectedOutcome, ok: bool, last_phase: Phase, dir: &Path) {
+    assert_eq!(
+        ok,
+        expected.ok,
+        "phase {last_phase:?} succeeded={ok} but expected succeeded={} in {}",
+        expected.ok,
+        dir.display(),
+    );
+    assert_eq!(
+        last_phase,
+        expected.last_phase,
+        "pipeline stopped at {last_phase:?} but expected to stop at {:?} in {}",
+        expected.last_phase,
+        dir.display(),
+    );
+    for &later in last_phase.phases_after() {
         let snap_path = dir.join(later.snap_filename());
         assert!(
             !snap_path.exists(),
-            "leftover snapshot {} must not exist after {skipped_after:?}",
+            "leftover snapshot {} must not exist after {last_phase:?}",
             snap_path.display(),
         );
     }
+}
+
+/// Write a snapshot and decide whether to continue the pipeline.
+///
+/// Writes `snap` to the snapshot file for `phase`, then:
+/// - If `result` is `Err`: calls `assert_outcome` (expecting failure) and returns.
+/// - If `result` is `Ok` and this is `expected.last_phase`: calls `assert_outcome`
+///   (expecting success) and returns.
+/// - Otherwise: evaluates to the inner `Ok` value so the next phase can proceed.
+macro_rules! phase {
+    ($snap:expr, $result:expr, $phase:expr, $expected:expr, $dir:expr) => {{
+        expect_file![$dir.join($phase.snap_filename())].assert_eq(&$snap);
+        match $result {
+            Err(_) => {
+                assert_outcome($expected, false, $phase, $dir);
+                return;
+            }
+            Ok(_) if $phase == $expected.last_phase => {
+                assert_outcome($expected, true, $phase, $dir);
+                return;
+            }
+            Ok(val) => val,
+        }
+    }};
 }
 
 /// Run the full compiler pipeline on the input, writing a snapshot file for each phase.
@@ -146,65 +163,30 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
         }
         Err(e) => format!("ERROR\n{e:#}\n"),
     };
-    expect_file![dir.join("1_lex.txt")].assert_eq(&lex_snap);
-    match lex_result {
-        Err(_) => {
-            assert_outcome(expected, Some(Phase::Lex), Phase::Lex, dir);
-            return;
-        }
-        Ok(_) if expected == ExpectedOutcome::StopAfter(Phase::Lex) => {
-            assert_outcome(expected, None, Phase::Lex, dir);
-            return;
-        }
-        Ok(tokens) => {
-            // ── Phase 2: Parse ───────────────────────────────────────────────────────
-            let parse_result = Parser::new(tokens.into_iter().map(Ok), &arena).parse_program();
-            let parse_snap = match &parse_result {
-                Ok(program) => format!("{program:#?}\n"),
-                Err(e) => format!("ERROR\n{e:#}\n"),
-            };
-            expect_file![dir.join("2_parse.txt")].assert_eq(&parse_snap);
-            match parse_result {
-                Err(_) => {
-                    assert_outcome(expected, Some(Phase::Parse), Phase::Parse, dir);
-                    return;
-                }
-                Ok(_) if expected == ExpectedOutcome::StopAfter(Phase::Parse) => {
-                    assert_outcome(expected, None, Phase::Parse, dir);
-                    return;
-                }
-                Ok(program) => {
-                    // ── Phase 3: Check ───────────────────────────────────────────────────
-                    let check_result = elaborate_program(&arena, &program);
-                    let check_snap = match &check_result {
-                        Ok(core) => format!("{core}\n"),
-                        Err(e) => format!("ERROR\n{e:#}\n"),
-                    };
-                    expect_file![dir.join("3_check.txt")].assert_eq(&check_snap);
-                    match check_result {
-                        Err(_) => {
-                            assert_outcome(expected, Some(Phase::Check), Phase::Check, dir);
-                            return;
-                        }
-                        Ok(_) if expected == ExpectedOutcome::StopAfter(Phase::Check) => {
-                            assert_outcome(expected, None, Phase::Check, dir);
-                            return;
-                        }
-                        Ok(core_program) => {
-                            // ── Phase 6: Stage ───────────────────────────────────────────────
-                            // (slots 4–5 reserved for future optimisation passes)
-                            let stage_result = unstage_program(&arena, &core_program);
-                            let stage_snap = match &stage_result {
-                                Ok(staged) => format!("{staged}\n"),
-                                Err(e) => format!("ERROR\n{e:#}\n"),
-                            };
-                            expect_file![dir.join("6_stage.txt")].assert_eq(&stage_snap);
-                            let failed_at = stage_result.is_err().then_some(Phase::Stage);
-                            assert_outcome(expected, failed_at, Phase::Stage, dir);
-                        }
-                    }
-                }
-            }
-        }
-    }
+    let tokens = phase!(lex_snap, lex_result, Phase::Lex, expected, dir);
+
+    // ── Phase 2: Parse ───────────────────────────────────────────────────────
+    let parse_result = Parser::new(tokens.into_iter().map(Ok), &arena).parse_program();
+    let parse_snap = match &parse_result {
+        Ok(program) => format!("{program:#?}\n"),
+        Err(e) => format!("ERROR\n{e:#}\n"),
+    };
+    let program = phase!(parse_snap, parse_result, Phase::Parse, expected, dir);
+
+    // ── Phase 3: Check ───────────────────────────────────────────────────────
+    let check_result = elaborate_program(&arena, &program);
+    let check_snap = match &check_result {
+        Ok(core) => format!("{core}\n"),
+        Err(e) => format!("ERROR\n{e:#}\n"),
+    };
+    let core_program = phase!(check_snap, check_result, Phase::Check, expected, dir);
+
+    // ── Phase 6: Stage ───────────────────────────────────────────────────────
+    // (slots 4–5 reserved for future optimisation passes)
+    let stage_result = unstage_program(&arena, &core_program);
+    let stage_snap = match &stage_result {
+        Ok(staged) => format!("{staged}\n"),
+        Err(e) => format!("ERROR\n{e:#}\n"),
+    };
+    phase!(stage_snap, stage_result, Phase::Stage, expected, dir);
 }
