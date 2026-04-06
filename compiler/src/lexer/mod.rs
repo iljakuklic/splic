@@ -52,10 +52,10 @@ impl<'names> Lexer<'names> {
 
     fn read_ident(&mut self) -> Token<'names> {
         let ident = self.split_pred(|c| !Self::is_ident_char(c));
-        Token::KEYWORDS
-            .iter()
-            .find(|(kw, _)| *kw == ident)
-            .map_or(Token::Ident(Name::new(self.names.alloc_str(ident))), |(_, tok)| *tok)
+        Token::KEYWORDS.iter().find(|(kw, _)| *kw == ident).map_or(
+            Token::Ident(Name::new(self.names.alloc_str(ident))),
+            |(_, tok)| *tok,
+        )
     }
 
     #[inline]

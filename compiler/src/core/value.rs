@@ -8,7 +8,7 @@ use bumpalo::Bump;
 
 use super::prim::IntType;
 use super::{Lam, Name, Pat, Pi, Prim, Term};
-use crate::common::{de_bruijn, Phase};
+use crate::common::{Phase, de_bruijn};
 
 /// Working evaluation environment: index 0 = outermost binding, last = innermost.
 /// `Var(Ix(i))` maps to `env[env.len() - 1 - i]`.
@@ -200,7 +200,11 @@ pub fn eval_pi<'names, 'a>(
 }
 
 /// Evaluate a multi-param Lam into a multi-param `Value::Lam` (no currying).
-fn eval_lam<'names, 'a>(arena: &'a Bump, env: &[Value<'names, 'a>], lam: &'a Lam<'names, 'a>) -> Value<'names, 'a> {
+fn eval_lam<'names, 'a>(
+    arena: &'a Bump,
+    env: &[Value<'names, 'a>],
+    lam: &'a Lam<'names, 'a>,
+) -> Value<'names, 'a> {
     let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
     let params: Vec<(&'names Name, Closure<'names, 'a>)> = lam
         .params

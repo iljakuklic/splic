@@ -1,10 +1,10 @@
-use anyhow::{anyhow, bail, ensure, Context as _, Result};
+use anyhow::{Context as _, Result, anyhow, bail, ensure};
 
 use crate::common::de_bruijn;
-use crate::core::{self, value, IntType, IntWidth, Lam, Phase, Pi, Prim};
+use crate::core::{self, IntType, IntWidth, Lam, Phase, Pi, Prim, value};
 use crate::parser::ast;
 
-use super::{builtin_prim_ty, Ctx};
+use super::{Ctx, builtin_prim_ty};
 
 /// Infer the type of a surface term, returning both the elaborated core term
 /// and its type as a semantic value.
@@ -16,7 +16,10 @@ pub fn infer<'names, 'ast, 'core>(
     ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
     term: &'ast ast::Term<'names, 'ast>,
-) -> Result<(&'core core::Term<'names, 'core>, value::Value<'names, 'core>)> {
+) -> Result<(
+    &'core core::Term<'names, 'core>,
+    value::Value<'names, 'core>,
+)> {
     match term {
         // ------------------------------------------------------------------ Var
         ast::Term::Var(name) => {
@@ -90,7 +93,8 @@ pub fn infer<'names, 'ast, 'core>(
 
             // Check each arg against its domain (evaluated with prior arg values).
             let mut arg_vals: Vec<value::Value<'names, 'core>> = Vec::with_capacity(args.len());
-            let mut core_args: Vec<&'core core::Term<'names, 'core>> = Vec::with_capacity(args.len());
+            let mut core_args: Vec<&'core core::Term<'names, 'core>> =
+                Vec::with_capacity(args.len());
             for (i, (arg, (_, domain_cl))) in args.iter().zip(vpi.params.iter()).enumerate() {
                 let domain_val = value::inst_n(ctx.arena, domain_cl, &arg_vals);
                 let core_arg = check_val(ctx, phase, arg, domain_val)
@@ -425,7 +429,10 @@ fn infer_block<'names, 'ast, 'core>(
     phase: Phase,
     stmts: &'ast [ast::Let<'names, 'ast>],
     expr: &'ast ast::Term<'names, 'ast>,
-) -> Result<(&'core core::Term<'names, 'core>, value::Value<'names, 'core>)> {
+) -> Result<(
+    &'core core::Term<'names, 'core>,
+    value::Value<'names, 'core>,
+)> {
     match stmts {
         [] => infer(ctx, phase, expr),
         [first, rest @ ..] => elaborate_let(
@@ -719,38 +726,38 @@ fn check_val_impl<'names, 'ast, 'core>(
                 _ => None,
             };
 
-            let core_arms: &'core [core::Arm<'names, 'core>] =
-                ctx.arena
-                    .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
-                        let core_pat = elaborate_pat(&arm.pat);
+            let core_arms: &'core [core::Arm<'names, 'core>] = ctx
+                .arena
+                .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
+                    let core_pat = elaborate_pat(&arm.pat);
 
-                        let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
-                            (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
-                                let mut env = ctx.env.clone();
-                                *env.get_mut(lvl.as_usize())
-                                    .expect("scrutinee level must be in scope") =
-                                    value::Value::Lit(*n, *int_ty);
-                                value::eval(ctx.arena, &env, ety)
-                            }
-                            _ => expected.clone(),
-                        };
-
-                        if let Some(bname) = core_pat.bound_name() {
-                            ctx.push_local(bname, scrut_ty_term);
+                    let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
+                        (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
+                            let mut env = ctx.env.clone();
+                            *env.get_mut(lvl.as_usize())
+                                .expect("scrutinee level must be in scope") =
+                                value::Value::Lit(*n, *int_ty);
+                            value::eval(ctx.arena, &env, ety)
                         }
+                        _ => expected.clone(),
+                    };
 
-                        let arm_result = check_val(ctx, phase, arm.body, arm_expected);
+                    if let Some(bname) = core_pat.bound_name() {
+                        ctx.push_local(bname, scrut_ty_term);
+                    }
 
-                        if core_pat.bound_name().is_some() {
-                            ctx.pop_local();
-                        }
+                    let arm_result = check_val(ctx, phase, arm.body, arm_expected);
 
-                        let core_body = arm_result?;
-                        Ok(core::Arm {
-                            pat: core_pat,
-                            body: core_body,
-                        })
-                    }))?;
+                    if core_pat.bound_name().is_some() {
+                        ctx.pop_local();
+                    }
+
+                    let core_body = arm_result?;
+                    Ok(core::Arm {
+                        pat: core_pat,
+                        body: core_body,
+                    })
+                }))?;
 
             Ok(ctx.alloc(core::Term::new_match(core_scrutinee, core_arms)))
         }

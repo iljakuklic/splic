@@ -117,7 +117,11 @@ where
     }
 
     /// Parse a comma-separated list of items bounded by a terminator token
-    fn parse_separated_list<T, F>(&mut self, terminator: Token<'names>, mut parser: F) -> Result<Vec<T>>
+    fn parse_separated_list<T, F>(
+        &mut self,
+        terminator: Token<'names>,
+        mut parser: F,
+    ) -> Result<Vec<T>>
     where
         F: FnMut(&mut Self) -> Result<T>,
     {
@@ -203,7 +207,9 @@ where
         Ok(self.alloc(Term::Block { stmts, expr }))
     }
 
-    fn parse_block_inner(&mut self) -> Result<(&'ast [Let<'names, 'ast>], &'ast Term<'names, 'ast>)> {
+    fn parse_block_inner(
+        &mut self,
+    ) -> Result<(&'ast [Let<'names, 'ast>], &'ast Term<'names, 'ast>)> {
         let mut stmts = Vec::new();
 
         while self.peek() == Some(Token::Let) {

@@ -12,7 +12,7 @@ pub use prim::{IntType, IntWidth, Prim};
 pub enum Pat<'names> {
     Lit(u64),
     Bind(&'names Name), // named binding
-    Wildcard,       // _ pattern
+    Wildcard,           // _ pattern
 }
 
 impl<'names> Pat<'names> {

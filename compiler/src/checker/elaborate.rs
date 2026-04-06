@@ -16,8 +16,8 @@ fn elaborate_sig<'names, 'ast, 'core>(
     let empty_globals: HashMap<&'names core::Name, &'core core::Pi<'names, 'core>> = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
-    let params: &'core [(&'names core::Name, &'core core::Term<'names, 'core>)] =
-        arena.alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
+    let params: &'core [(&'names core::Name, &'core core::Term<'names, 'core>)] = arena
+        .alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
             let (param_ty, _) = infer::infer(&mut ctx, func.phase, p.ty)?;
             ctx.push_local(p.name, param_ty);
             Ok((p.name, param_ty))
