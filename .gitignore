@@ -4,3 +4,4 @@ scratch/
 posts/
 .claude/settings.local.json
 .claude/worktrees/
+.opencode/package-lock.json
