@@ -68,7 +68,7 @@ impl ExpectedOutcome {
 /// When adding a new folder under `tests/snap/`, add a corresponding entry here.
 fn expected_outcome(folder: &str) -> ExpectedOutcome {
     match folder {
-        "full" => ExpectedOutcome::run_till(Phase::Stage),
+        "full" | "examples" => ExpectedOutcome::run_till(Phase::Stage),
         "lex" => ExpectedOutcome::run_till(Phase::Lex),
         "lex_error" => ExpectedOutcome::fail_at(Phase::Lex),
         "parse_error" => ExpectedOutcome::fail_at(Phase::Parse),
