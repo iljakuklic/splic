@@ -7,13 +7,14 @@ pub use token::Token;
 pub mod testutils;
 mod token;
 
-pub struct Lexer<'a> {
-    input: &'a str,
+pub struct Lexer<'src, 'names> {
+    input: &'src str,
+    names: &'names bumpalo::Bump,
 }
 
-impl<'a> Lexer<'a> {
-    pub const fn new(input: &'a str) -> Self {
-        Self { input }
+impl<'src, 'names> Lexer<'src, 'names> {
+    pub const fn new(input: &'src str, names: &'names bumpalo::Bump) -> Self {
+        Self { input, names }
     }
 
     #[inline]
@@ -33,7 +34,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn split_pred<F: Fn(char) -> bool>(&mut self, pred: F) -> &'a str {
+    fn split_pred<F: Fn(char) -> bool>(&mut self, pred: F) -> &'src str {
         let len = self.input.find(pred).unwrap_or(self.input.len());
         let (token, rest) = self.input.split_at(len);
         self.input = rest;
@@ -44,21 +45,21 @@ impl<'a> Lexer<'a> {
         c.is_ascii_alphanumeric() || c == '_'
     }
 
-    fn read_number(&mut self) -> Result<Token<'a>> {
+    fn read_number(&mut self) -> Result<Token<'names>> {
         let num_str = self.split_pred(|c| !c.is_ascii_digit());
         Ok(Token::Num(num_str.parse()?))
     }
 
-    fn read_ident(&mut self) -> Token<'a> {
+    fn read_ident(&mut self) -> Token<'names> {
         let ident = self.split_pred(|c| !Self::is_ident_char(c));
-        Token::KEYWORDS
-            .iter()
-            .find(|(kw, _)| *kw == ident)
-            .map_or(Token::Ident(Name::new(ident)), |(_, tok)| *tok)
+        Token::KEYWORDS.iter().find(|(kw, _)| *kw == ident).map_or(
+            Token::Ident(Name::new(self.names.alloc_str(ident))),
+            |(_, tok)| *tok,
+        )
     }
 
     #[inline]
-    fn read_token_impl(&mut self) -> Option<Result<Token<'a>>> {
+    fn read_token_impl(&mut self) -> Option<Result<Token<'names>>> {
         let c = self.input.chars().next()?;
 
         // Try matching symbols (longer first due to table order)
@@ -83,7 +84,7 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
-    fn read_token(&mut self) -> Option<Result<Token<'a>>> {
+    fn read_token(&mut self) -> Option<Result<Token<'names>>> {
         let orig_len = self.input.len();
         let result = self.read_token_impl();
         assert!(
@@ -94,16 +95,16 @@ impl<'a> Lexer<'a> {
     }
 
     #[inline]
-    fn next(&mut self) -> Option<Result<Token<'a>>> {
+    fn next(&mut self) -> Option<Result<Token<'names>>> {
         self.skip_whitespace();
         self.read_token()
     }
 }
 
-impl<'a> Iterator for Lexer<'a> {
-    type Item = Result<Token<'a>>;
+impl<'names> Iterator for Lexer<'_, 'names> {
+    type Item = Result<Token<'names>>;
 
-    fn next(&mut self) -> Option<Result<Token<'a>>> {
+    fn next(&mut self) -> Option<Result<Token<'names>>> {
         self.next()
     }
 }

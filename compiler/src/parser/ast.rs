@@ -2,9 +2,9 @@ pub use crate::common::{Assoc, BinOp, Name, Phase, UnOp};
 
 /// Function or operator reference
 #[derive(Clone, Copy, derive_more::Debug)]
-pub enum FunName<'a> {
+pub enum FunName<'names, 'ast> {
     #[debug("{_0:?}")]
-    Term(&'a Term<'a>),
+    Term(&'ast Term<'names, 'ast>),
     #[debug("{_0:?}")]
     BinOp(BinOp),
     #[debug("{_0:?}")]
@@ -12,84 +12,84 @@ pub enum FunName<'a> {
 }
 
 #[derive(derive_more::Debug)]
-pub enum Pat<'a> {
+pub enum Pat<'names> {
     #[debug("{_0:?}")]
-    Name(&'a Name),
+    Name(&'names Name),
     #[debug("{_0:?}")]
     Lit(u64),
 }
 
 #[derive(Debug)]
-pub struct MatchArm<'a> {
-    pub pat: Pat<'a>,
-    pub body: &'a Term<'a>,
+pub struct MatchArm<'names, 'ast> {
+    pub pat: Pat<'names>,
+    pub body: &'ast Term<'names, 'ast>,
 }
 
 #[derive(Debug)]
-pub struct Let<'a> {
-    pub name: &'a Name,
-    pub ty: Option<&'a Term<'a>>,
-    pub expr: &'a Term<'a>,
+pub struct Let<'names, 'ast> {
+    pub name: &'names Name,
+    pub ty: Option<&'ast Term<'names, 'ast>>,
+    pub expr: &'ast Term<'names, 'ast>,
 }
 
 #[derive(Debug)]
-pub struct Param<'a> {
-    pub name: &'a Name,
-    pub ty: &'a Term<'a>,
+pub struct Param<'names, 'ast> {
+    pub name: &'names Name,
+    pub ty: &'ast Term<'names, 'ast>,
 }
 
 #[derive(Debug)]
-pub struct Function<'a> {
+pub struct Function<'names, 'ast> {
     pub phase: Phase,
-    pub name: &'a Name,
-    pub params: &'a [Param<'a>],
-    pub ret_ty: &'a Term<'a>,
-    pub body: &'a Term<'a>,
+    pub name: &'names Name,
+    pub params: &'ast [Param<'names, 'ast>],
+    pub ret_ty: &'ast Term<'names, 'ast>,
+    pub body: &'ast Term<'names, 'ast>,
 }
 
 #[derive(Debug)]
-pub struct Program<'a> {
-    pub functions: &'a [Function<'a>],
+pub struct Program<'names, 'ast> {
+    pub functions: &'ast [Function<'names, 'ast>],
 }
 
 #[derive(derive_more::Debug)]
-pub enum Term<'a> {
+pub enum Term<'names, 'ast> {
     #[debug("{_0:?}")]
     Lit(u64),
 
     #[debug("{_0:?}")]
-    Var(&'a Name),
+    Var(&'names Name),
 
     App {
-        func: FunName<'a>,
-        args: &'a [&'a Self],
+        func: FunName<'names, 'ast>,
+        args: &'ast [&'ast Self],
     },
 
     /// Function type: `fn(name: ty, ...) -> ret_ty`
     Pi {
-        params: &'a [Param<'a>],
-        ret_ty: &'a Self,
+        params: &'ast [Param<'names, 'ast>],
+        ret_ty: &'ast Self,
     },
 
     /// Lambda: `|params| body`
     Lam {
-        params: &'a [Param<'a>],
-        body: &'a Self,
+        params: &'ast [Param<'names, 'ast>],
+        body: &'ast Self,
     },
 
-    Quote(&'a Self),
+    Quote(&'ast Self),
 
-    Splice(&'a Self),
+    Splice(&'ast Self),
 
-    Lift(&'a Self),
+    Lift(&'ast Self),
 
     Match {
-        scrutinee: &'a Self,
-        arms: &'a [MatchArm<'a>],
+        scrutinee: &'ast Self,
+        arms: &'ast [MatchArm<'names, 'ast>],
     },
 
     Block {
-        stmts: &'a [Let<'a>],
-        expr: &'a Self,
+        stmts: &'ast [Let<'names, 'ast>],
+        expr: &'ast Self,
     },
 }

@@ -13,13 +13,13 @@ fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
 
 // ── Core formatting ───────────────────────────────────────────────────────────
 
-impl<'a> Term<'a> {
+impl<'names> Term<'names, '_> {
     /// Print `self` in **statement position**: emits leading indentation, then
     /// the term content. `Let` and `Match` are printed without an enclosing `{ }`
     /// (the caller is responsible for any surrounding braces).
     fn fmt_term(
         &self,
-        env: &mut Vec<&'a Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -41,7 +41,7 @@ impl<'a> Term<'a> {
     /// a new indented block (e.g. `Let` / `Match`).
     fn fmt_term_inline(
         &self,
-        env: &mut Vec<&'a Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -171,7 +171,7 @@ impl<'a> Term<'a> {
     /// syntactically valid as sub-expressions.
     fn fmt_expr(
         &self,
-        env: &mut Vec<&'a Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -197,11 +197,11 @@ impl<'a> Term<'a> {
     }
 }
 
-impl<'a> Arm<'a> {
+impl<'names> Arm<'names, '_> {
     /// Print a single match arm.
     fn fmt_arm(
         &self,
-        env: &mut Vec<&'a Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -225,7 +225,7 @@ impl<'a> Arm<'a> {
 
 // ── Display impls ─────────────────────────────────────────────────────────────
 
-impl fmt::Display for Program<'_> {
+impl fmt::Display for Program<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (i, func) in self.functions.iter().enumerate() {
             if i > 0 {
@@ -237,7 +237,7 @@ impl fmt::Display for Program<'_> {
     }
 }
 
-impl fmt::Display for Function<'_> {
+impl fmt::Display for Function<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pi = self.pi();
 

@@ -10,35 +10,35 @@ use crate::parser::ast::{
 
 pub mod ast;
 
-pub struct Parser<'a, I>
+pub struct Parser<'names, 'ast, I>
 where
-    I: Iterator<Item = Result<Token<'a>>>,
+    I: Iterator<Item = Result<Token<'names>>>,
 {
     tokens: Peekable<I>,
-    arena: &'a bumpalo::Bump,
+    arena: &'ast bumpalo::Bump,
 }
 
-impl<'a, I> Parser<'a, I>
+impl<'names, 'ast, I> Parser<'names, 'ast, I>
 where
-    I: Iterator<Item = Result<Token<'a>>>,
+    I: Iterator<Item = Result<Token<'names>>>,
 {
-    pub fn new(tokens: I, arena: &'a bumpalo::Bump) -> Self {
+    pub fn new(tokens: I, arena: &'ast bumpalo::Bump) -> Self {
         let tokens = tokens.peekable();
         Self { tokens, arena }
     }
 
-    fn peek(&mut self) -> Option<Token<'a>> {
+    fn peek(&mut self) -> Option<Token<'names>> {
         self.tokens.peek().and_then(|r| r.as_ref().ok().copied())
     }
 
-    fn next(&mut self) -> Option<Result<Token<'a>>> {
+    fn next(&mut self) -> Option<Result<Token<'names>>> {
         self.tokens.next()
     }
 
     /// Helper for extracting a token with a custom validation closure
     fn expect_token<T, F>(&mut self, description: &str, f: F) -> Result<T>
     where
-        F: FnOnce(Token<'a>) -> Option<T>,
+        F: FnOnce(Token<'names>) -> Option<T>,
     {
         match self.next() {
             Some(Ok(token)) => {
@@ -49,13 +49,13 @@ where
         }
     }
 
-    fn take(&mut self, expected: Token<'a>) -> Result<Token<'a>> {
+    fn take(&mut self, expected: Token<'names>) -> Result<Token<'names>> {
         self.expect_token(&format!("{expected:?}"), |token| {
             (token == expected).then_some(token)
         })
     }
 
-    fn take_ident(&mut self) -> Result<&'a Name> {
+    fn take_ident(&mut self) -> Result<&'names Name> {
         self.expect_token("identifier", |token| {
             if let Token::Ident(name) = token {
                 Some(name)
@@ -66,7 +66,7 @@ where
     }
 
     /// Consume a token if it matches the expected token
-    fn consume_if(&mut self, token: Token<'a>) -> bool {
+    fn consume_if(&mut self, token: Token<'names>) -> bool {
         if matches!(self.peek(), Some(t) if t == token) {
             self.next();
             true
@@ -76,12 +76,12 @@ where
     }
 
     /// Allocate a term and return a reference to it
-    fn alloc(&self, term: Term<'a>) -> &'a Term<'a> {
+    fn alloc(&self, term: Term<'names, 'ast>) -> &'ast Term<'names, 'ast> {
         &*self.arena.alloc(term)
     }
 
     /// Parse a quoted expression: #(...)
-    fn parse_quoted_expr(&mut self) -> Result<Term<'a>> {
+    fn parse_quoted_expr(&mut self) -> Result<Term<'names, 'ast>> {
         let expr = self.parse_expr().context("parsing quoted expression")?;
         self.take(Token::RParen)
             .context("expected ')' after quotation")?;
@@ -89,13 +89,13 @@ where
     }
 
     /// Parse a quoted block: #{...}
-    fn parse_quoted_block(&mut self) -> Result<Term<'a>> {
+    fn parse_quoted_block(&mut self) -> Result<Term<'names, 'ast>> {
         let (stmts, expr) = self.parse_block_inner()?;
         Ok(Term::Quote(self.alloc(Term::Block { stmts, expr })))
     }
 
     /// Parse a spliced expression: $(...)
-    fn parse_spliced_expr(&mut self) -> Result<Term<'a>> {
+    fn parse_spliced_expr(&mut self) -> Result<Term<'names, 'ast>> {
         let expr = self.parse_expr().context("parsing spliced expression")?;
         self.take(Token::RParen)
             .context("expected ')' after splice")?;
@@ -103,13 +103,13 @@ where
     }
 
     /// Parse a spliced block: ${...}
-    fn parse_spliced_block(&mut self) -> Result<Term<'a>> {
+    fn parse_spliced_block(&mut self) -> Result<Term<'names, 'ast>> {
         let (stmts, expr) = self.parse_block_inner()?;
         Ok(Term::Splice(self.alloc(Term::Block { stmts, expr })))
     }
 
     /// Parse a lifted expression: [[...]]
-    fn parse_lifted_expr(&mut self) -> Result<Term<'a>> {
+    fn parse_lifted_expr(&mut self) -> Result<Term<'names, 'ast>> {
         let expr = self.parse_expr().context("parsing lifted expression")?;
         self.take(Token::DoubleRBracket)
             .context("expected ']]' after lifted expression")?;
@@ -117,7 +117,11 @@ where
     }
 
     /// Parse a comma-separated list of items bounded by a terminator token
-    fn parse_separated_list<T, F>(&mut self, terminator: Token<'a>, mut parser: F) -> Result<Vec<T>>
+    fn parse_separated_list<T, F>(
+        &mut self,
+        terminator: Token<'names>,
+        mut parser: F,
+    ) -> Result<Vec<T>>
     where
         F: FnMut(&mut Self) -> Result<T>,
     {
@@ -134,7 +138,7 @@ where
         Ok(items)
     }
 
-    pub fn parse_program(&mut self) -> Result<Program<'a>> {
+    pub fn parse_program(&mut self) -> Result<Program<'names, 'ast>> {
         let mut functions = Vec::new();
         while self.peek().is_some() {
             let fun = self.parse_fn_def()?;
@@ -144,7 +148,7 @@ where
         Ok(Program { functions })
     }
 
-    fn parse_fn_def(&mut self) -> Result<Function<'a>> {
+    fn parse_fn_def(&mut self) -> Result<Function<'names, 'ast>> {
         let phase = if self.consume_if(Token::Code) {
             Phase::Object
         } else {
@@ -158,7 +162,11 @@ where
             .with_context(|| format!("in function `{name}`"))
     }
 
-    fn parse_fn_def_after_name(&mut self, phase: Phase, name: &'a Name) -> Result<Function<'a>> {
+    fn parse_fn_def_after_name(
+        &mut self,
+        phase: Phase,
+        name: &'names Name,
+    ) -> Result<Function<'names, 'ast>> {
         self.take(Token::LParen).context("expected '('")?;
         let params = self.parse_params()?;
         self.take(Token::RParen).context("expected ')'")?;
@@ -180,7 +188,7 @@ where
         })
     }
 
-    fn parse_params(&mut self) -> Result<&'a [Param<'a>]> {
+    fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {
         let params = self.parse_separated_list(Token::RParen, |parser| {
             let name = parser.take_ident().context("expected parameter name")?;
             parser
@@ -193,13 +201,15 @@ where
         Ok(self.arena.alloc_slice_fill_iter(params))
     }
 
-    fn parse_block(&mut self) -> Result<&'a Term<'a>> {
+    fn parse_block(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         self.take(Token::LBrace).context("expected '{'")?;
         let (stmts, expr) = self.parse_block_inner()?;
         Ok(self.alloc(Term::Block { stmts, expr }))
     }
 
-    fn parse_block_inner(&mut self) -> Result<(&'a [Let<'a>], &'a Term<'a>)> {
+    fn parse_block_inner(
+        &mut self,
+    ) -> Result<(&'ast [Let<'names, 'ast>], &'ast Term<'names, 'ast>)> {
         let mut stmts = Vec::new();
 
         while self.peek() == Some(Token::Let) {
@@ -214,7 +224,7 @@ where
         Ok((stmts, expr))
     }
 
-    fn parse_let_stmt(&mut self) -> Result<Let<'a>> {
+    fn parse_let_stmt(&mut self) -> Result<Let<'names, 'ast>> {
         self.take(Token::Let).context("expected 'let'")?;
         let name = self.take_ident().context("expected variable name")?;
         let ty = if self.consume_if(Token::Colon) {
@@ -232,15 +242,15 @@ where
         Ok(Let { name, ty, expr })
     }
 
-    fn parse_expr(&mut self) -> Result<&'a Term<'a>> {
+    fn parse_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         Ok(self.arena.alloc(self.parse_expr_owned()?))
     }
 
-    fn parse_expr_owned(&mut self) -> Result<Term<'a>> {
+    fn parse_expr_owned(&mut self) -> Result<Term<'names, 'ast>> {
         self.parse_expr_prec(Precedence::MIN)
     }
 
-    fn parse_expr_prec(&mut self, min_prec: Precedence) -> Result<Term<'a>> {
+    fn parse_expr_prec(&mut self, min_prec: Precedence) -> Result<Term<'names, 'ast>> {
         let mut lhs = if let Some(op) = self.match_unop() {
             self.next();
             let expr = self
@@ -333,7 +343,7 @@ where
     }
 
     /// Parse a function call with arguments
-    fn parse_function_call(&mut self, name: &'a Name) -> Result<Term<'a>> {
+    fn parse_function_call(&mut self, name: &'names Name) -> Result<Term<'names, 'ast>> {
         let args = self.parse_separated_list(Token::RParen, |parser| {
             parser.parse_expr().context("parsing function argument")
         })?;
@@ -347,7 +357,7 @@ where
     }
 
     /// Parse a parenthesized expression
-    fn parse_paren_expr(&mut self) -> Result<Term<'a>> {
+    fn parse_paren_expr(&mut self) -> Result<Term<'names, 'ast>> {
         let expr = self
             .parse_expr_owned()
             .context("parsing expression in parentheses")?;
@@ -357,7 +367,7 @@ where
     }
 
     /// Parse a match expression
-    fn parse_match_expr(&mut self) -> Result<Term<'a>> {
+    fn parse_match_expr(&mut self) -> Result<Term<'names, 'ast>> {
         let scrutinee = self.parse_expr().context("parsing match scrutinee")?;
         self.take(Token::LBrace)
             .context("expected '{' after match expression")?;
@@ -371,7 +381,7 @@ where
     /// Parse a function type: `fn(params) -> ret_ty`
     ///
     /// Called after consuming the `fn` token. Each param is `name: type`.
-    fn parse_fn_type(&mut self) -> Result<Term<'a>> {
+    fn parse_fn_type(&mut self) -> Result<Term<'names, 'ast>> {
         self.take(Token::LParen)
             .context("expected '(' in function type")?;
         let params = self.parse_params()?;
@@ -388,7 +398,7 @@ where
     /// Parse a lambda expression: `|params| body`
     ///
     /// Called after consuming the `|` token. Each param is `name: type`.
-    fn parse_lambda(&mut self) -> Result<Term<'a>> {
+    fn parse_lambda(&mut self) -> Result<Term<'names, 'ast>> {
         let params_vec = self.parse_separated_list(Token::Bar, |parser| {
             let name = parser
                 .take_ident()
@@ -415,7 +425,7 @@ where
         clippy::wildcard_enum_match_arm,
         reason = "unrecognised tokens are intentionally caught by the wildcard arm"
     )]
-    fn parse_atom_owned(&mut self) -> Result<Term<'a>> {
+    fn parse_atom_owned(&mut self) -> Result<Term<'names, 'ast>> {
         let token = self.next().context("expected expression")??;
         match token {
             Token::Num(n) => Ok(Term::Lit(n)),
@@ -445,7 +455,7 @@ where
         }
     }
 
-    fn parse_match_arms(&mut self) -> Result<Vec<MatchArm<'a>>> {
+    fn parse_match_arms(&mut self) -> Result<Vec<MatchArm<'names, 'ast>>> {
         let mut arms = Vec::new();
         while self.peek().is_some() && !matches!(self.peek(), Some(Token::RBrace)) {
             let pat = self.parse_pattern().context("parsing match pattern")?;
@@ -465,7 +475,7 @@ where
         clippy::wildcard_enum_match_arm,
         reason = "unrecognised tokens are intentionally caught by the wildcard arm"
     )]
-    fn parse_pattern(&mut self) -> Result<Pat<'a>> {
+    fn parse_pattern(&mut self) -> Result<Pat<'names>> {
         let token = self.next().context("expected pattern")??;
         match token {
             Token::Num(n) => Ok(Pat::Lit(n)),

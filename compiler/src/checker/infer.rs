@@ -12,11 +12,14 @@ use super::{Ctx, builtin_prim_ty};
     clippy::too_many_lines,
     reason = "large match over all surface term variants"
 )]
-pub fn infer<'src, 'core>(
-    ctx: &mut Ctx<'core, '_>,
+pub fn infer<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'src ast::Term<'src>,
-) -> Result<(&'core core::Term<'core>, value::Value<'core>)> {
+    term: &'ast ast::Term<'names, 'ast>,
+) -> Result<(
+    &'core core::Term<'names, 'core>,
+    value::Value<'names, 'core>,
+)> {
     match term {
         // ------------------------------------------------------------------ Var
         ast::Term::Var(name) => {
@@ -44,7 +47,6 @@ pub fn infer<'src, 'core>(
             }
             // Globals — bare reference without call
             if let Some(pi) = ctx.globals.get(name).copied() {
-                let name = core::Name::new(ctx.arena.alloc_str(name.as_str()));
                 let ty = value::eval_pi(ctx.arena, &[], pi);
                 return Ok((ctx.alloc(core::Term::Global(name)), ty));
             }
@@ -90,8 +92,9 @@ pub fn infer<'src, 'core>(
             );
 
             // Check each arg against its domain (evaluated with prior arg values).
-            let mut arg_vals: Vec<value::Value<'core>> = Vec::with_capacity(args.len());
-            let mut core_args: Vec<&'core core::Term<'core>> = Vec::with_capacity(args.len());
+            let mut arg_vals: Vec<value::Value<'names, 'core>> = Vec::with_capacity(args.len());
+            let mut core_args: Vec<&'core core::Term<'names, 'core>> =
+                Vec::with_capacity(args.len());
             for (i, (arg, (_, domain_cl))) in args.iter().zip(vpi.params.iter()).enumerate() {
                 let domain_val = value::inst_n(ctx.arena, domain_cl, &arg_vals);
                 let core_arg = check_val(ctx, phase, arg, domain_val)
@@ -178,13 +181,12 @@ pub fn infer<'src, 'core>(
             );
             let depth_before = ctx.depth();
 
-            let mut elaborated_params: Vec<(&'core core::Name, &'core core::Term<'core>)> =
+            let mut elaborated_params: Vec<(&'names core::Name, &'core core::Term<'names, 'core>)> =
                 Vec::new();
             for p in *params {
-                let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let param_ty = check_universe(ctx, Phase::Meta, p.ty)?;
-                elaborated_params.push((param_name, param_ty));
-                ctx.push_local(param_name, param_ty);
+                elaborated_params.push((p.name, param_ty));
+                ctx.push_local(p.name, param_ty);
             }
 
             let core_ret_ty = check_universe(ctx, Phase::Meta, ret_ty)?;
@@ -212,14 +214,13 @@ pub fn infer<'src, 'core>(
             );
 
             let depth_before = ctx.depth();
-            let mut elaborated_params: Vec<(&'core core::Name, &'core core::Term<'core>)> =
+            let mut elaborated_params: Vec<(&'names core::Name, &'core core::Term<'names, 'core>)> =
                 Vec::new();
 
             for p in *params {
-                let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
                 let (param_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
-                elaborated_params.push((param_name, param_ty));
-                ctx.push_local(param_name, param_ty);
+                elaborated_params.push((p.name, param_ty));
+                ctx.push_local(p.name, param_ty);
             }
 
             let (core_body, body_ty) = infer(ctx, phase, body)?;
@@ -325,7 +326,10 @@ pub fn infer<'src, 'core>(
 }
 
 /// Check exhaustiveness of `arms` given the scrutinee type `scrut_ty`.
-fn check_exhaustiveness(scrut_ty: &value::Value<'_>, arms: &[ast::MatchArm<'_>]) -> Result<()> {
+fn check_exhaustiveness(
+    scrut_ty: &value::Value<'_, '_>,
+    arms: &[ast::MatchArm<'_, '_>],
+) -> Result<()> {
     let mut covered_lits: Option<Vec<bool>> = match scrut_ty {
         value::Value::Prim(Prim::IntTy(ty)) => match ty.width {
             IntWidth::U0 => Some(vec![false; 1]),
@@ -362,32 +366,29 @@ fn check_exhaustiveness(scrut_ty: &value::Value<'_>, arms: &[ast::MatchArm<'_>])
 }
 
 /// Elaborate a match pattern into a core pattern.
-fn elaborate_pat<'core>(ctx: &Ctx<'core, '_>, pat: &ast::Pat<'_>) -> core::Pat<'core> {
+fn elaborate_pat<'names>(pat: &ast::Pat<'names>) -> core::Pat<'names> {
     match pat {
         ast::Pat::Lit(n) => core::Pat::Lit(*n),
         ast::Pat::Name(name) => match name.as_str() {
             "_" => core::Pat::Wildcard,
-            s => {
-                let bound = core::Name::new(ctx.arena.alloc_str(s));
-                core::Pat::Bind(bound)
-            }
+            _ => core::Pat::Bind(name),
         },
     }
 }
 
 /// Elaborate a single `let` binding.
-fn elaborate_let<'src, 'core, T, F, G, W>(
-    ctx: &mut Ctx<'core, '_>,
+fn elaborate_let<'names, 'ast, 'core, T, F, G, W>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmt: &'src ast::Let<'src>,
+    stmt: &'ast ast::Let<'names, 'ast>,
     cont: F,
     body_of: G,
     wrap: W,
 ) -> Result<T>
 where
-    F: FnOnce(&mut Ctx<'core, '_>) -> Result<T>,
-    G: FnOnce(&T) -> &'core core::Term<'core>,
-    W: FnOnce(&'core core::Term<'core>, T) -> T,
+    F: FnOnce(&mut Ctx<'names, 'core, '_>) -> Result<T>,
+    G: FnOnce(&T) -> &'core core::Term<'names, 'core>,
+    W: FnOnce(&'core core::Term<'names, 'core>, T) -> T,
 {
     let (core_expr, bind_ty_val) = if let Some(ann) = stmt.ty {
         let (ty, _) = infer(ctx, phase, ann)?;
@@ -404,7 +405,7 @@ where
     let bind_ty_term = ctx.quote_val(&bind_ty_val);
     // Evaluate the bound expression so dependent references to this binding work correctly.
     let expr_val = ctx.eval(core_expr);
-    let bind_name = core::Name::new(ctx.arena.alloc_str(stmt.name.as_str()));
+    let bind_name = stmt.name;
     ctx.push_let_binding(bind_name, bind_ty_val, expr_val);
     let cont_result = cont(ctx);
     ctx.pop_local();
@@ -421,12 +422,15 @@ where
 }
 
 /// Elaborate a sequence of `let` bindings followed by a trailing expression (infer mode).
-fn infer_block<'src, 'core>(
-    ctx: &mut Ctx<'core, '_>,
+fn infer_block<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmts: &'src [ast::Let<'src>],
-    expr: &'src ast::Term<'src>,
-) -> Result<(&'core core::Term<'core>, value::Value<'core>)> {
+    stmts: &'ast [ast::Let<'names, 'ast>],
+    expr: &'ast ast::Term<'names, 'ast>,
+) -> Result<(
+    &'core core::Term<'names, 'core>,
+    value::Value<'names, 'core>,
+)> {
     match stmts {
         [] => infer(ctx, phase, expr),
         [first, rest @ ..] => elaborate_let(
@@ -441,14 +445,14 @@ fn infer_block<'src, 'core>(
 }
 
 /// Elaborate a sequence of `let` bindings followed by a trailing expression (check mode).
-fn check_block_val<'src, 'core>(
-    ctx: &mut Ctx<'core, '_>,
+fn check_block_val<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmts: &'src [ast::Let<'src>],
-    expr: &'src ast::Term<'src>,
-    expected: value::Value<'core>,
-    expected_term: Option<&'core core::Term<'core>>,
-) -> Result<&'core core::Term<'core>> {
+    stmts: &'ast [ast::Let<'names, 'ast>],
+    expr: &'ast ast::Term<'names, 'ast>,
+    expected: value::Value<'names, 'core>,
+    expected_term: Option<&'core core::Term<'names, 'core>>,
+) -> Result<&'core core::Term<'names, 'core>> {
     match stmts {
         [] => check_val_impl(ctx, phase, expr, expected, expected_term),
         [first, rest @ ..] => elaborate_let(
@@ -466,11 +470,11 @@ fn check_block_val<'src, 'core>(
 ///
 /// Equivalent to `check(ctx, phase, term, Type)` for meta phase or
 /// `check(ctx, phase, term, VmType)` for object phase.
-fn check_universe<'src, 'core>(
-    ctx: &mut Ctx<'core, '_>,
+fn check_universe<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'src ast::Term<'src>,
-) -> Result<&'core core::Term<'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+) -> Result<&'core core::Term<'names, 'core>> {
     let universe: &core::Term = match phase {
         Phase::Meta => &core::Term::TYPE,
         Phase::Object => &core::Term::VM_TYPE,
@@ -482,23 +486,23 @@ fn check_universe<'src, 'core>(
 ///
 /// This is a convenience wrapper for callers that have an expected type as a `&Term`.
 /// It also threads the expected term through for dependent-type arm refinement.
-pub fn check<'src, 'core>(
-    ctx: &mut Ctx<'core, '_>,
+pub fn check<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'src ast::Term<'src>,
-    expected: &'core core::Term<'core>,
-) -> Result<&'core core::Term<'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+    expected: &'core core::Term<'names, 'core>,
+) -> Result<&'core core::Term<'names, 'core>> {
     let expected_val = ctx.eval(expected);
     check_val_impl(ctx, phase, term, expected_val, Some(expected))
 }
 
 /// Check `term` against `expected` (as a semantic Value), returning the elaborated core term.
-pub fn check_val<'src, 'core>(
-    ctx: &mut Ctx<'core, '_>,
+pub fn check_val<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'src ast::Term<'src>,
-    expected: value::Value<'core>,
-) -> Result<&'core core::Term<'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+    expected: value::Value<'names, 'core>,
+) -> Result<&'core core::Term<'names, 'core>> {
     check_val_impl(ctx, phase, term, expected, None)
 }
 
@@ -508,13 +512,13 @@ pub fn check_val<'src, 'core>(
     clippy::too_many_lines,
     reason = "large match over all surface term variants"
 )]
-fn check_val_impl<'src, 'core>(
-    ctx: &mut Ctx<'core, '_>,
+fn check_val_impl<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'src ast::Term<'src>,
-    expected: value::Value<'core>,
-    expected_term: Option<&'core core::Term<'core>>,
-) -> Result<&'core core::Term<'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+    expected: value::Value<'names, 'core>,
+    expected_term: Option<&'core core::Term<'names, 'core>>,
+) -> Result<&'core core::Term<'names, 'core>> {
     match term {
         // ------------------------------------------------------------------ Lit
         ast::Term::Lit(n) => match &expected {
@@ -666,12 +670,12 @@ fn check_val_impl<'src, 'core>(
                 vpi.params.len()
             );
 
-            let mut elaborated_params: Vec<(&'core core::Name, &'core core::Term<'core>)> =
+            let mut elaborated_params: Vec<(&'names core::Name, &'core core::Term<'names, 'core>)> =
                 Vec::new();
-            let mut arg_vals: Vec<value::Value<'core>> = Vec::new();
+            let mut arg_vals: Vec<value::Value<'names, 'core>> = Vec::new();
 
             for (p, (_, domain_cl)) in params.iter().zip(vpi.params.iter()) {
-                let param_name = core::Name::new(ctx.arena.alloc_str(p.name.as_str()));
+                let param_name = p.name;
                 let (annotated_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
                 let annotated_ty_val = ctx.eval(annotated_ty);
                 let expected_domain = value::inst_n(ctx.arena, domain_cl, &arg_vals);
@@ -720,38 +724,38 @@ fn check_val_impl<'src, 'core>(
                 _ => None,
             };
 
-            let core_arms: &'core [core::Arm<'core>] =
-                ctx.arena
-                    .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
-                        let core_pat = elaborate_pat(ctx, &arm.pat);
+            let core_arms: &'core [core::Arm<'names, 'core>] = ctx
+                .arena
+                .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
+                    let core_pat = elaborate_pat(&arm.pat);
 
-                        let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
-                            (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
-                                let mut env = ctx.env.clone();
-                                *env.get_mut(lvl.as_usize())
-                                    .expect("scrutinee level must be in scope") =
-                                    value::Value::Lit(*n, *int_ty);
-                                value::eval(ctx.arena, &env, ety)
-                            }
-                            _ => expected.clone(),
-                        };
-
-                        if let Some(bname) = core_pat.bound_name() {
-                            ctx.push_local(bname, scrut_ty_term);
+                    let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
+                        (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
+                            let mut env = ctx.env.clone();
+                            *env.get_mut(lvl.as_usize())
+                                .expect("scrutinee level must be in scope") =
+                                value::Value::Lit(*n, *int_ty);
+                            value::eval(ctx.arena, &env, ety)
                         }
+                        _ => expected.clone(),
+                    };
 
-                        let arm_result = check_val(ctx, phase, arm.body, arm_expected);
+                    if let Some(bname) = core_pat.bound_name() {
+                        ctx.push_local(bname, scrut_ty_term);
+                    }
 
-                        if core_pat.bound_name().is_some() {
-                            ctx.pop_local();
-                        }
+                    let arm_result = check_val(ctx, phase, arm.body, arm_expected);
 
-                        let core_body = arm_result?;
-                        Ok(core::Arm {
-                            pat: core_pat,
-                            body: core_body,
-                        })
-                    }))?;
+                    if core_pat.bound_name().is_some() {
+                        ctx.pop_local();
+                    }
+
+                    let core_body = arm_result?;
+                    Ok(core::Arm {
+                        pat: core_pat,
+                        body: core_body,
+                    })
+                }))?;
 
             Ok(ctx.alloc(core::Term::new_match(core_scrutinee, core_arms)))
         }

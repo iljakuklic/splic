@@ -14,7 +14,7 @@ mod infer;
 pub(crate) fn builtin_prim_ty(
     name: &'_ core::Name,
     phase: Phase,
-) -> Option<&'static core::Term<'static>> {
+) -> Option<&'static core::Term<'static, 'static>> {
     Some(match name.as_str() {
         "u0" => core::Term::int_ty(IntWidth::U0, phase),
         "u1" => core::Term::int_ty(IntWidth::U1, phase),

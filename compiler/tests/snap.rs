@@ -24,7 +24,7 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
     let arena = Bump::new();
 
     // ── Phase 1: Lex ────────────────────────────────────────────────────────
-    let lex_result: Result<Vec<_>, _> = Lexer::new(&input).collect();
+    let lex_result: Result<Vec<_>, _> = Lexer::new(&input, &arena).collect();
     let lex_snap = match &lex_result {
         Ok(tokens) => {
             use std::fmt::Write as _;
