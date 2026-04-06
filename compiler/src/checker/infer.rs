@@ -680,7 +680,7 @@ fn check_val_impl<'names, 'ast, 'core>(
                 let annotated_ty_val = ctx.eval(annotated_ty);
                 let expected_domain = value::inst_n(ctx.arena, domain_cl, &arg_vals);
                 ensure!(
-                    value::val_eq(ctx.arena, ctx.depth(), &annotated_ty_val, &expected_domain),
+                    value::val_eq(ctx.depth(), &annotated_ty_val, &expected_domain),
                     "lambda parameter type mismatch: annotation gives a different type \
                      than the expected function type"
                 );
@@ -772,7 +772,7 @@ fn check_val_impl<'names, 'ast, 'core>(
         ast::Term::Var(_) | ast::Term::App { .. } | ast::Term::Lift(_) | ast::Term::Pi { .. } => {
             let (core_term, inferred_val) = infer(ctx, phase, term)?;
             ensure!(
-                value::val_eq(ctx.arena, ctx.depth(), &inferred_val, &expected),
+                value::val_eq(ctx.depth(), &inferred_val, &expected),
                 "type mismatch"
             );
             Ok(core_term)
