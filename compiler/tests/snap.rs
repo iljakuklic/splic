@@ -48,20 +48,18 @@ struct ExpectedOutcome {
 }
 
 impl ExpectedOutcome {
+    const fn new(ok: bool, last_phase: Phase) -> Self {
+        Self { ok, last_phase }
+    }
+
     /// All phases run successfully up to and including `phase`.
     const fn run_till(phase: Phase) -> Self {
-        Self {
-            ok: true,
-            last_phase: phase,
-        }
+        Self::new(true, phase)
     }
 
     /// Phases run until `phase`, which is expected to fail.
     const fn fail_at(phase: Phase) -> Self {
-        Self {
-            ok: false,
-            last_phase: phase,
-        }
+        Self::new(false, phase)
     }
 }
 
