@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::common::de_bruijn;
+use crate::common::env::Env;
 use crate::parser::ast::Phase;
 
 use super::{Arm, Function, Name, Pat, Program, Term};
@@ -19,7 +19,7 @@ impl<'names> Term<'names, '_> {
     /// (the caller is responsible for any surrounding braces).
     fn fmt_term(
         &self,
-        env: &mut Vec<&'names Name>,
+        env: &mut Env<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -41,19 +41,16 @@ impl<'names> Term<'names, '_> {
     /// a new indented block (e.g. `Let` / `Match`).
     fn fmt_term_inline(
         &self,
-        env: &mut Vec<&'names Name>,
+        env: &mut Env<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
             Term::Var(ix) => {
-                let lvl = ix.lvl_at(de_bruijn::Depth::new(env.len()));
-                let i = lvl.as_usize();
-                let name = env
-                    .get(i)
-                    .expect("De Bruijn level out of environment bounds");
-                write!(f, "{name}@{i}")
+                let lvl = ix.lvl_at(env.depth());
+                let name = env.get(lvl);
+                write!(f, "{name}@{lvl}")
             }
 
             // ── Literal ──────────────────────────────────────────────────────────
@@ -80,7 +77,7 @@ impl<'names> Term<'names, '_> {
 
             // ── Pi type ───────────────────────────────────────────────────────────
             Term::Pi(pi) => {
-                let env_before = env.len();
+                let env_before = env.depth();
                 write!(f, "fn(")?;
                 for (i, &(name, ty)) in pi.params.iter().enumerate() {
                     if i > 0 {
@@ -89,7 +86,7 @@ impl<'names> Term<'names, '_> {
                     if name.as_str() == "_" {
                         write!(f, "_: ")?;
                     } else {
-                        write!(f, "{}@{}: ", name, env.len())?;
+                        write!(f, "{}@{}: ", name, env.depth())?;
                     }
                     ty.fmt_expr(env, indent, f)?;
                     env.push(name);
@@ -102,13 +99,13 @@ impl<'names> Term<'names, '_> {
 
             // ── Lambda ────────────────────────────────────────────────────────────
             Term::Lam(lam) => {
-                let env_before = env.len();
+                let env_before = env.depth();
                 write!(f, "|")?;
                 for (i, &(name, ty)) in lam.params.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
                     }
-                    write!(f, "{}@{}: ", name, env.len())?;
+                    write!(f, "{}@{}: ", name, env.depth())?;
                     ty.fmt_expr(env, indent, f)?;
                     env.push(name);
                 }
@@ -139,7 +136,7 @@ impl<'names> Term<'names, '_> {
             // In statement position: print as a flat let-chain without extra braces.
             Term::Let(let_) => {
                 write_indent(f, indent)?;
-                write!(f, "let {}@{}: ", let_.name, env.len())?;
+                write!(f, "let {}@{}: ", let_.name, env.depth())?;
                 let_.ty.fmt_expr(env, indent, f)?;
                 write!(f, " = ")?;
                 let_.expr.fmt_expr(env, indent, f)?;
@@ -171,7 +168,7 @@ impl<'names> Term<'names, '_> {
     /// syntactically valid as sub-expressions.
     fn fmt_expr(
         &self,
-        env: &mut Vec<&'names Name>,
+        env: &mut Env<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -201,7 +198,7 @@ impl<'names> Arm<'names, '_> {
     /// Print a single match arm.
     fn fmt_arm(
         &self,
-        env: &mut Vec<&'names Name>,
+        env: &mut Env<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -210,8 +207,7 @@ impl<'names> Arm<'names, '_> {
             Pat::Lit(n) => write!(f, "{n} => ")?,
             Pat::Wildcard => write!(f, "_ => ")?,
             Pat::Bind(name) => {
-                let lvl = env.len();
-                write!(f, "{name}@{lvl} => ")?;
+                write!(f, "{name}@{} => ", env.depth())?;
                 env.push(*name);
                 self.body.fmt_expr(env, indent, f)?;
                 env.pop();
@@ -242,7 +238,7 @@ impl fmt::Display for Function<'_, '_> {
         let pi = self.pi();
 
         // Build the name environment for the body: one entry per parameter.
-        let mut env: Vec<&Name> = Vec::with_capacity(pi.params.len());
+        let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
 
         // Phase prefix.
         match pi.phase {

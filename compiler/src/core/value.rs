@@ -10,9 +10,9 @@ use super::prim::IntType;
 use super::{Lam, Name, Pat, Pi, Prim, Term};
 use crate::common::{Phase, de_bruijn};
 
-/// Working evaluation environment: index 0 = outermost binding, last = innermost.
+/// Working evaluation environment: index 0 = outermost binding (level 0), last = innermost.
 /// `Var(Ix(i))` maps to `env[env.len() - 1 - i]`.
-pub type Env<'names, 'a> = Vec<Value<'names, 'a>>;
+pub type Env<'names, 'a> = crate::common::env::Env<Value<'names, 'a>>;
 
 /// Semantic value — result of evaluating a term or type.
 #[derive(Clone, Debug)]
@@ -73,20 +73,14 @@ pub struct Closure<'names, 'a> {
 
 /// Evaluate a term in an environment, producing a semantic value.
 ///
-/// `env[env.len() - 1 - ix]` gives the value for `Var(Ix(ix))`.
+/// `env.get(lvl)` gives the value for the variable at De Bruijn level `lvl`.
 pub fn eval<'names, 'a>(
     arena: &'a Bump,
-    env: &[Value<'names, 'a>],
+    env: &Env<'names, 'a>,
     term: &'a Term<'names, 'a>,
 ) -> Value<'names, 'a> {
     match term {
-        Term::Var(ix) => {
-            let lvl = ix.lvl_at(de_bruijn::Depth::new(env.len()));
-            let i = lvl.as_usize();
-            env.get(i)
-                .expect("De Bruijn index out of environment bounds")
-                .clone()
-        }
+        Term::Var(ix) => env.get(ix.lvl_at(env.depth())).clone(),
 
         Term::Prim(p) => Value::Prim(*p),
         Term::Lit(n, it) => Value::Lit(*n, *it),
@@ -125,7 +119,7 @@ pub fn eval<'names, 'a>(
 
         Term::Let(let_) => {
             let val = eval(arena, env, let_.expr);
-            let mut env2: Vec<Value<'names, 'a>> = env.to_vec();
+            let mut env2 = env.clone();
             env2.push(val);
             eval(arena, &env2, let_.body)
         }
@@ -146,7 +140,7 @@ pub fn eval<'names, 'a>(
                     }
                     Pat::Lit(_) => {}
                     Pat::Bind(_) | Pat::Wildcard => {
-                        let mut env2 = env.to_vec();
+                        let mut env2 = env.clone();
                         // TODO(#24): Type should come from scrutinee, not hardcoded u64
                         env2.push(Value::Lit(
                             n,
@@ -172,7 +166,7 @@ pub fn eval<'names, 'a>(
 /// parameters, so they are correctly differentiated despite sharing the base env.
 pub fn eval_pi<'names, 'a>(
     arena: &'a Bump,
-    env: &[Value<'names, 'a>],
+    env: &Env<'names, 'a>,
     pi: &'a Pi<'names, 'a>,
 ) -> Value<'names, 'a> {
     let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
@@ -202,7 +196,7 @@ pub fn eval_pi<'names, 'a>(
 /// Evaluate a multi-param Lam into a multi-param `Value::Lam` (no currying).
 fn eval_lam<'names, 'a>(
     arena: &'a Bump,
-    env: &[Value<'names, 'a>],
+    env: &Env<'names, 'a>,
     lam: &'a Lam<'names, 'a>,
 ) -> Value<'names, 'a> {
     let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
@@ -271,8 +265,9 @@ pub fn inst_n<'names, 'a>(
     closure: &Closure<'names, 'a>,
     args: &[Value<'names, 'a>],
 ) -> Value<'names, 'a> {
-    let mut env = closure.env.to_vec();
-    env.extend_from_slice(args);
+    let mut env = Env::new();
+    env.extend(closure.env.iter().cloned());
+    env.extend(args.iter().cloned());
     eval(arena, &env, closure.body)
 }
 
@@ -376,7 +371,7 @@ pub fn val_eq<'names, 'a>(
 
 /// Evaluate a term in the empty environment.
 pub fn eval_closed<'names, 'a>(arena: &'a Bump, term: &'a Term<'names, 'a>) -> Value<'names, 'a> {
-    eval(arena, &[], term)
+    eval(arena, &Env::new(), term)
 }
 
 /// Extract the Phase from a Value that represents a universe (Type or `VmType`),

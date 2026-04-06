@@ -1,7 +1,21 @@
 use std::collections::HashMap;
 
 use crate::common::de_bruijn;
+use crate::common::env::Env;
 use crate::core::{self, value};
+
+/// A single entry in the elaboration context.
+#[derive(Clone, Debug)]
+pub struct CtxEntry<'names, 'core> {
+    /// Variable name (for lookup and error messages).
+    pub name: &'names core::Name,
+    /// Type of the variable as a semantic value.
+    pub ty: value::Value<'names, 'core>,
+    /// Value of the variable in the evaluation environment.
+    /// For lambda/Pi parameters this is `Rigid(level)`; for `let` bindings it is
+    /// the evaluated expression.
+    pub val: value::Value<'names, 'core>,
+}
 
 /// Elaboration context.
 ///
@@ -16,16 +30,8 @@ pub struct Ctx<'names, 'core, 'globals> {
     /// Arena for allocating core terms
     pub arena: &'core bumpalo::Bump,
 
-    /// Local variable names (oldest first), for error messages.
-    pub names: Vec<&'names core::Name>,
-
-    /// Evaluation environment (oldest first): values of locals.
-    /// `env[env.len() - 1 - ix]` = value of `Var(Ix(ix))`.
-    pub env: value::Env<'names, 'core>,
-
-    /// Types of locals as semantic values (oldest first).
-    /// `types[types.len() - 1 - ix]` = type of `Var(Ix(ix))`.
-    pub types: Vec<value::Value<'names, 'core>>,
+    /// Local variable bindings (oldest first), each carrying name, type, and value.
+    pub locals: Env<CtxEntry<'names, 'core>>,
 
     /// Global function types: name -> Pi term.
     /// Storing `&Term` (always a Pi) unifies type lookup for globals and locals.
@@ -40,9 +46,7 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
     ) -> Self {
         Ctx {
             arena,
-            names: Vec::new(),
-            env: Vec::new(),
-            types: Vec::new(),
+            locals: Env::new(),
             globals,
         }
     }
@@ -60,15 +64,15 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         self.arena.alloc_slice_fill_iter(items)
     }
 
-    /// Current De Bruijn depth — always equal to `env.len()`.
+    /// Current De Bruijn depth — always equal to the number of locals.
     pub const fn depth(&self) -> de_bruijn::Depth {
-        de_bruijn::Depth::new(self.env.len())
+        self.locals.depth()
     }
 
     /// Push a local variable onto the context, given its type as a term.
     /// Evaluates the type term in the current environment.
     pub fn push_local(&mut self, name: &'names core::Name, ty: &'core core::Term<'names, 'core>) {
-        let ty_val = value::eval(self.arena, &self.env, ty);
+        let ty_val = value::eval(self.arena, &self.value_env(), ty);
         self.push_local_val(name, ty_val);
     }
 
@@ -79,9 +83,12 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         name: &'names core::Name,
         ty_val: value::Value<'names, 'core>,
     ) {
-        self.env.push(value::Value::Rigid(self.depth().as_lvl()));
-        self.types.push(ty_val);
-        self.names.push(name);
+        let lvl = self.depth().as_lvl();
+        self.locals.push(CtxEntry {
+            name,
+            ty: ty_val,
+            val: value::Value::Rigid(lvl),
+        });
     }
 
     /// Push a let binding: the variable has a known value in the environment.
@@ -92,16 +99,16 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         ty_val: value::Value<'names, 'core>,
         expr_val: value::Value<'names, 'core>,
     ) {
-        self.env.push(expr_val);
-        self.types.push(ty_val);
-        self.names.push(name);
+        self.locals.push(CtxEntry {
+            name,
+            ty: ty_val,
+            val: expr_val,
+        });
     }
 
     /// Pop the last local variable
     pub fn pop_local(&mut self) {
-        self.names.pop();
-        self.env.pop();
-        self.types.pop();
+        self.locals.pop();
     }
 
     /// Look up a variable by name, returning its (index, type as Value).
@@ -110,14 +117,11 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         &self,
         name: &core::Name,
     ) -> Option<(de_bruijn::Ix, &value::Value<'names, 'core>)> {
-        for (i, local_name) in self.names.iter().enumerate().rev() {
-            if *local_name == name {
-                let ix = de_bruijn::Lvl::new(i).ix_at(self.depth());
-                let ty = self
-                    .types
-                    .get(i)
-                    .expect("types and names are always the same length");
-                return Some((ix, ty));
+        for (i, entry) in self.locals.iter().enumerate().rev() {
+            if entry.name == name {
+                let lvl = de_bruijn::Lvl::new(i);
+                let ix = lvl.ix_at(self.depth());
+                return Some((ix, &entry.ty));
             }
         }
         None
@@ -131,9 +135,18 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         self.arena.alloc(core::Term::Lift(inner))
     }
 
+    /// Collect the values of all local bindings as an `Env<Value>` for use with `value::eval`.
+    pub fn value_env(&self) -> value::Env<'names, 'core> {
+        let mut env = value::Env::with_capacity(self.locals.depth().as_usize());
+        for entry in self.locals.iter() {
+            env.push(entry.val.clone());
+        }
+        env
+    }
+
     /// Evaluate a term in the current environment.
     pub fn eval(&self, term: &'core core::Term<'names, 'core>) -> value::Value<'names, 'core> {
-        value::eval(self.arena, &self.env, term)
+        value::eval(self.arena, &self.value_env(), term)
     }
 
     /// Quote a value back to a term at the current depth.

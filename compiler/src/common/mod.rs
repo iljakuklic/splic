@@ -1,4 +1,5 @@
 pub mod de_bruijn;
+pub mod env;
 pub mod name;
 pub mod operators;
 pub mod phase;

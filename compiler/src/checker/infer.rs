@@ -47,7 +47,7 @@ pub fn infer<'names, 'ast, 'core>(
             }
             // Globals — bare reference without call
             if let Some(pi) = ctx.globals.get(name).copied() {
-                let ty = value::eval_pi(ctx.arena, &[], pi);
+                let ty = value::eval_pi(ctx.arena, &value::Env::new(), pi);
                 return Ok((ctx.alloc(core::Term::Global(name)), ty));
             }
             Err(anyhow!("unbound variable `{name}`"))
@@ -731,10 +731,8 @@ fn check_val_impl<'names, 'ast, 'core>(
 
                     let arm_expected = match (&scrut_refine, &core_pat, expected_term) {
                         (Some((lvl, int_ty)), core::Pat::Lit(n), Some(ety)) => {
-                            let mut env = ctx.env.clone();
-                            *env.get_mut(lvl.as_usize())
-                                .expect("scrutinee level must be in scope") =
-                                value::Value::Lit(*n, *int_ty);
+                            let mut env = ctx.value_env();
+                            env[*lvl] = value::Value::Lit(*n, *int_ty);
                             value::eval(ctx.arena, &env, ety)
                         }
                         _ => expected.clone(),
