@@ -96,6 +96,7 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 - Use `bumpalo` arena allocator wherever practical
 - For arena-allocated structures, refer to other objects using plain references rather than `Box`
 - In NbE (semantic evaluation), use slices `&'a [Value<'a>]` for environment snapshots captured in closures, not vectors
+- Prefer a local `Bump::new()` over accepting an arena parameter when all allocations are scratch temporaries that do not escape the function (e.g. intermediate structures used only for a comparison that returns a non-arena type)
 
 ### Trait Implementations
 - Use `derive_more` for standard trait derives (`Display`, `Debug`, `From`, `AsRef`, `IsVariant`, etc.) instead of manual `impl` blocks

@@ -364,13 +364,13 @@ pub fn quote<'names, 'a>(
 
 /// Definitional equality: quote both values and compare structurally.
 pub fn val_eq<'names, 'a>(
-    arena: &'a Bump,
     depth: de_bruijn::Depth,
     a: &Value<'names, 'a>,
     b: &Value<'names, 'a>,
 ) -> bool {
-    let ta = quote(arena, depth, a);
-    let tb = quote(arena, depth, b);
+    let scratch = Bump::new();
+    let ta = quote(&scratch, depth, a);
+    let tb = quote(&scratch, depth, b);
     super::alpha_eq::alpha_eq(ta, tb)
 }
 
