@@ -12,10 +12,10 @@ use super::{builtin_prim_ty, Ctx};
     clippy::too_many_lines,
     reason = "large match over all surface term variants"
 )]
-pub fn infer<'names, 'a, 'core>(
+pub fn infer<'names, 'ast, 'core>(
     ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'a ast::Term<'names, 'a>,
+    term: &'ast ast::Term<'names, 'ast>,
 ) -> Result<(&'core core::Term<'names, 'core>, value::Value<'names, 'core>)> {
     match term {
         // ------------------------------------------------------------------ Var
@@ -364,7 +364,7 @@ fn check_exhaustiveness(
 }
 
 /// Elaborate a match pattern into a core pattern.
-fn elaborate_pat<'n>(pat: &ast::Pat<'n>) -> core::Pat<'n> {
+fn elaborate_pat<'names>(pat: &ast::Pat<'names>) -> core::Pat<'names> {
     match pat {
         ast::Pat::Lit(n) => core::Pat::Lit(*n),
         ast::Pat::Name(name) => match name.as_str() {
@@ -375,18 +375,18 @@ fn elaborate_pat<'n>(pat: &ast::Pat<'n>) -> core::Pat<'n> {
 }
 
 /// Elaborate a single `let` binding.
-fn elaborate_let<'n, 'a, 'core, T, F, G, W>(
-    ctx: &mut Ctx<'n, 'core, '_>,
+fn elaborate_let<'names, 'ast, 'core, T, F, G, W>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmt: &'a ast::Let<'n, 'a>,
+    stmt: &'ast ast::Let<'names, 'ast>,
     cont: F,
     body_of: G,
     wrap: W,
 ) -> Result<T>
 where
-    F: FnOnce(&mut Ctx<'n, 'core, '_>) -> Result<T>,
-    G: FnOnce(&T) -> &'core core::Term<'n, 'core>,
-    W: FnOnce(&'core core::Term<'n, 'core>, T) -> T,
+    F: FnOnce(&mut Ctx<'names, 'core, '_>) -> Result<T>,
+    G: FnOnce(&T) -> &'core core::Term<'names, 'core>,
+    W: FnOnce(&'core core::Term<'names, 'core>, T) -> T,
 {
     let (core_expr, bind_ty_val) = if let Some(ann) = stmt.ty {
         let (ty, _) = infer(ctx, phase, ann)?;
@@ -420,12 +420,12 @@ where
 }
 
 /// Elaborate a sequence of `let` bindings followed by a trailing expression (infer mode).
-fn infer_block<'n, 'a, 'core>(
-    ctx: &mut Ctx<'n, 'core, '_>,
+fn infer_block<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmts: &'a [ast::Let<'n, 'a>],
-    expr: &'a ast::Term<'n, 'a>,
-) -> Result<(&'core core::Term<'n, 'core>, value::Value<'n, 'core>)> {
+    stmts: &'ast [ast::Let<'names, 'ast>],
+    expr: &'ast ast::Term<'names, 'ast>,
+) -> Result<(&'core core::Term<'names, 'core>, value::Value<'names, 'core>)> {
     match stmts {
         [] => infer(ctx, phase, expr),
         [first, rest @ ..] => elaborate_let(
@@ -440,14 +440,14 @@ fn infer_block<'n, 'a, 'core>(
 }
 
 /// Elaborate a sequence of `let` bindings followed by a trailing expression (check mode).
-fn check_block_val<'n, 'a, 'core>(
-    ctx: &mut Ctx<'n, 'core, '_>,
+fn check_block_val<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmts: &'a [ast::Let<'n, 'a>],
-    expr: &'a ast::Term<'n, 'a>,
-    expected: value::Value<'n, 'core>,
-    expected_term: Option<&'core core::Term<'n, 'core>>,
-) -> Result<&'core core::Term<'n, 'core>> {
+    stmts: &'ast [ast::Let<'names, 'ast>],
+    expr: &'ast ast::Term<'names, 'ast>,
+    expected: value::Value<'names, 'core>,
+    expected_term: Option<&'core core::Term<'names, 'core>>,
+) -> Result<&'core core::Term<'names, 'core>> {
     match stmts {
         [] => check_val_impl(ctx, phase, expr, expected, expected_term),
         [first, rest @ ..] => elaborate_let(
@@ -465,11 +465,11 @@ fn check_block_val<'n, 'a, 'core>(
 ///
 /// Equivalent to `check(ctx, phase, term, Type)` for meta phase or
 /// `check(ctx, phase, term, VmType)` for object phase.
-fn check_universe<'n, 'a, 'core>(
-    ctx: &mut Ctx<'n, 'core, '_>,
+fn check_universe<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'a ast::Term<'n, 'a>,
-) -> Result<&'core core::Term<'n, 'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+) -> Result<&'core core::Term<'names, 'core>> {
     let universe: &core::Term = match phase {
         Phase::Meta => &core::Term::TYPE,
         Phase::Object => &core::Term::VM_TYPE,
@@ -481,23 +481,23 @@ fn check_universe<'n, 'a, 'core>(
 ///
 /// This is a convenience wrapper for callers that have an expected type as a `&Term`.
 /// It also threads the expected term through for dependent-type arm refinement.
-pub fn check<'n, 'a, 'core>(
-    ctx: &mut Ctx<'n, 'core, '_>,
+pub fn check<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'a ast::Term<'n, 'a>,
-    expected: &'core core::Term<'n, 'core>,
-) -> Result<&'core core::Term<'n, 'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+    expected: &'core core::Term<'names, 'core>,
+) -> Result<&'core core::Term<'names, 'core>> {
     let expected_val = ctx.eval(expected);
     check_val_impl(ctx, phase, term, expected_val, Some(expected))
 }
 
 /// Check `term` against `expected` (as a semantic Value), returning the elaborated core term.
-pub fn check_val<'n, 'a, 'core>(
-    ctx: &mut Ctx<'n, 'core, '_>,
+pub fn check_val<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'a ast::Term<'n, 'a>,
-    expected: value::Value<'n, 'core>,
-) -> Result<&'core core::Term<'n, 'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+    expected: value::Value<'names, 'core>,
+) -> Result<&'core core::Term<'names, 'core>> {
     check_val_impl(ctx, phase, term, expected, None)
 }
 
@@ -507,13 +507,13 @@ pub fn check_val<'n, 'a, 'core>(
     clippy::too_many_lines,
     reason = "large match over all surface term variants"
 )]
-fn check_val_impl<'n, 'a, 'core>(
-    ctx: &mut Ctx<'n, 'core, '_>,
+fn check_val_impl<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    term: &'a ast::Term<'n, 'a>,
-    expected: value::Value<'n, 'core>,
-    expected_term: Option<&'core core::Term<'n, 'core>>,
-) -> Result<&'core core::Term<'n, 'core>> {
+    term: &'ast ast::Term<'names, 'ast>,
+    expected: value::Value<'names, 'core>,
+    expected_term: Option<&'core core::Term<'names, 'core>>,
+) -> Result<&'core core::Term<'names, 'core>> {
     match term {
         // ------------------------------------------------------------------ Lit
         ast::Term::Lit(n) => match &expected {
@@ -665,9 +665,9 @@ fn check_val_impl<'n, 'a, 'core>(
                 vpi.params.len()
             );
 
-            let mut elaborated_params: Vec<(&'n core::Name, &'core core::Term<'n, 'core>)> =
+            let mut elaborated_params: Vec<(&'names core::Name, &'core core::Term<'names, 'core>)> =
                 Vec::new();
-            let mut arg_vals: Vec<value::Value<'n, 'core>> = Vec::new();
+            let mut arg_vals: Vec<value::Value<'names, 'core>> = Vec::new();
 
             for (p, (_, domain_cl)) in params.iter().zip(vpi.params.iter()) {
                 let param_name = p.name;
@@ -719,7 +719,7 @@ fn check_val_impl<'n, 'a, 'core>(
                 _ => None,
             };
 
-            let core_arms: &'core [core::Arm<'n, 'core>] =
+            let core_arms: &'core [core::Arm<'names, 'core>] =
                 ctx.arena
                     .alloc_slice_try_fill_iter(arms.iter().map(|arm| -> Result<_> {
                         let core_pat = elaborate_pat(&arm.pat);

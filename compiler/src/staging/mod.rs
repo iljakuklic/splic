@@ -19,7 +19,7 @@ use crate::parser::ast::Phase;
 /// forbidden in Splic (the type-checker enforces this); `eval_obj` eagerly
 /// evaluates under binders by extending the environment with fresh level variables.
 #[derive(Clone, Debug)]
-enum ObjVal<'n, 'a> {
+enum ObjVal<'names, 'eval> {
     /// Local variable identified by De Bruijn level (absolute, context-independent).
     Var(de_bruijn::Lvl),
     /// Integer literal.
@@ -27,27 +27,27 @@ enum ObjVal<'n, 'a> {
     /// Unapplied primitive.
     Prim(Prim),
     /// Global function reference.
-    Global(&'n Name),
+    Global(&'names Name),
     /// Application.
-    App(&'a Self, &'a [Self]),
+    App(&'eval Self, &'eval [Self]),
     /// Let binding.
     Let {
-        name: &'n Name,
-        ty: &'a Self,
-        expr: &'a Self,
-        body: &'a Self,
+        name: &'names Name,
+        ty: &'eval Self,
+        expr: &'eval Self,
+        body: &'eval Self,
     },
     /// Pattern match.
     Match {
-        scrutinee: &'a Self,
-        arms: &'a [ObjArm<'n, 'a>],
+        scrutinee: &'eval Self,
+        arms: &'eval [ObjArm<'names, 'eval>],
     },
 }
 
 #[derive(Clone, Debug)]
-struct ObjArm<'n, 'a> {
-    pat: Pat<'n>,
-    body: &'a ObjVal<'n, 'a>,
+struct ObjArm<'names, 'eval> {
+    pat: Pat<'names>,
+    body: &'eval ObjVal<'names, 'eval>,
 }
 
 // ── Meta-level values ─────────────────────────────────────────────────────────
@@ -147,12 +147,12 @@ impl<'names, 'eval> Env<'names, 'eval> {
 // ── Globals table ─────────────────────────────────────────────────────────────
 
 /// Everything the evaluator needs to know about a top-level function.
-struct GlobalDef<'n, 'a> {
-    ty: &'a Pi<'n, 'a>,
-    body: &'a Term<'n, 'a>,
+struct GlobalDef<'names, 'a> {
+    ty: &'a Pi<'names, 'a>,
+    body: &'a Term<'names, 'a>,
 }
 
-type Globals<'n, 'a> = HashMap<&'n Name, GlobalDef<'n, 'a>>;
+type Globals<'names, 'a> = HashMap<&'names Name, GlobalDef<'names, 'a>>;
 
 // ── Meta-level evaluator ──────────────────────────────────────────────────────
 

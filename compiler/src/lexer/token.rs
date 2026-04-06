@@ -1,7 +1,7 @@
 use crate::common::Name;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Token<'a> {
+pub enum Token<'names> {
     Fn,
     Code,
     Let,
@@ -38,7 +38,7 @@ pub enum Token<'a> {
     DoubleRBracket,
     DArrow,
     Num(u64),
-    Ident(&'a Name),
+    Ident(&'names Name),
 }
 
 impl Token<'static> {

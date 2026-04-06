@@ -13,13 +13,13 @@ fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
 
 // ── Core formatting ───────────────────────────────────────────────────────────
 
-impl<'n> Term<'n, '_> {
+impl<'names> Term<'names, '_> {
     /// Print `self` in **statement position**: emits leading indentation, then
     /// the term content. `Let` and `Match` are printed without an enclosing `{ }`
     /// (the caller is responsible for any surrounding braces).
     fn fmt_term(
         &self,
-        env: &mut Vec<&'n Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -41,7 +41,7 @@ impl<'n> Term<'n, '_> {
     /// a new indented block (e.g. `Let` / `Match`).
     fn fmt_term_inline(
         &self,
-        env: &mut Vec<&'n Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -171,7 +171,7 @@ impl<'n> Term<'n, '_> {
     /// syntactically valid as sub-expressions.
     fn fmt_expr(
         &self,
-        env: &mut Vec<&'n Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
@@ -197,11 +197,11 @@ impl<'n> Term<'n, '_> {
     }
 }
 
-impl<'n> Arm<'n, '_> {
+impl<'names> Arm<'names, '_> {
     /// Print a single match arm.
     fn fmt_arm(
         &self,
-        env: &mut Vec<&'n Name>,
+        env: &mut Vec<&'names Name>,
         indent: usize,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {

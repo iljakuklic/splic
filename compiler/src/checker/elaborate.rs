@@ -9,14 +9,14 @@ use super::Ctx;
 use super::infer;
 
 /// Elaborate one function's signature into a `Pi` (the globals table entry).
-fn elaborate_sig<'n, 'a, 'c>(
-    arena: &'c bumpalo::Bump,
-    func: &ast::Function<'n, 'a>,
-) -> Result<&'c core::Pi<'n, 'c>> {
-    let empty_globals: HashMap<&'n core::Name, &'c core::Pi<'n, 'c>> = HashMap::new();
+fn elaborate_sig<'names, 'ast, 'core>(
+    arena: &'core bumpalo::Bump,
+    func: &ast::Function<'names, 'ast>,
+) -> Result<&'core core::Pi<'names, 'core>> {
+    let empty_globals: HashMap<&'names core::Name, &'core core::Pi<'names, 'core>> = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
-    let params: &'c [(&'n core::Name, &'c core::Term<'n, 'c>)] =
+    let params: &'core [(&'names core::Name, &'core core::Term<'names, 'core>)] =
         arena.alloc_slice_try_fill_iter(func.params.iter().map(|p| -> Result<_> {
             let (param_ty, _) = infer::infer(&mut ctx, func.phase, p.ty)?;
             ctx.push_local(p.name, param_ty);
@@ -38,11 +38,11 @@ fn elaborate_sig<'n, 'a, 'c>(
 }
 
 /// Pass 1: collect all top-level function signatures into a globals table.
-pub fn collect_signatures<'n, 'a, 'core>(
+pub fn collect_signatures<'names, 'ast, 'core>(
     arena: &'core bumpalo::Bump,
-    program: &ast::Program<'n, 'a>,
-) -> Result<HashMap<&'n core::Name, &'core core::Pi<'n, 'core>>> {
-    let mut globals: HashMap<&'n core::Name, &'core core::Pi<'n, 'core>> = HashMap::new();
+    program: &ast::Program<'names, 'ast>,
+) -> Result<HashMap<&'names core::Name, &'core core::Pi<'names, 'core>>> {
+    let mut globals: HashMap<&'names core::Name, &'core core::Pi<'names, 'core>> = HashMap::new();
 
     for func in program.functions {
         let name = func.name;
@@ -61,12 +61,12 @@ pub fn collect_signatures<'n, 'a, 'core>(
 }
 
 /// Pass 2: elaborate all function bodies with the full globals table available.
-fn elaborate_bodies<'n, 'a, 'core>(
+fn elaborate_bodies<'names, 'ast, 'core>(
     arena: &'core bumpalo::Bump,
-    program: &ast::Program<'n, 'a>,
-    globals: &HashMap<&'n core::Name, &'core core::Pi<'n, 'core>>,
-) -> Result<core::Program<'n, 'core>> {
-    let functions: &'core [core::Function<'n, 'core>] =
+    program: &ast::Program<'names, 'ast>,
+    globals: &HashMap<&'names core::Name, &'core core::Pi<'names, 'core>>,
+) -> Result<core::Program<'names, 'core>> {
+    let functions: &'core [core::Function<'names, 'core>] =
         arena.alloc_slice_try_fill_iter(program.functions.iter().map(|func| -> Result<_> {
             let name = func.name;
             let pi = *globals.get(&name).expect("signature missing from pass 1");
@@ -92,10 +92,10 @@ fn elaborate_bodies<'n, 'a, 'core>(
 }
 
 /// Elaborate the entire program in two passes
-pub fn elaborate_program<'n, 'core>(
+pub fn elaborate_program<'names, 'core>(
     arena: &'core bumpalo::Bump,
-    program: &ast::Program<'n, '_>,
-) -> Result<core::Program<'n, 'core>> {
+    program: &ast::Program<'names, '_>,
+) -> Result<core::Program<'names, 'core>> {
     let globals = collect_signatures(arena, program)?;
     elaborate_bodies(arena, program, &globals)
 }
