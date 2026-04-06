@@ -265,12 +265,8 @@ pub fn inst_n<'names, 'a>(
     closure: &Closure<'names, 'a>,
     args: &[Value<'names, 'a>],
 ) -> Value<'names, 'a> {
-    let env: Env<'names, 'a> = closure
-        .env
-        .iter()
-        .cloned()
-        .chain(args.iter().cloned())
-        .collect();
+    let clos_env = closure.env.iter().cloned();
+    let env: Env<'names, 'a> = clos_env.chain(args.iter().cloned()).collect();
     eval(arena, &env, closure.body)
 }
 
