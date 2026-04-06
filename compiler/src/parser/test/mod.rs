@@ -18,7 +18,7 @@ use crate::parser::ast::{BinOp, FunName};
 
 fn parse_expr(input: &str) -> String {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new(input);
+    let lexer = Lexer::new(input, &arena);
     let mut parser = Parser::new(lexer, &arena);
     let expr = parser.parse_expr().unwrap();
     format!("{expr:#?}\n")
@@ -36,7 +36,7 @@ fn expr(#[files("src/parser/test/expr/*.input.txt")] path: PathBuf) {
 #[test]
 fn parse_trivial_block() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("{ 0 + 1 }");
+    let lexer = Lexer::new("{ 0 + 1 }", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let expr = parser.parse_expr().unwrap();
     match expr {
@@ -48,7 +48,7 @@ fn parse_trivial_block() {
 #[test]
 fn parse_simple_fn() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("fn add(x: u32, y: u32) -> u32 { x + y }");
+    let lexer = Lexer::new("fn add(x: u32, y: u32) -> u32 { x + y }", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let program = parser.parse_program().unwrap();
     assert_eq!(program.functions.len(), 1);
@@ -60,7 +60,7 @@ fn parse_simple_fn() {
 #[test]
 fn parse_simple_fn_and_junk() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("fn foo() -> u32 { 0 } wat");
+    let lexer = Lexer::new("fn foo() -> u32 { 0 } wat", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let program = parser.parse_program();
     assert!(program.is_err());
@@ -69,7 +69,7 @@ fn parse_simple_fn_and_junk() {
 #[test]
 fn parse_expr_prec() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("1 + 2 * 3");
+    let lexer = Lexer::new("1 + 2 * 3", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let expr = parser.parse_expr().unwrap();
     match expr {
@@ -84,7 +84,7 @@ fn parse_expr_prec() {
 #[test]
 fn parse_expr_prec2() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("1 * 2 + 3");
+    let lexer = Lexer::new("1 * 2 + 3", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let expr = parser.parse_expr().unwrap();
     match expr {
@@ -99,7 +99,7 @@ fn parse_expr_prec2() {
 #[test]
 fn parse_expr_paren() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("1 * (2 + 3)");
+    let lexer = Lexer::new("1 * (2 + 3)", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let expr = parser.parse_expr().unwrap();
     match expr {

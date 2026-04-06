@@ -9,11 +9,12 @@ mod token;
 
 pub struct Lexer<'a> {
     input: &'a str,
+    names: &'a bumpalo::Bump,
 }
 
 impl<'a> Lexer<'a> {
-    pub const fn new(input: &'a str) -> Self {
-        Self { input }
+    pub const fn new(input: &'a str, names: &'a bumpalo::Bump) -> Self {
+        Self { input, names }
     }
 
     #[inline]
@@ -54,7 +55,7 @@ impl<'a> Lexer<'a> {
         Token::KEYWORDS
             .iter()
             .find(|(kw, _)| *kw == ident)
-            .map_or(Token::Ident(Name::new(ident)), |(_, tok)| *tok)
+            .map_or(Token::Ident(Name::new(self.names.alloc_str(ident))), |(_, tok)| *tok)
     }
 
     #[inline]

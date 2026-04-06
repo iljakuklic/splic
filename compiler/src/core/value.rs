@@ -8,19 +8,19 @@ use bumpalo::Bump;
 
 use super::prim::IntType;
 use super::{Lam, Name, Pat, Pi, Prim, Term};
-use crate::common::{Phase, de_bruijn};
+use crate::common::{de_bruijn, Phase};
 
 /// Working evaluation environment: index 0 = outermost binding, last = innermost.
 /// `Var(Ix(i))` maps to `env[env.len() - 1 - i]`.
-pub type Env<'a> = Vec<Value<'a>>;
+pub type Env<'n, 'a> = Vec<Value<'n, 'a>>;
 
 /// Semantic value — result of evaluating a term or type.
 #[derive(Clone, Debug)]
-pub enum Value<'a> {
+pub enum Value<'n, 'a> {
     /// Neutral: stuck on a local variable (identified by De Bruijn level)
     Rigid(de_bruijn::Lvl),
     /// Neutral: global function reference (not inlined during type-checking)
-    Global(&'a Name),
+    Global(&'n Name),
     /// Neutral: unapplied or partially applied primitive
     Prim(Prim),
     /// Neutral: stuck application (callee cannot reduce further)
@@ -28,9 +28,9 @@ pub enum Value<'a> {
     /// Canonical: integer literal value
     Lit(u64, IntType),
     /// Canonical: lambda abstraction
-    Lam(VLam<'a>),
+    Lam(VLam<'n, 'a>),
     /// Canonical: dependent function type
-    Pi(VPi<'a>),
+    Pi(VPi<'n, 'a>),
     /// Canonical: lifted object type `[[T]]`
     Lift(&'a Self),
     /// Canonical: quoted object code `#(t)`
@@ -46,9 +46,9 @@ pub enum Value<'a> {
 /// type of the i-th parameter (supporting dependent telescopes).
 /// `closure` takes all `params.len()` arguments.
 #[derive(Clone, Debug)]
-pub struct VLam<'a> {
-    pub params: &'a [(&'a Name, Closure<'a>)],
-    pub closure: Closure<'a>,
+pub struct VLam<'n, 'a> {
+    pub params: &'a [(&'n Name, Closure<'n, 'a>)],
+    pub closure: Closure<'n, 'a>,
 }
 
 /// Pi (dependent function type) value.
@@ -56,25 +56,29 @@ pub struct VLam<'a> {
 /// Same telescope layout as `VLam`: `params[i].1` is instantiated with `args[0..i]`
 /// to yield the domain of the i-th parameter. `ret_closure` takes all `params.len()` args.
 #[derive(Clone, Debug)]
-pub struct VPi<'a> {
-    pub params: &'a [(&'a Name, Closure<'a>)],
-    pub ret_closure: Closure<'a>,
+pub struct VPi<'n, 'a> {
+    pub params: &'a [(&'n Name, Closure<'n, 'a>)],
+    pub ret_closure: Closure<'n, 'a>,
     pub phase: Phase,
 }
 
 /// A closure: snapshot of the environment at creation time, plus an unevaluated body.
 #[derive(Clone, Debug)]
-pub struct Closure<'a> {
+pub struct Closure<'n, 'a> {
     /// Arena-allocated environment snapshot (index 0 = outermost).
-    pub env: &'a [Value<'a>],
+    pub env: &'a [Value<'n, 'a>],
     /// Unevaluated body term.
-    pub body: &'a Term<'a>,
+    pub body: &'a Term<'n, 'a>,
 }
 
 /// Evaluate a term in an environment, producing a semantic value.
 ///
 /// `env[env.len() - 1 - ix]` gives the value for `Var(Ix(ix))`.
-pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value<'a> {
+pub fn eval<'n, 'a>(
+    arena: &'a Bump,
+    env: &[Value<'n, 'a>],
+    term: &'a Term<'n, 'a>,
+) -> Value<'n, 'a> {
     match term {
         Term::Var(ix) => {
             let lvl = ix.lvl_at(de_bruijn::Depth::new(env.len()));
@@ -93,7 +97,8 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
 
         Term::App(app) => {
             let func_val = eval(arena, env, app.func);
-            let arg_vals: Vec<Value<'a>> = app.args.iter().map(|a| eval(arena, env, a)).collect();
+            let arg_vals: Vec<Value<'n, 'a>> =
+                app.args.iter().map(|a| eval(arena, env, a)).collect();
             apply_many(arena, func_val, &arg_vals)
         }
 
@@ -120,7 +125,7 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
 
         Term::Let(let_) => {
             let val = eval(arena, env, let_.expr);
-            let mut env2: Vec<Value<'a>> = env.to_vec();
+            let mut env2: Vec<Value<'n, 'a>> = env.to_vec();
             env2.push(val);
             eval(arena, &env2, let_.body)
         }
@@ -165,9 +170,13 @@ pub fn eval<'a>(arena: &'a Bump, env: &[Value<'a>], term: &'a Term<'a>) -> Value
 /// All parameter domain closures share the same base environment snapshot.
 /// Each domain closure's body uses De Bruijn indices to reference preceding
 /// parameters, so they are correctly differentiated despite sharing the base env.
-pub fn eval_pi<'a>(arena: &'a Bump, env: &[Value<'a>], pi: &'a Pi<'a>) -> Value<'a> {
+pub fn eval_pi<'n, 'a>(
+    arena: &'a Bump,
+    env: &[Value<'n, 'a>],
+    pi: &'a Pi<'n, 'a>,
+) -> Value<'n, 'a> {
     let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
-    let params: Vec<(&'a Name, Closure<'a>)> = pi
+    let params: Vec<(&'n Name, Closure<'n, 'a>)> = pi
         .params
         .iter()
         .map(|&(name, ty_term)| {
@@ -191,9 +200,9 @@ pub fn eval_pi<'a>(arena: &'a Bump, env: &[Value<'a>], pi: &'a Pi<'a>) -> Value<
 }
 
 /// Evaluate a multi-param Lam into a multi-param `Value::Lam` (no currying).
-fn eval_lam<'a>(arena: &'a Bump, env: &[Value<'a>], lam: &'a Lam<'a>) -> Value<'a> {
+fn eval_lam<'n, 'a>(arena: &'a Bump, env: &[Value<'n, 'a>], lam: &'a Lam<'n, 'a>) -> Value<'n, 'a> {
     let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
-    let params: Vec<(&'a Name, Closure<'a>)> = lam
+    let params: Vec<(&'n Name, Closure<'n, 'a>)> = lam
         .params
         .iter()
         .map(|&(name, ty_term)| {
@@ -220,7 +229,11 @@ fn eval_lam<'a>(arena: &'a Bump, env: &[Value<'a>], lam: &'a Lam<'a>) -> Value<'
 /// For `Value::Lam` and `Value::Pi`, all args are pushed into the closure env at once.
 /// For neutrals, a stuck `App` node is produced. Each call site is its own `App` node;
 /// args are NOT flattened into existing `App` nodes to preserve call-site identity.
-pub fn apply_many<'a>(arena: &'a Bump, func: Value<'a>, args: &[Value<'a>]) -> Value<'a> {
+pub fn apply_many<'n, 'a>(
+    arena: &'a Bump,
+    func: Value<'n, 'a>,
+    args: &[Value<'n, 'a>],
+) -> Value<'n, 'a> {
     match func {
         Value::Lam(vlam) => inst_n(arena, &vlam.closure, args),
         Value::Pi(vpi) => inst_n(arena, &vpi.ret_closure, args),
@@ -249,7 +262,11 @@ pub fn apply_many<'a>(arena: &'a Bump, func: Value<'a>, args: &[Value<'a>]) -> V
 }
 
 /// Instantiate a closure with N arguments: extend env with all args, eval body.
-pub fn inst_n<'a>(arena: &'a Bump, closure: &Closure<'a>, args: &[Value<'a>]) -> Value<'a> {
+pub fn inst_n<'n, 'a>(
+    arena: &'a Bump,
+    closure: &Closure<'n, 'a>,
+    args: &[Value<'n, 'a>],
+) -> Value<'n, 'a> {
     let mut env = closure.env.to_vec();
     env.extend_from_slice(args);
     eval(arena, &env, closure.body)
@@ -257,14 +274,14 @@ pub fn inst_n<'a>(arena: &'a Bump, closure: &Closure<'a>, args: &[Value<'a>]) ->
 
 /// Quote a telescope (sequence of named parameters with closures).
 /// Returns the quoted parameters, final depth, and the rigid values built during the process.
-fn quote_telescope<'a>(
+fn quote_telescope<'n, 'a>(
     arena: &'a Bump,
     initial_depth: de_bruijn::Depth,
-    params: &[(&'a Name, Closure<'a>)],
+    params: &[(&'n Name, Closure<'n, 'a>)],
 ) -> (
-    Vec<(&'a Name, &'a Term<'a>)>,
+    Vec<(&'n Name, &'a Term<'n, 'a>)>,
     de_bruijn::Depth,
-    Vec<Value<'a>>,
+    Vec<Value<'n, 'a>>,
 ) {
     let mut rigid_vals = Vec::new();
     let mut quoted_params = Vec::new();
@@ -284,7 +301,11 @@ fn quote_telescope<'a>(
 /// Convert a value back to a term (for error reporting and definitional equality).
 ///
 /// `depth` is the current De Bruijn depth (number of locally-bound variables in scope).
-pub fn quote<'a>(arena: &'a Bump, depth: de_bruijn::Depth, val: &Value<'a>) -> &'a Term<'a> {
+pub fn quote<'n, 'a>(
+    arena: &'a Bump,
+    depth: de_bruijn::Depth,
+    val: &Value<'n, 'a>,
+) -> &'a Term<'n, 'a> {
     match val {
         Value::Rigid(lvl) => {
             let ix = lvl.ix_at(depth);
@@ -295,7 +316,7 @@ pub fn quote<'a>(arena: &'a Bump, depth: de_bruijn::Depth, val: &Value<'a>) -> &
         Value::Lit(n, it) => arena.alloc(Term::Lit(*n, *it)),
         Value::App(f, args) => {
             let qf = quote(arena, depth, f);
-            let qargs: Vec<&'a Term<'a>> = args
+            let qargs: Vec<&'a Term<'n, 'a>> = args
                 .iter()
                 .map(|a| quote(arena, depth, a) as &'a _)
                 .collect();
@@ -338,20 +359,25 @@ pub fn quote<'a>(arena: &'a Bump, depth: de_bruijn::Depth, val: &Value<'a>) -> &
 }
 
 /// Definitional equality: quote both values and compare structurally.
-pub fn val_eq<'a>(arena: &'a Bump, depth: de_bruijn::Depth, a: &Value<'a>, b: &Value<'a>) -> bool {
+pub fn val_eq<'n, 'a>(
+    arena: &'a Bump,
+    depth: de_bruijn::Depth,
+    a: &Value<'n, 'a>,
+    b: &Value<'n, 'a>,
+) -> bool {
     let ta = quote(arena, depth, a);
     let tb = quote(arena, depth, b);
     super::alpha_eq::alpha_eq(ta, tb)
 }
 
 /// Evaluate a term in the empty environment.
-pub fn eval_closed<'a>(arena: &'a Bump, term: &'a Term<'a>) -> Value<'a> {
+pub fn eval_closed<'n, 'a>(arena: &'a Bump, term: &'a Term<'n, 'a>) -> Value<'n, 'a> {
     eval(arena, &[], term)
 }
 
 /// Extract the Phase from a Value that represents a universe (Type or `VmType`),
 /// if it is indeed a type universe.
-pub const fn value_phase(val: &Value<'_>) -> Option<Phase> {
+pub const fn value_phase(val: &Value<'_, '_>) -> Option<Phase> {
     match val {
         Value::Prim(Prim::IntTy(it)) => Some(it.phase),
         Value::Prim(Prim::U(_)) | Value::Lift(_) | Value::Pi(_) => Some(Phase::Meta),

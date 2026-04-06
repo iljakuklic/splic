@@ -1,7 +1,7 @@
 use super::Term;
 
 /// Alpha-equality: structural equality ignoring `param_name` fields in Pi/Lam.
-pub fn alpha_eq(a: &Term<'_>, b: &Term<'_>) -> bool {
+pub fn alpha_eq(a: &Term<'_, '_>, b: &Term<'_, '_>) -> bool {
     // Fast path: pointer equality
     if std::ptr::eq(a, b) {
         return true;

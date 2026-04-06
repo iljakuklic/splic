@@ -9,15 +9,15 @@ pub use prim::{IntType, IntWidth, Prim};
 
 /// Match pattern in the core IR
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Pat<'a> {
+pub enum Pat<'n> {
     Lit(u64),
-    Bind(&'a Name), // named binding
+    Bind(&'n Name), // named binding
     Wildcard,       // _ pattern
 }
 
-impl<'a> Pat<'a> {
+impl<'n> Pat<'n> {
     /// Return the name bound by this pattern, if any.
-    pub const fn bound_name(&self) -> Option<&'a Name> {
+    pub const fn bound_name(&self) -> Option<&'n Name> {
         match self {
             Pat::Bind(name) => Some(*name),
             Pat::Lit(_) | Pat::Wildcard => None,
@@ -27,31 +27,31 @@ impl<'a> Pat<'a> {
 
 /// Match arm
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Arm<'a> {
-    pub pat: Pat<'a>,
-    pub body: &'a Term<'a>,
+pub struct Arm<'n, 't> {
+    pub pat: Pat<'n>,
+    pub body: &'t Term<'n, 't>,
 }
 
 /// Elaborated top-level function definition.
 #[derive(Debug)]
-pub struct Function<'a> {
-    pub name: &'a Name,
+pub struct Function<'n, 't> {
+    pub name: &'n Name,
     /// Function type: phase, params, and return type.
-    pub ty: &'a Pi<'a>,
-    pub body: &'a Term<'a>,
+    pub ty: &'t Pi<'n, 't>,
+    pub body: &'t Term<'n, 't>,
 }
 
-impl<'a> Function<'a> {
+impl<'n, 'a> Function<'n, 'a> {
     /// Return the function's Pi type.
-    pub const fn pi(&self) -> &Pi<'a> {
+    pub const fn pi(&self) -> &Pi<'n, 'a> {
         self.ty
     }
 }
 
 /// Elaborated program: a sequence of top-level function definitions
 #[derive(Debug)]
-pub struct Program<'a> {
-    pub functions: &'a [Function<'a>],
+pub struct Program<'n, 'a> {
+    pub functions: &'a [Function<'n, 'a>],
 }
 
 /// Function or primitive application: `func(args...)`
@@ -64,9 +64,9 @@ pub struct Program<'a> {
 /// An empty `args` slice represents a zero-argument call and is distinct from
 /// a bare reference to `func`.
 #[derive(Debug, PartialEq, Eq)]
-pub struct App<'a> {
-    pub func: &'a Term<'a>,
-    pub args: &'a [&'a Term<'a>],
+pub struct App<'n, 'a> {
+    pub func: &'a Term<'n, 'a>,
+    pub args: &'a [&'a Term<'n, 'a>],
 }
 
 /// Dependent function type: `fn(params...) -> body_ty`
@@ -75,38 +75,38 @@ pub struct App<'a> {
 /// This allows the globals table to store `&Term` directly, unifying type lookup
 /// for globals and locals.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Pi<'a> {
-    pub params: &'a [(&'a Name, &'a Term<'a>)], // (name, type) pairs
-    pub body_ty: &'a Term<'a>,
+pub struct Pi<'n, 'a> {
+    pub params: &'a [(&'n Name, &'a Term<'n, 'a>)], // (name, type) pairs
+    pub body_ty: &'a Term<'n, 'a>,
     pub phase: Phase,
 }
 
 /// Lambda abstraction: |params...| body
 #[derive(Debug, PartialEq, Eq)]
-pub struct Lam<'a> {
-    pub params: &'a [(&'a Name, &'a Term<'a>)], // (name, type) pairs
-    pub body: &'a Term<'a>,
+pub struct Lam<'n, 'a> {
+    pub params: &'a [(&'n Name, &'a Term<'n, 'a>)], // (name, type) pairs
+    pub body: &'a Term<'n, 'a>,
 }
 
 /// Let binding with explicit type annotation and a body.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Let<'a> {
-    pub name: &'a Name,
-    pub ty: &'a Term<'a>,
-    pub expr: &'a Term<'a>,
-    pub body: &'a Term<'a>,
+pub struct Let<'n, 'a> {
+    pub name: &'n Name,
+    pub ty: &'a Term<'n, 'a>,
+    pub expr: &'a Term<'n, 'a>,
+    pub body: &'a Term<'n, 'a>,
 }
 
 /// Pattern match.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Match<'a> {
-    pub scrutinee: &'a Term<'a>,
-    pub arms: &'a [Arm<'a>],
+pub struct Match<'n, 'a> {
+    pub scrutinee: &'a Term<'n, 'a>,
+    pub arms: &'a [Arm<'n, 'a>],
 }
 
 /// Core term / type (terms and types are unified)
 #[derive(Debug, PartialEq, Eq, derive_more::From)]
-pub enum Term<'a> {
+pub enum Term<'n, 'a> {
     /// Local variable, identified by De Bruijn index (0 = innermost binder)
     Var(de_bruijn::Ix),
     /// Built-in type or operation (not applied)
@@ -115,16 +115,16 @@ pub enum Term<'a> {
     /// Numeric literal with its integer type
     Lit(u64, IntType),
     /// Global function reference
-    Global(&'a Name),
+    Global(&'n Name),
     /// Function or primitive application: func(args...)
     #[from]
-    App(App<'a>),
+    App(App<'n, 'a>),
     /// Dependent function type: fn(x: A) -> B
     #[from]
-    Pi(Pi<'a>),
+    Pi(Pi<'n, 'a>),
     /// Lambda abstraction: |x: A| body
     #[from]
-    Lam(Lam<'a>),
+    Lam(Lam<'n, 'a>),
     /// Lift: [[T]] — meta type representing object-level code of type T
     Lift(&'a Self),
     /// Quotation: #(t) — produce object-level code from a meta expression
@@ -133,13 +133,13 @@ pub enum Term<'a> {
     Splice(&'a Self),
     /// Let binding with explicit type annotation and a body
     #[from]
-    Let(Let<'a>),
+    Let(Let<'n, 'a>),
     /// Pattern match
     #[from]
-    Match(Match<'a>),
+    Match(Match<'n, 'a>),
 }
 
-impl Term<'static> {
+impl Term<'static, 'static> {
     // Integer types at meta phase
     pub const U0_META: Self = Self::Prim(Prim::IntTy(IntType::U0_META));
     pub const U1_META: Self = Self::Prim(Prim::IntTy(IntType::U1_META));
@@ -195,12 +195,12 @@ impl Term<'static> {
     }
 }
 
-impl<'a> Term<'a> {
+impl<'n, 'a> Term<'n, 'a> {
     pub const fn new_app(func: &'a Self, args: &'a [&'a Self]) -> Self {
         Self::App(App { func, args })
     }
 
-    pub const fn new_let(name: &'a Name, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
+    pub const fn new_let(name: &'n Name, ty: &'a Self, expr: &'a Self, body: &'a Self) -> Self {
         Self::Let(Let {
             name,
             ty,
@@ -209,7 +209,7 @@ impl<'a> Term<'a> {
         })
     }
 
-    pub const fn new_match(scrutinee: &'a Self, arms: &'a [Arm<'a>]) -> Self {
+    pub const fn new_match(scrutinee: &'a Self, arms: &'a [Arm<'n, 'a>]) -> Self {
         Self::Match(Match { scrutinee, arms })
     }
 }

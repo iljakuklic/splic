@@ -2,9 +2,9 @@ pub use crate::common::{Assoc, BinOp, Name, Phase, UnOp};
 
 /// Function or operator reference
 #[derive(Clone, Copy, derive_more::Debug)]
-pub enum FunName<'a> {
+pub enum FunName<'n, 'a> {
     #[debug("{_0:?}")]
-    Term(&'a Term<'a>),
+    Term(&'a Term<'n, 'a>),
     #[debug("{_0:?}")]
     BinOp(BinOp),
     #[debug("{_0:?}")]
@@ -12,68 +12,68 @@ pub enum FunName<'a> {
 }
 
 #[derive(derive_more::Debug)]
-pub enum Pat<'a> {
+pub enum Pat<'n> {
     #[debug("{_0:?}")]
-    Name(&'a Name),
+    Name(&'n Name),
     #[debug("{_0:?}")]
     Lit(u64),
 }
 
 #[derive(Debug)]
-pub struct MatchArm<'a> {
-    pub pat: Pat<'a>,
-    pub body: &'a Term<'a>,
+pub struct MatchArm<'n, 'a> {
+    pub pat: Pat<'n>,
+    pub body: &'a Term<'n, 'a>,
 }
 
 #[derive(Debug)]
-pub struct Let<'a> {
-    pub name: &'a Name,
-    pub ty: Option<&'a Term<'a>>,
-    pub expr: &'a Term<'a>,
+pub struct Let<'n, 'a> {
+    pub name: &'n Name,
+    pub ty: Option<&'a Term<'n, 'a>>,
+    pub expr: &'a Term<'n, 'a>,
 }
 
 #[derive(Debug)]
-pub struct Param<'a> {
-    pub name: &'a Name,
-    pub ty: &'a Term<'a>,
+pub struct Param<'n, 'a> {
+    pub name: &'n Name,
+    pub ty: &'a Term<'n, 'a>,
 }
 
 #[derive(Debug)]
-pub struct Function<'a> {
+pub struct Function<'n, 'a> {
     pub phase: Phase,
-    pub name: &'a Name,
-    pub params: &'a [Param<'a>],
-    pub ret_ty: &'a Term<'a>,
-    pub body: &'a Term<'a>,
+    pub name: &'n Name,
+    pub params: &'a [Param<'n, 'a>],
+    pub ret_ty: &'a Term<'n, 'a>,
+    pub body: &'a Term<'n, 'a>,
 }
 
 #[derive(Debug)]
-pub struct Program<'a> {
-    pub functions: &'a [Function<'a>],
+pub struct Program<'n, 'a> {
+    pub functions: &'a [Function<'n, 'a>],
 }
 
 #[derive(derive_more::Debug)]
-pub enum Term<'a> {
+pub enum Term<'n, 'a> {
     #[debug("{_0:?}")]
     Lit(u64),
 
     #[debug("{_0:?}")]
-    Var(&'a Name),
+    Var(&'n Name),
 
     App {
-        func: FunName<'a>,
+        func: FunName<'n, 'a>,
         args: &'a [&'a Self],
     },
 
     /// Function type: `fn(name: ty, ...) -> ret_ty`
     Pi {
-        params: &'a [Param<'a>],
+        params: &'a [Param<'n, 'a>],
         ret_ty: &'a Self,
     },
 
     /// Lambda: `|params| body`
     Lam {
-        params: &'a [Param<'a>],
+        params: &'a [Param<'n, 'a>],
         body: &'a Self,
     },
 
@@ -85,11 +85,11 @@ pub enum Term<'a> {
 
     Match {
         scrutinee: &'a Self,
-        arms: &'a [MatchArm<'a>],
+        arms: &'a [MatchArm<'n, 'a>],
     },
 
     Block {
-        stmts: &'a [Let<'a>],
+        stmts: &'a [Let<'n, 'a>],
         expr: &'a Self,
     },
 }
