@@ -4,6 +4,7 @@ use anyhow::{Result, anyhow, ensure};
 use bumpalo::Bump;
 
 use crate::common::de_bruijn;
+use crate::common::env::Env as LevelEnv;
 use crate::core::{Arm, Function, IntType, IntWidth, Name, Pat, Pi, Prim, Program, Term};
 use crate::parser::ast::Phase;
 
@@ -77,7 +78,7 @@ enum MetaVal<'names, 'eval> {
     Closure {
         body: &'eval Term<'names, 'eval>,
         arity: usize,
-        env: Vec<Binding<'names, 'eval>>,
+        env: LevelEnv<Binding<'names, 'eval>>,
         obj_depth: de_bruijn::Depth,
     },
 }
@@ -99,26 +100,21 @@ enum Binding<'names, 'eval> {
 /// `bindings[bindings.len() - 1 - i]` — the `i`-th binding from the end.
 #[derive(Debug)]
 struct Env<'names, 'eval> {
-    bindings: Vec<Binding<'names, 'eval>>,
+    bindings: LevelEnv<Binding<'names, 'eval>>,
     obj_depth: de_bruijn::Depth,
 }
 
 impl<'names, 'eval> Env<'names, 'eval> {
     const fn new(obj_depth: de_bruijn::Depth) -> Self {
         Env {
-            bindings: Vec::new(),
+            bindings: LevelEnv::new(),
             obj_depth,
         }
     }
 
     /// Look up the binding for `Var(Ix(ix))`.
     fn get_ix(&self, ix: de_bruijn::Ix) -> &Binding<'names, 'eval> {
-        let depth = de_bruijn::Depth::new(self.bindings.len());
-        let lvl = ix.lvl_at(depth);
-        let i = lvl.as_usize();
-        self.bindings
-            .get(i)
-            .expect("De Bruijn index out of environment bounds")
+        &self.bindings[ix]
     }
 
     /// Push an object-level binding.
@@ -135,7 +131,7 @@ impl<'names, 'eval> Env<'names, 'eval> {
 
     /// Pop the last binding.
     fn pop(&mut self) {
-        match self.bindings.pop().expect("pop on empty environment") {
+        match self.bindings.pop() {
             Binding::Obj(_) => {
                 self.obj_depth = self.obj_depth.pred();
             }
@@ -249,7 +245,7 @@ const fn global_to_closure<'names, 'eval>(
     MetaVal::Closure {
         body: def.body,
         arity: def.ty.params.len(),
-        env: Vec::new(),
+        env: LevelEnv::new(),
         obj_depth,
     }
 }

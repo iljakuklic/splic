@@ -1,5 +1,5 @@
 /// De Bruijn level (counts from the outermost binder, 0 = outermost)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, derive_more::Display, PartialEq, Eq, Hash)]
 pub struct Lvl(usize);
 
 impl Lvl {
@@ -28,7 +28,7 @@ impl Lvl {
 }
 
 /// De Bruijn index (counts from nearest enclosing binder, 0 = innermost)
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, derive_more::Display, PartialEq, Eq, Hash)]
 pub struct Ix(usize);
 
 impl Ix {
@@ -46,13 +46,14 @@ impl Ix {
         Self(self.0 + 1)
     }
 
+    /// Convert this index to the corresponding De Bruijn level given `depth`.
     #[must_use]
-    pub const fn lvl_at(self, depth: Depth) -> Self {
+    pub const fn lvl_at(self, depth: Depth) -> Lvl {
         let result = depth
             .0
             .checked_sub(self.0 + 1)
             .expect("De Bruijn index out of range for depth (index must be < depth)");
-        Self(result)
+        Lvl(result)
     }
 }
 
@@ -60,7 +61,7 @@ impl Ix {
 ///
 /// Same as `Lvl` but used to count how many binders down the current expression is,
 /// not to index into environment.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, derive_more::Display, PartialEq, Eq, Hash)]
 pub struct Depth(usize);
 
 impl Depth {
