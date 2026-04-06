@@ -48,7 +48,7 @@ impl<'names> Term<'names, '_> {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
             Term::Var(ix) => {
-                let name = env.get_at_ix(*ix);
+                let name = &env[*ix];
                 let lvl = env.ix_to_lvl(*ix);
                 write!(f, "{name}@{lvl}")
             }

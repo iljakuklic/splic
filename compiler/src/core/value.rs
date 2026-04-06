@@ -73,14 +73,14 @@ pub struct Closure<'names, 'a> {
 
 /// Evaluate a term in an environment, producing a semantic value.
 ///
-/// `env.get_at_lvl(lvl)` gives the value for the variable at De Bruijn level `lvl`.
+/// `env[lvl]` gives the value for the variable at De Bruijn level `lvl`.
 pub fn eval<'names, 'a>(
     arena: &'a Bump,
     env: &Env<'names, 'a>,
     term: &'a Term<'names, 'a>,
 ) -> Value<'names, 'a> {
     match term {
-        Term::Var(ix) => env.get_at_ix(*ix).clone(),
+        Term::Var(ix) => env[*ix].clone(),
 
         Term::Prim(p) => Value::Prim(*p),
         Term::Lit(n, it) => Value::Lit(*n, *it),
