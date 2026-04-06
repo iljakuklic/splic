@@ -117,14 +117,8 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         &self,
         name: &core::Name,
     ) -> Option<(de_bruijn::Ix, &value::Value<'names, 'core>)> {
-        for (i, entry) in self.locals.iter().enumerate().rev() {
-            if entry.name == name {
-                let lvl = de_bruijn::Lvl::new(i);
-                let ix = lvl.ix_at(self.depth());
-                return Some((ix, &entry.ty));
-            }
-        }
-        None
+        let (_, ix, entry) = self.locals.lookup(name, |e| e.name)?;
+        Some((ix, &entry.ty))
     }
 
     /// Helper to create a lifted type [[T]]
@@ -138,7 +132,7 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
     /// Collect the values of all local bindings as an `Env<Value>` for use with `value::eval`.
     pub fn value_env(&self) -> value::Env<'names, 'core> {
         let mut env = value::Env::with_capacity(self.locals.depth().as_usize());
-        for entry in self.locals.iter() {
+        for entry in self.locals.iter_by_lvl() {
             env.push(entry.val.clone());
         }
         env

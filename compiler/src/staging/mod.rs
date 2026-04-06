@@ -114,8 +114,7 @@ impl<'names, 'eval> Env<'names, 'eval> {
 
     /// Look up the binding for `Var(Ix(ix))`.
     fn get_ix(&self, ix: de_bruijn::Ix) -> &Binding<'names, 'eval> {
-        let lvl = ix.lvl_at(self.bindings.depth());
-        self.bindings.get(lvl)
+        self.bindings.get_at_ix(ix)
     }
 
     /// Push an object-level binding.

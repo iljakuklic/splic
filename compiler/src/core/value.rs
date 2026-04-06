@@ -73,14 +73,14 @@ pub struct Closure<'names, 'a> {
 
 /// Evaluate a term in an environment, producing a semantic value.
 ///
-/// `env.get(lvl)` gives the value for the variable at De Bruijn level `lvl`.
+/// `env.get_at_lvl(lvl)` gives the value for the variable at De Bruijn level `lvl`.
 pub fn eval<'names, 'a>(
     arena: &'a Bump,
     env: &Env<'names, 'a>,
     term: &'a Term<'names, 'a>,
 ) -> Value<'names, 'a> {
     match term {
-        Term::Var(ix) => env.get(ix.lvl_at(env.depth())).clone(),
+        Term::Var(ix) => env.get_at_ix(*ix).clone(),
 
         Term::Prim(p) => Value::Prim(*p),
         Term::Lit(n, it) => Value::Lit(*n, *it),
@@ -169,7 +169,7 @@ pub fn eval_pi<'names, 'a>(
     env: &Env<'names, 'a>,
     pi: &'a Pi<'names, 'a>,
 ) -> Value<'names, 'a> {
-    let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
+    let env_snapshot = arena.alloc_slice_fill_iter(env.iter_by_lvl().cloned());
     let params: Vec<(&'names Name, Closure<'names, 'a>)> = pi
         .params
         .iter()
@@ -199,7 +199,7 @@ fn eval_lam<'names, 'a>(
     env: &Env<'names, 'a>,
     lam: &'a Lam<'names, 'a>,
 ) -> Value<'names, 'a> {
-    let env_snapshot = arena.alloc_slice_fill_iter(env.iter().cloned());
+    let env_snapshot = arena.alloc_slice_fill_iter(env.iter_by_lvl().cloned());
     let params: Vec<(&'names Name, Closure<'names, 'a>)> = lam
         .params
         .iter()
@@ -265,9 +265,12 @@ pub fn inst_n<'names, 'a>(
     closure: &Closure<'names, 'a>,
     args: &[Value<'names, 'a>],
 ) -> Value<'names, 'a> {
-    let mut env = Env::new();
-    env.extend(closure.env.iter().cloned());
-    env.extend(args.iter().cloned());
+    let env: Env<'names, 'a> = closure
+        .env
+        .iter()
+        .cloned()
+        .chain(args.iter().cloned())
+        .collect();
     eval(arena, &env, closure.body)
 }
 

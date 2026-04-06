@@ -48,8 +48,8 @@ impl<'names> Term<'names, '_> {
         match self {
             // ── Variable ─────────────────────────────────────────────────────────
             Term::Var(ix) => {
-                let lvl = ix.lvl_at(env.depth());
-                let name = env.get(lvl);
+                let name = env.get_at_ix(*ix);
+                let lvl = env.ix_to_lvl(*ix);
                 write!(f, "{name}@{lvl}")
             }
 
@@ -77,7 +77,7 @@ impl<'names> Term<'names, '_> {
 
             // ── Pi type ───────────────────────────────────────────────────────────
             Term::Pi(pi) => {
-                let env_before = env.depth();
+                let depth_before = env.depth();
                 write!(f, "fn(")?;
                 for (i, &(name, ty)) in pi.params.iter().enumerate() {
                     if i > 0 {
@@ -93,13 +93,13 @@ impl<'names> Term<'names, '_> {
                 }
                 write!(f, ") -> ")?;
                 pi.body_ty.fmt_expr(env, indent, f)?;
-                env.truncate(env_before);
+                env.truncate(depth_before);
                 Ok(())
             }
 
             // ── Lambda ────────────────────────────────────────────────────────────
             Term::Lam(lam) => {
-                let env_before = env.depth();
+                let depth_before = env.depth();
                 write!(f, "|")?;
                 for (i, &(name, ty)) in lam.params.iter().enumerate() {
                     if i > 0 {
@@ -111,7 +111,7 @@ impl<'names> Term<'names, '_> {
                 }
                 write!(f, "| ")?;
                 lam.body.fmt_expr(env, indent, f)?;
-                env.truncate(env_before);
+                env.truncate(depth_before);
                 Ok(())
             }
 
