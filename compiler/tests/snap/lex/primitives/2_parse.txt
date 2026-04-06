@@ -1,2 +1,0 @@
-ERROR
-expected 'fn': expected Fn, got Ident("u0")
