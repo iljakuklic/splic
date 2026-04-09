@@ -8,7 +8,7 @@ license.workspace = true
 workspace = true
 
 [features]
-wasm = ["dep:splic-backend-wasm"]
+backend-wasm = ["dep:splic-backend-wasm"]
 
 [dependencies]
 splic-compiler = { path = "../compiler" }

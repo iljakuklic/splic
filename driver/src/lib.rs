@@ -3,43 +3,10 @@ use bumpalo::Bump;
 use splic_compiler::{checker, core, lexer, parser, staging};
 
 /// Run all compiler phases up to and including staging.
-/// Returns the staged program pretty-printed.
-pub fn stage(source: &str) -> Result<String> {
-    let arena = Bump::new();
-    let program = run_pipeline(source, &arena)?;
-    Ok(format!("{program}"))
-}
-
-/// Compilation target.
-#[non_exhaustive]
-#[derive(Clone, Copy)]
-pub enum Target {
-    /// WebAssembly binary format.
-    #[cfg(feature = "wasm")]
-    Wasm,
-}
-
-/// Compile source to a target binary.
-#[cfg_attr(
-    not(any(feature = "wasm")),
-    expect(unused_variables, reason = "no backends are enabled")
-)]
-pub fn compile(source: &str, target: Target) -> Result<Vec<u8>> {
-    let arena = Bump::new();
-    let program = run_pipeline(source, &arena)?;
-    match target {
-        #[cfg(feature = "wasm")]
-        Target::Wasm => splic_backend_wasm::compile_wasm(&program),
-    }
-}
-
-/// Run lex → parse → elaborate → unstage, allocating into `arena`.
 ///
 /// The returned `Program` borrows from `arena` for both names and terms.
-fn run_pipeline<'arena>(
-    source: &str,
-    arena: &'arena Bump,
-) -> Result<core::Program<'arena, 'arena>> {
+/// Use `format!("{program}")` to pretty-print the staged output.
+pub fn stage<'arena>(source: &str, arena: &'arena Bump) -> Result<core::Program<'arena, 'arena>> {
     let ast_arena = Bump::new();
 
     let lexer = lexer::Lexer::new(source, arena);
@@ -56,4 +23,34 @@ fn run_pipeline<'arena>(
     drop(core_arena);
 
     Ok(staged)
+}
+
+/// Compilation target.
+#[non_exhaustive]
+#[derive(Clone, Copy)]
+pub enum Target {
+    /// WebAssembly binary format.
+    Wasm,
+}
+
+/// Compile source to a target binary.
+pub fn compile(source: &str, target: Target) -> Result<Vec<u8>> {
+    let arena = Bump::new();
+    let program = stage(source, &arena)?;
+    match target {
+        Target::Wasm => compile_wasm(&program),
+    }
+}
+
+/// Compile a staged program to WebAssembly.
+///
+/// Returns an error if the `backend-wasm` feature is not enabled.
+fn compile_wasm(program: &core::Program<'_, '_>) -> Result<Vec<u8>> {
+    #[cfg(feature = "backend-wasm")]
+    return splic_backend_wasm::compile_wasm(program);
+    #[cfg(not(feature = "backend-wasm"))]
+    {
+        let _ = program;
+        anyhow::bail!("Wasm backend not enabled; recompile with --features backend-wasm")
+    }
 }

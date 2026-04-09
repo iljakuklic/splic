@@ -40,8 +40,9 @@ fn main() -> Result<()> {
     match cli.command {
         Commands::Stage { file } => {
             let source = read_file(&file)?;
-            let staged = splic_driver::stage(&source)?;
-            println!("{staged}");
+            let arena = bumpalo::Bump::new();
+            let program = splic_driver::stage(&source, &arena)?;
+            println!("{program}");
         }
         Commands::Compile {
             file,
