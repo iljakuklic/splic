@@ -1,5 +1,5 @@
 [workspace]
-members = ["compiler", "cli"]
+members = ["compiler", "backend/wasm", "driver", "cli"]
 resolver = "3"
 
 [workspace.package]
@@ -13,6 +13,7 @@ bumpalo = { version = "3", default-features = false }
 derive_more = { version = "2", default-features = false }
 ref-cast = "1"
 bolero = "0.13"
+wasm-encoder = { version = "0.246", default-features = false }
 clap = { version = "4", features = ["derive"] }
 
 [workspace.lints.rust]
