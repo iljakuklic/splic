@@ -1,6 +1,6 @@
 ---
 name: wrapup
-description: Reflect on task completion and record lessons learned. Use when the user says "wrapup", "wrap up", "wrap it up", "close out", or "record lessons learned". Distills what went well, what was tricky, and updates project knowledge to improve future sessions.
+description: Reflect on task completion and record lessons learned. Use when the user says "wrapup", "wrap up", "wrap it up", "close out", or "record lessons learned". Distills what went well, what was tricky, updates project knowledge, suggests GitHub issues for follow-up tasks, and logs technical debt.
 ---
 
 # Wrapup
@@ -31,7 +31,21 @@ Skip:
 - One-off debugging steps unlikely to recur
 - Implementation details that live in the code itself
 
-### Step 3 — Choose the right destination
+### Step 3 — Identify follow-up work
+
+Look for:
+- **Unfinished threads**: things explicitly deferred, stubbed out (`todo!()`, `// TODO`, placeholder implementations), or noted as "future work"
+- **Technical debt**: corners cut to keep scope manageable, workarounds for known limitations, or designs that will need revisiting as the project grows
+- **Open questions**: design decisions that weren't resolved, or areas where the right approach was uncertain
+
+For each item, decide:
+- **Propose a GitHub issue** if it's concrete enough to act on later and worth tracking publicly
+- **Note in a doc** (`docs/bs/`) if it's a design question or architectural trade-off worth preserving context for
+- Skip if it's too vague or already tracked elsewhere
+
+When proposing issues: draft a focused title and a short body with enough context that someone picking it up cold can understand the problem and the constraints. Present the draft to the user for review before running `gh issue create` — issue creation is public and requires explicit approval.
+
+### Step 4 — Choose the right destination for lessons
 
 | What | Where |
 |------|-------|
@@ -41,14 +55,15 @@ Skip:
 | User preferences, collaboration style | Auto-memory (`~/.claude/projects/.../memory/`) |
 | Corrected behavior for future Claude sessions | Auto-memory feedback entries |
 
-### Step 4 — Write the updates
+### Step 5 — Write the updates
 
 - **CLAUDE.md**: Add a bullet or short paragraph. Keep the file small and scannable. No restating what's obvious from the code.
 - **docs/**: Focus on "what" and "why" at a conceptual level. Avoid function names, parameter lists, exact APIs — these go stale. Brief "how" is fine if it illuminates the design.
 - **Skills**: Tighten trigger descriptions, add guidance about edge cases, or clarify scope.
 - **Memory**: Add feedback entries for behavioral corrections (see auto-memory guidelines).
+- **GitHub issues**: File for any concrete follow-up tasks identified in Step 3.
 
-### Step 5 — Optionally, refine this skill
+### Step 6 — Optionally, refine this skill
 
 If the wrapup process itself revealed a gap (e.g. a destination type is missing, guidance is ambiguous), improve this `SKILL.md` before finishing.
 
