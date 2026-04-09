@@ -20,6 +20,7 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 - [prototype_eval.md](prototype_eval.md) — Evaluator design and implementation sequence (substitution → spines → dependent types)
 - [nbe_and_debruijn.md](nbe_and_debruijn.md) — Normalization by Evaluation, De Bruijn indices vs levels, free variable index shifting in staging
 - [pi_types.md](pi_types.md) — Dependent function types (Pi) and lambdas at the meta level (implementation details and NbE type checking)
+- [wasm_backend.md](wasm_backend.md) — WebAssembly backend design: type mapping, u0 erasure, wrapping semantics
 
 ## Roadmap, Strategy & Process
 

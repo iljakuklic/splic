@@ -320,43 +320,15 @@ fn eval_meta_prim<'names, 'eval>(
         // ── Arithmetic ────────────────────────────────────────────────────────
         Prim::Add(IntType { width, .. }) => {
             let (a, b) = eval_bin_args(eval_arena, globals, env, args)?;
-            let result = a
-                .checked_add(b)
-                .filter(|&r| r <= width.max_value())
-                .ok_or_else(|| {
-                    anyhow!(
-                        "arithmetic overflow during staging: \
-                         {a} + {b} = {} exceeds maximum value of {width} ({})",
-                        a.wrapping_add(b),
-                        width.max_value()
-                    )
-                })?;
-            Ok(MetaVal::Lit(result))
+            Ok(MetaVal::Lit(mask_to_width(width, a.wrapping_add(b))))
         }
         Prim::Sub(IntType { width, .. }) => {
             let (a, b) = eval_bin_args(eval_arena, globals, env, args)?;
-            let result = a.checked_sub(b).ok_or_else(|| {
-                anyhow!(
-                    "arithmetic overflow during staging: \
-                     {a} - {b} underflows {width}"
-                )
-            })?;
-            Ok(MetaVal::Lit(result))
+            Ok(MetaVal::Lit(mask_to_width(width, a.wrapping_sub(b))))
         }
         Prim::Mul(IntType { width, .. }) => {
             let (a, b) = eval_bin_args(eval_arena, globals, env, args)?;
-            let result = a
-                .checked_mul(b)
-                .filter(|&r| r <= width.max_value())
-                .ok_or_else(|| {
-                    anyhow!(
-                        "arithmetic overflow during staging: \
-                         {a} * {b} = {} exceeds maximum value of {width} ({})",
-                        a.wrapping_mul(b),
-                        width.max_value()
-                    )
-                })?;
-            Ok(MetaVal::Lit(result))
+            Ok(MetaVal::Lit(mask_to_width(width, a.wrapping_mul(b))))
         }
         Prim::Div(_) => {
             let (a, b) = eval_bin_args(eval_arena, globals, env, args)?;
