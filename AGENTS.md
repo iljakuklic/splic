@@ -78,7 +78,7 @@ cargo bolero test           # Run bolero fuzz tests
 - Uses **rstest** for parameterized tests
 - Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `UPDATE_EXPECT=1 cargo test` to regenerate snapshots and verify actual state)
 - Fuzz tests with **bolero** in component `test` modules
-- Note: When adding new `.input.txt` test files, run `cargo clean -p splic-compiler` first to ensure they're picked up by the test framework
+- Note: When adding new test input files, run `cargo clean -p <crate>` for the crate that owns the tests (e.g. `splic-driver` for integration tests, `splic-compiler` for unit tests) to ensure rstest picks them up
 
 ### Clippy
 The project enforces a curated set of lints beyond Clippy defaults — see `[workspace.lints]` in `Cargo.toml` for the full list. All lints are `"deny"`. Use `#[expect(...)]` to suppress a lint at a specific site. For test modules it is acceptable to use a broad `#![expect(...)]` at the top of the file rather than per-site annotations.
@@ -101,6 +101,10 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 - For arena-allocated structures, refer to other objects using plain references rather than `Box`
 - In NbE (semantic evaluation), use slices `&'a [Value<'a>]` for environment snapshots captured in closures, not vectors
 - Prefer a local `Bump::new()` over accepting an arena parameter when all allocations are scratch temporaries that do not escape the function (e.g. intermediate structures used only for a comparison that returns a non-arena type)
+
+### Feature Gating
+- Use `cfg_if::cfg_if!` for if/else feature dispatch (not paired `#[cfg]` / `#[cfg(not(...))]` attributes)
+- Concentrate feature checks in a dedicated helper function; avoid `#[cfg]` on enum variants or match arms — the scattered approach triggers cascading lint failures (`used_underscore_binding`, `needless_pass_by_value`, `unused_variables`)
 
 ### Trait Implementations
 - Use `derive_more` for standard trait derives (`Display`, `Debug`, `From`, `AsRef`, `IsVariant`, etc.) instead of manual `impl` blocks
