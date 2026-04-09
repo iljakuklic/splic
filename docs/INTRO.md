@@ -84,7 +84,7 @@ code fn pow5(x: u64) -> u64 {
 }
 ```
 
-For more examples of staged code, see the [snapshot test inputs and outputs](../compiler/tests/snap/examples/) in the compiler test suite.
+For more examples of staged code, see the [snapshot test inputs and outputs](../driver/tests/snap/examples/) in the test suite.
 
 ## Language Features
 
