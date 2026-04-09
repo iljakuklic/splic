@@ -1,0 +1,13 @@
+[package]
+name = "splic-backend-wasm"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+splic-compiler = { path = "../../compiler" }
+wasm-encoder.workspace = true
+anyhow.workspace = true

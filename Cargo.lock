@@ -389,6 +389,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
+name = "leb128fmt"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09edd9e8b54e49e587e4f6295a7d29c3ea94d469cb40ab8ca70b288248a81db2"
+
+[[package]]
 name = "libc"
 version = "0.2.182"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -646,13 +652,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c790de23124f9ab44544d7ac05d60440adc586479ce501c1d6d7da3cd8c9cf5"
 
 [[package]]
+name = "splic-backend-wasm"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "splic-compiler",
+ "wasm-encoder",
+]
+
+[[package]]
 name = "splic-cli"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "bumpalo",
  "clap",
- "splic-compiler",
+ "splic-driver",
 ]
 
 [[package]]
@@ -666,6 +681,19 @@ dependencies = [
  "expect-test",
  "ref-cast",
  "rstest",
+]
+
+[[package]]
+name = "splic-driver"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bumpalo",
+ "cfg-if",
+ "expect-test",
+ "rstest",
+ "splic-backend-wasm",
+ "splic-compiler",
 ]
 
 [[package]]
@@ -763,6 +791,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9517f9239f02c069db75e65f174b3da828fe5f5b945c4dd26bd25d89c03ebcf5"
 dependencies = [
  "wit-bindgen",
+]
+
+[[package]]
+name = "wasm-encoder"
+version = "0.246.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "61fb705ce81adde29d2a8e99d87995e39a6e927358c91398f374474746070ef7"
+dependencies = [
+ "leb128fmt",
 ]
 
 [[package]]

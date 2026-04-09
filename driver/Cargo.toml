@@ -1,0 +1,22 @@
+[package]
+name = "splic-driver"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[features]
+backend-wasm = ["dep:splic-backend-wasm"]
+
+[dependencies]
+splic-compiler = { path = "../compiler" }
+cfg-if.workspace = true
+splic-backend-wasm = { path = "../backend/wasm", optional = true }
+anyhow.workspace = true
+bumpalo.workspace = true
+
+[dev-dependencies]
+expect-test = "1.5"
+rstest = "0.26"

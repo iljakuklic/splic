@@ -2,13 +2,13 @@
 
 ## Project Overview
 
-Splic is a Rust-based experimental programming language targeting zkVMs, built on two-level type theory (2LTT). The project uses a workspace structure with a main compiler crate.
+Splic is a Rust-based experimental programming language targeting zkVMs, built on two-level type theory (2LTT). The project uses a Cargo workspace with separate crates for the compiler frontend, backends, driver, and CLI.
 
 ## Project Structure
 
 ```
 splic/
-├── compiler/          # Main compiler library crate
+├── compiler/          # splic-compiler: target-agnostic frontend
 │   └── src/
 │       ├── lexer/     # Tokenization
 │       ├── parser/    # Parsing (string → AST)
@@ -16,7 +16,11 @@ splic/
 │       ├── core/      # Core language abstractions
 │       ├── staging/   # Meta-level staging (NbE-based code generation)
 │       └── common/    # Shared utilities
-├── cli/               # CLI binary crate (depends on compiler)
+├── backend/
+│   └── wasm/          # splic-backend-wasm: WebAssembly codegen (feature-gated)
+├── driver/            # splic-driver: pipeline orchestration, arena management
+│   └── tests/         # Snapshot integration tests (lex → parse → check → stage)
+├── cli/               # splic-cli: thin CLI wrapper over splic-driver
 ├── docs/              # Documentation
 │   ├── README.md      # Language design and user-facing docs
 │   └── bs/            # Implementation notes and proposals

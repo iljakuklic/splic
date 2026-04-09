@@ -12,7 +12,7 @@ name = "splic"
 path = "src/main.rs"
 
 [dependencies]
-splic-compiler = { path = "../compiler" }
+splic-driver = { path = "../driver", features = ["backend-wasm"] }
 anyhow.workspace = true
-clap.workspace = true
 bumpalo.workspace = true
+clap.workspace = true
