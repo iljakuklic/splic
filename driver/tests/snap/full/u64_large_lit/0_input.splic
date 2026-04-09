@@ -1,0 +1,14 @@
+// Exercises u64 literal values >= 2^63 in both constant position and match patterns.
+// 9223372036854775808 = 2^63 (i64::MIN as u64), 18446744073709551615 = u64::MAX.
+
+code fn min_signed() -> u64 { 9223372036854775808 }
+
+code fn max_u64() -> u64 { 18446744073709551615 }
+
+code fn clamp_large(x: u64) -> u64 {
+    match x {
+        9223372036854775808 => 0,
+        18446744073709551615 => 1,
+        n => n,
+    }
+}
