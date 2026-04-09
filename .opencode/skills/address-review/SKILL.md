@@ -1,7 +1,7 @@
 ---
 name: address-review
-description: Download unresolved GitHub PR review comments and create a structured plan for addressing them. Use when the user wants to work through PR feedback.
-allowed-tools: Bash(.opencode/skills/address-review/fetch_comments.py), Bash(gh pr view *), Bash(gh repo view *)
+description: Download unresolved GitHub PR review comments and create a plan (in plan mode) or a todo list (otherwise) for addressing them. Use when the user wants to work through PR feedback.
+allowed-tools: Bash(.opencode/skills/address-review/fetch_comments.py), Bash(gh pr view *), Bash(gh repo view *), TaskCreate
 ---
 
 ## Unresolved Review Comments
@@ -36,9 +36,9 @@ Use read-only exploration (Glob, Grep, Read, Bash for `git log`/`gh`) to identif
 
 Do **not** do deep implementation research at this stage — just enough to point accurately to the right location.
 
-### Step 3 — Write the plan
+### Step 3 — Record the tasks
 
-Write the final plan to the plan file. Structure:
+**If you are in plan mode**, write a structured plan file. Structure:
 
 - **Context section** at the top: what this PR does and why these comments need addressing
 - One **section per task**, titled clearly (e.g. `T1 — Regression: empty lambda params`)
@@ -49,6 +49,8 @@ Write the final plan to the plan file. Structure:
   - **Complete context and constraints** from the comment(s): exact error messages, code examples, suggestions, workarounds mentioned, why the change matters
 - A **suggested implementation order** (regressions and bugs first, then cleanup, then docs, then issues to file)
 - A **verification section** with the exact commands to run after implementation
+
+**If you are not in plan mode**, create a todo list using TaskCreate instead. One task per item from Step 1, in implementation order (regressions first, then cleanup, then docs, then issues to file). Each task title should be self-contained (include the comment ID and a short description of the change).
 
 ### Guidelines
 
