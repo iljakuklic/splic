@@ -37,6 +37,7 @@ Look for:
 - **Unfinished threads**: things explicitly deferred, stubbed out (`todo!()`, `// TODO`, placeholder implementations), or noted as "future work"
 - **Technical debt**: corners cut to keep scope manageable, workarounds for known limitations, or designs that will need revisiting as the project grows
 - **Open questions**: design decisions that weren't resolved, or areas where the right approach was uncertain
+- **PR review feedback**: if the session addressed PR review comments, scan for reviewer suggestions that were deferred, only partially addressed, or that expressed general development practices worth capturing (e.g. error handling philosophy, structural patterns, testing expectations)
 
 For each item, decide:
 - **Propose a GitHub issue** if it's concrete enough to act on later and worth tracking publicly
