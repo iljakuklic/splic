@@ -79,7 +79,7 @@ just crate-docs -p wasm-encoder -p wasmparser          # Multiple crates
 just doc-md-full                                       # Entire workspace + all deps
 ```
 
-Files are split by module (e.g. `target/doc-md/wasm_encoder/core/instructions.md`) — read only the relevant module rather than the whole crate. Requires `cargo install cargo-doc-md`.
+Each crate gets a `target/doc-md/<crate>/index.md` with links to submodule files (e.g. `core/instructions.md`) — start there to navigate to the relevant module. Requires `cargo install cargo-doc-md`.
 
 ## Testing & Quality
 
