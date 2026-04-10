@@ -8,12 +8,12 @@ use wasm_encoder::{
     Module, TypeSection,
 };
 
-use emit::{Codegen, Emitter};
+use emit::{Emitter, FuncRegistry};
 use types::term_to_valtype;
 
 /// Compile a staged object-level program to a WebAssembly binary.
 pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
-    let cg = Codegen::from_program(program)?;
+    let cg = FuncRegistry::from_program(program)?;
 
     let mut types = TypeSection::new();
     let mut functions = FunctionSection::new();
@@ -27,8 +27,8 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
             .params
             .iter()
             .map(|(_, ty)| term_to_valtype(ty))
-            .collect::<Result<_>>()?;
-        let result_valtype = term_to_valtype(func.ty.body_ty)?;
+            .collect();
+        let result_valtype = term_to_valtype(func.ty.body_ty);
 
         let type_idx =
             u32::try_from(func_idx).map_err(|_| anyhow!("too many functions (> u32::MAX)"))?;
@@ -40,7 +40,7 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
 
         // Emit the function body.
         let mut emitter = Emitter::new(&cg, &param_valtypes)?;
-        emitter.emit_term(func.body)?;
+        emitter.emit_term(func.body);
         emitter.push(Instruction::End);
 
         // Declare extra locals (let-binding and scrutinee temporaries).
@@ -61,5 +61,10 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
     module.section(&functions);
     module.section(&exports);
     module.section(&code);
-    Ok(module.finish())
+    let bytes = module.finish();
+
+    #[cfg(test)]
+    wasmparser::validate(&bytes).expect("emitted invalid wasm module");
+
+    Ok(bytes)
 }

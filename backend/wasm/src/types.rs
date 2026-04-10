@@ -1,4 +1,3 @@
-use anyhow::{Result, bail};
 use splic_compiler::core::{IntWidth, Prim, Term};
 use wasm_encoder::ValType;
 
@@ -37,27 +36,14 @@ pub(crate) fn bitnot_mask(width: IntWidth) -> i32 {
 }
 
 /// Extract the `ValType` from a `Term` that must be an integer type literal.
-pub(crate) fn term_to_valtype(term: &Term<'_, '_>) -> Result<ValType> {
+pub(crate) fn term_to_valtype(term: &Term<'_, '_>) -> ValType {
     match term {
-        Term::Prim(Prim::IntTy(ty)) => Ok(width_to_valtype(ty.width)),
-        other => bail!("expected integer type term, got {other:?}"),
+        Term::Prim(Prim::IntTy(ty)) => width_to_valtype(ty.width),
+        other => unreachable!("expected integer type term, got {other:?}"),
     }
 }
 
 /// Return the Wasm result type produced by applying `prim`.
-pub(crate) const fn prim_result_valtype(prim: Prim) -> ValType {
-    match prim {
-        Prim::Add(ty)
-        | Prim::Sub(ty)
-        | Prim::Mul(ty)
-        | Prim::Div(ty)
-        | Prim::BitAnd(ty)
-        | Prim::BitOr(ty)
-        | Prim::BitNot(ty) => width_to_valtype(ty.width),
-        // Comparisons always produce a u1 (i32 0 or 1).
-        Prim::Eq(_) | Prim::Ne(_) | Prim::Lt(_) | Prim::Gt(_) | Prim::Le(_) | Prim::Ge(_) => {
-            ValType::I32
-        }
-        Prim::IntTy(_) | Prim::U(_) | Prim::Embed(_) => ValType::I32,
-    }
+pub(crate) fn prim_result_valtype(prim: Prim) -> ValType {
+    width_to_valtype(prim.result_width())
 }
