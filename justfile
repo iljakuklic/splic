@@ -35,5 +35,27 @@ miri:
 lsan:
     RUSTFLAGS="-Zsanitizer=leak" cargo +nightly test -Zbuild-std --target x86_64-unknown-linux-gnu -p splic-compiler
 
+# Check that cargo-doc-md is installed.
+_require-doc-md:
+    @command -v cargo-doc-md > /dev/null 2>&1 || { echo "cargo-doc-md is not installed. Run: cargo install cargo-doc-md"; exit 1; }
+
+# Generate Markdown docs for one or more dependencies (requires cargo-doc-md).
+# Usage: just crate-docs -p wasm-encoder
+# Usage: just crate-docs -p wasm-encoder -p wasmparser
+# Usage: just crate-docs -p wasm-encoder --include-private
+crate-docs +args: _require-doc-md
+    cargo doc-md --no-deps {{args}}
+
+# Generate full HTML docs for the entire workspace and all dependencies (all features, private items).
+# Output in target/doc/.
+doc-full:
+    cargo doc --workspace --all-features --document-private-items
+
+# Generate full Markdown docs for the entire workspace and all dependencies (private items).
+# Note: cargo-doc-md does not support --all-features; features reflect workspace defaults.
+# Output in target/doc-md/.
+doc-md-full: _require-doc-md
+    cargo doc-md --workspace --include-private
+
 # Run all CI checks.
 ci: check-fmt clippy test
