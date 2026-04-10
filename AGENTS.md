@@ -70,6 +70,17 @@ Stages a Splic source file, printing the object-level code with all meta-level c
 cargo bolero test           # Run bolero fuzz tests
 ```
 
+### Reading dependency docs
+Use `cargo-doc-md` to generate Markdown documentation for workspace dependencies. Output lands in `target/doc-md/<crate>/`.
+
+```bash
+just crate-docs -p wasm-encoder                        # Single crate
+just crate-docs -p wasm-encoder -p wasmparser          # Multiple crates
+just doc-md-full                                       # Entire workspace + all deps
+```
+
+Each crate gets a `target/doc-md/<crate>/index.md` with links to submodule files (e.g. `core/instructions.md`) — start there to navigate to the relevant module. Requires `cargo install cargo-doc-md`.
+
 ## Testing & Quality
 
 ### Test Structure
