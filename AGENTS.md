@@ -95,6 +95,7 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 ### Error Handling
 - Use `anyhow` for error handling
 - Default features disabled for minimal dependencies
+- **Everything after type-checking (staging, backends, future optimizations) operates on well-formed, well-typed terms.** Internal inconsistencies in this phase are bugs, not recoverable errors — use `unreachable!`, `panic!`, or `expect` rather than `bail!`/`Result` for invariant violations. Only use `Result` for genuinely fallible boundary conditions (e.g. index overflow when converting counts to `u32`).
 
 ### Memory Management
 - Use `bumpalo` arena allocator wherever practical

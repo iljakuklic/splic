@@ -16,10 +16,11 @@ enum Phase {
     Parse,
     Check,
     Stage,
+    Wasm,
 }
 
 impl Phase {
-    const ALL: &'static [Self] = &[Self::Lex, Self::Parse, Self::Check, Self::Stage];
+    const ALL: &'static [Self] = &[Self::Lex, Self::Parse, Self::Check, Self::Stage, Self::Wasm];
 
     const fn snap_filename(self) -> &'static str {
         match self {
@@ -27,6 +28,7 @@ impl Phase {
             Self::Parse => "2_parse.txt",
             Self::Check => "3_check.txt",
             Self::Stage => "6_stage.txt",
+            Self::Wasm => "8_wasm.wat",
         }
     }
 
@@ -68,7 +70,7 @@ impl ExpectedOutcome {
 /// When adding a new folder under `tests/snap/`, add a corresponding entry here.
 fn expected_outcome(folder: &str) -> ExpectedOutcome {
     match folder {
-        "full" | "examples" => ExpectedOutcome::run_till(Phase::Stage),
+        "full" | "examples" => ExpectedOutcome::run_till(Phase::Wasm),
         "lex" => ExpectedOutcome::run_till(Phase::Lex),
         "lex_error" => ExpectedOutcome::fail_at(Phase::Lex),
         "parse_error" => ExpectedOutcome::fail_at(Phase::Parse),
@@ -133,13 +135,16 @@ macro_rules! phase {
 
 /// Run the full compiler pipeline on the input, writing a snapshot file for each phase.
 ///
-/// Snapshot files are named `1_lex.txt`, `2_parse.txt`, `3_check.txt`, `6_stage.txt`
-/// (slots 4–5 are reserved for future passes). On success the file contains the phase
-/// output directly. On failure it begins with `ERROR` on the first line followed by
-/// the error message (full context chain).
+/// Snapshot files are named `1_lex.txt`, `2_parse.txt`, `3_check.txt`, `6_stage.txt`,
+/// `8_wasm.wat` (slots 4–5 and 7 are reserved for future passes). On success the file
+/// contains the phase output directly. On failure it begins with `ERROR` on the first
+/// line followed by the error message (full context chain).
 ///
 /// The top-level folder name determines which phase (if any) is expected to fail and
 /// which later snapshots must be absent; see `expected_outcome` for the mapping.
+///
+/// The Wasm phase (8) requires the `backend-wasm` feature. When the feature is absent
+/// the step is skipped and the test exits at Stage without writing `8_wasm.wat`.
 #[rstest]
 #[timeout(std::time::Duration::from_secs(if cfg!(miri) { 600 } else { 5 }))]
 fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
@@ -186,5 +191,22 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
         Ok(staged) => format!("{staged}\n"),
         Err(e) => format!("ERROR\n{e:#}\n"),
     };
-    phase!(stage_snap, stage_result, Phase::Stage, expected, dir);
+    let staged = phase!(stage_snap, stage_result, Phase::Stage, expected, dir);
+
+    // ── Phase 8: Wasm ────────────────────────────────────────────────────────
+    // (slot 7 reserved for a future optimisation pass)
+    // When the backend-wasm feature is absent this step is a no-op: no snapshot
+    // is written and the pipeline ends at Stage rather than Wasm.
+    #[cfg(feature = "backend-wasm")]
+    {
+        let wasm_result = splic_backend_wasm::compile_wasm(&staged)
+            .and_then(|bytes| wasmprinter::print_bytes(&bytes));
+        let wasm_snap = match &wasm_result {
+            Ok(wat) => wat.clone(),
+            Err(e) => format!("ERROR\n{e:#}\n"),
+        };
+        phase!(wasm_snap, wasm_result, Phase::Wasm, expected, dir);
+    }
+    #[cfg(not(feature = "backend-wasm"))]
+    let _ = staged;
 }

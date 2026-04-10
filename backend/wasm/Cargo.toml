@@ -11,3 +11,6 @@ workspace = true
 splic-compiler = { path = "../../compiler" }
 wasm-encoder.workspace = true
 anyhow.workspace = true
+
+[dev-dependencies]
+wasmparser.workspace = true

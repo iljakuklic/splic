@@ -106,6 +106,29 @@ pub enum Prim {
 }
 
 impl Prim {
+    /// Returns the [`IntWidth`] of the value produced by applying this primitive.
+    ///
+    /// # Panics
+    ///
+    /// Panics for type-level or meta-only primitives (`IntTy`, `U`, `Embed`).
+    pub fn result_width(self) -> IntWidth {
+        match self {
+            Self::Add(ty)
+            | Self::Sub(ty)
+            | Self::Mul(ty)
+            | Self::Div(ty)
+            | Self::BitAnd(ty)
+            | Self::BitOr(ty)
+            | Self::BitNot(ty) => ty.width,
+            Self::Eq(_) | Self::Ne(_) | Self::Lt(_) | Self::Gt(_) | Self::Le(_) | Self::Ge(_) => {
+                IntWidth::U1
+            }
+            Self::IntTy(_) | Self::U(_) | Self::Embed(_) => {
+                unreachable!("type-level primitive has no result width")
+            }
+        }
+    }
+
     /// Returns `true` if this primitive is a binary infix operator.
     pub const fn is_binop(self) -> bool {
         matches!(
