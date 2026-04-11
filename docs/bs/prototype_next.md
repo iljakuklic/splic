@@ -2,91 +2,28 @@
 
 This document outlines logical next steps after the basic prototype is complete.
 
-See [prototype_eval.md](prototype_eval.md) for the detailed evaluator design and
-implementation sequence (substitution → spines → dependent types).
+See [prototype_eval.md](prototype_eval.md) for evaluator design notes.
 
-## Phase 1: Staging (Meta-level Evaluator)
+## Phase 1: Staging (Meta-level Evaluator) — DONE
 
-Before adding new syntax or types, implement the meta-level evaluator to eliminate
-splices from mixed-stage programs. This is the core of Splic's metaprogramming capability.
-
-### What this enables
-
-Running metaprograms at compile time to generate object-level code. Example:
-
-```splic
-fn repeat(f: [[u64]] -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
-    match n {
-        0 => x,
-        n => repeat(f, n - 1, #(f(x))),
-    }
-}
-
-code fn square_twice(x: u64) -> u64 {
-    $(repeat(|y| #($(y) * $(y)), 2, #(x)))
-}
-```
-
-After staging, `square_twice` is splice-free:
-```splic
-code fn square_twice(x: u64) -> u64 {
-    (x * x) * (x * x)
-}
-```
-
-### Implementation
-
-- **Substitution-based evaluator** (simple, fast to prototype)
-  - Implement `eval_meta`, `eval_obj` with unified environment
-  - Implement `unstage` entry point
-  - Test corpus: snapshot-based staging tests
-  
-- **Refactor to spine-based evaluation** (before dependent types)
-  - Lazy application; pending operations tracked without rebuilding
-  - Prepares for dependent elimination (fold, recursor)
-
-See [prototype_eval.md](prototype_eval.md) for full design rationale.
+Implemented `eval_meta`, `eval_obj`, and `unstage_program` in `compiler/src/staging/`.
+Uses NbE with De Bruijn levels (substitution-based). Covered by snapshot-based staging tests.
 
 ---
 
 ## Phase 2: Meta-level Functions
 
-### 2.1 First-Class Meta-level Functions
+### 2.1 First-Class Meta-level Functions — DONE
 
-Add support for first-class meta-level functions (functions that operate on code at compile time).
+Pi types with `[[A]]` in domain/codomain are supported; functions can accept and apply
+code-transforming lambdas at compile time. See `repeat`/`square_twice` in the
+[Functions section of prototype.md](../prototype.md#functions) for an example.
 
-#### Repeated Application Example
-
-```splic
-fn repeat(f: [[u64]] -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
-    match n {
-        0 => x,
-        n => repeat(f, n - 1, #(f(x))),
-    }
-}
-
-code fn square_twce(x: u64) -> u64 {
-    $(repeat(|y| #($(y) * $(y)), 2, #(x)))
-}
-```
-
-Expands to:
-
-```splic
-code fn square_twce(x: u64) -> u64 {
-    (x * x) * (x * x)
-}
-```
-
-This requires:
-- Meta-level function types: `[[A]] -> [[B]]`
-- Function application at meta level
-
-### 2.2 Product Types
+### 2.2 Product Types — TODO
 
 Add tuples or user-defined structs.
 
-### Option A: Tuples
+#### Option A: Tuples
 
 ```splic
 let p: (u64, u8) = (42, 8);
@@ -94,7 +31,7 @@ let x = p.0;
 let y = p.1;
 ```
 
-### Option B: Structs
+#### Option B: Structs
 
 ```splic
 struct Point { x: u64, y: u64 }
@@ -106,15 +43,11 @@ Decision deferred—see [tuples_and_inference.md](tuples_and_inference.md).
 
 ---
 
-## Phase 3: Dependent Types at Meta Level
+## Phase 3: Dependent Types at Meta Level — TODO
 
 ### 3.1 Dependent Function Types
 
 The Vec3 example from Kovács 2022 demonstrates staged type generation:
-
-**Note**: This phase requires refactoring the evaluator from substitution-based to
-spine-based (see [prototype_eval.md](prototype_eval.md)). Dependent elimination
-(fold, recursor) is more efficient with lazy evaluation.
 
 #### Vec3 Type (Compile-time Sized Vector)
 
@@ -172,11 +105,7 @@ code fn example(xs: (u64, (u64, (u64, u0)))) -> (u64, (u64, (u64, u0))) {
 
 The key point: the `map` function recursively generates code at compile time based on the size `n`.
 
-#### Benefits
-
-- Compile-time code generation via meta-level recursion
-- Staged types that depend on compile-time values (Nat1 in original 2LTT)
-- Object-level code with no runtime overhead from staging
+Requires product types (Phase 2.2) as a prerequisite.
 
 ## References
 

@@ -2,6 +2,8 @@
 
 This document specifies a minimal demo prototype for Splic, enough to compile a basic power function with a compile-time exponent.
 
+**Status: implemented.** See [bs/prototype_next.md](bs/prototype_next.md) for ongoing work.
+
 ## Motivation
 
 The goal is to verify that two-level type theory (2LTT) can work in practice for zkVM code generation. We want a minimal working example that demonstrates:
@@ -92,8 +94,33 @@ The `$` syntax mimics Rust macros, which should feel familiar. The `#` syntax is
 
 - `fn foo() -> T` — meta-level function (runs at compile time)
 - `code fn foo() -> T` — object-level function (included in runtime binary)
+- `|x: T| expr` — lambda expression (meta-level only; annotations required)
+- `fn(_: T) -> U` — function type (used in parameter/return type positions)
 
 A `fn` with `[[T]]` parameters/return type manipulates code at compile time. A `code fn` defines a function that exists in the resulting binary. The `code` keyword explicitly marks object-level functions—this is temporary until phase polymorphism is better understood.
+
+Higher-order meta functions work: a function can accept a code-transforming lambda and apply it at compile time:
+
+```splic
+fn repeat(f: fn(_: [[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
+    match n {
+        0 => x,
+        n => repeat(f, n - 1, f(x)),
+    }
+}
+
+code fn square_twice(x: u64) -> u64 {
+    $(repeat(|y: [[u64]]| #($(y) * $(y)), 2, #(x)))
+}
+```
+
+Expands to:
+
+```splic
+code fn square_twice(x: u64) -> u64 {
+    (x * x) * (x * x)
+}
+```
 
 ### Phase Context
 
@@ -159,9 +186,33 @@ Two separate universes:
 
 Both are type-in-type for now (no universe hierarchy). This simplifies the prototype significantly.
 
+`Type` is itself a value that can be passed as a function argument, enabling polymorphism:
+
+```splic
+fn id(A: Type, x: A) -> A { x }
+fn test() -> u64 { id(u64, 42) }
+```
+
 ### Lifting
 
 - `[[T]]` — meta-level type representing object-level code of type T
+
+### Dependent Return Types
+
+Return types can depend on runtime values or type arguments. The return type expression is evaluated at the call site once the argument values are known:
+
+```splic
+// Type-argument-dependent return
+fn const_(A: Type, B: Type, a: A, b: B) -> A { a }
+
+// Value-dependent return (scrutinee drives type selection)
+fn get_value(b: u1) -> (match b { 0 => u0, 1 => u16 }) {
+    match b {
+        0 => 0,
+        1 => 42,
+    }
+}
+```
 
 ### Definitional Equality
 
@@ -205,8 +256,8 @@ The body expressions are inferred.
 
 The following are explicitly NOT included in the prototype:
 
-- User-defined types / ADTs
-- Dependent types (though syntax should not conflict)
+- User-defined types / ADTs / product types
+- Full dependent types (indexed types, dependent products); basic value- and type-argument-dependent return types are supported
 - Object-level control flow constructs (while, loops, goto)
 - Effects / effect handling
 - Implicit parameters
