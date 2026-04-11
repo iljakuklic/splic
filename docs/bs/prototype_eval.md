@@ -95,7 +95,6 @@ This approach was chosen over the substitution-first → spine-based path origin
 - It handles all three concerns (staging evaluator, type checker, definitional equality) with a single uniform mechanism.
 - The multi-param variadic design (see `pi_types.md`) fits naturally: domain closures for each parameter share a base environment snapshot and accumulate argument values incrementally.
 
-**Spine-based evaluation** remains an option for future optimization (lazy forcing under binders, more efficient unification), but is not currently required.
 
 ---
 
@@ -150,7 +149,7 @@ The original plan described three phases. The actual path differed: Phase 2 (spi
    - Dependent telescopes via domain closures.
    - See `pi_types.md` for the design.
 
-**Remaining future work**: spine-based evaluation (optimization), implicit arguments, object-level closures. See `prototype_next.md`.
+**Remaining future work**: implicit arguments, object-level closures. See `prototype_next.md`.
 
 ---
 

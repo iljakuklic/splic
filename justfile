@@ -57,5 +57,9 @@ doc-full:
 doc-md-full: _require-doc-md
     cargo doc-md --workspace --include-private
 
+# Check rustdocs for broken links and warnings (used in CI).
+check-doc:
+    RUSTDOCFLAGS="-D warnings" cargo doc --locked --workspace --no-deps --all-features --document-private-items
+
 # Run all CI checks.
-ci: check-fmt clippy test
+ci: check-fmt clippy check-doc test
