@@ -15,29 +15,9 @@ Uses NbE with De Bruijn levels (substitution-based). Covered by snapshot-based s
 
 ### 2.1 First-Class Meta-level Functions — DONE
 
-Pi types with `[[A]]` in domain/codomain are supported. Example — repeated application
-of a code transformer:
-
-```splic
-fn repeat(f: [[u64]] -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
-    match n {
-        0 => x,
-        n => repeat(f, n - 1, #(f(x))),
-    }
-}
-
-code fn square_twice(x: u64) -> u64 {
-    $(repeat(|y| #($(y) * $(y)), 2, #(x)))
-}
-```
-
-Expands to:
-
-```splic
-code fn square_twice(x: u64) -> u64 {
-    (x * x) * (x * x)
-}
-```
+Pi types with `[[A]]` in domain/codomain are supported; functions can accept and apply
+code-transforming lambdas at compile time. See `repeat`/`square_twice` in
+[prototype.md](../prototype.md) for an example.
 
 ### 2.2 Product Types — TODO
 
