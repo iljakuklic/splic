@@ -125,7 +125,7 @@ pub enum Term<'names, 'a> {
     /// Lambda abstraction: |x: A| body
     #[from]
     Lam(Lam<'names, 'a>),
-    /// Lift: [[T]] — meta type representing object-level code of type T
+    /// Lift: \[\[T\]\] — meta type representing object-level code of type T
     Lift(&'a Self),
     /// Quotation: #(t) — produce object-level code from a meta expression
     Quote(&'a Self),

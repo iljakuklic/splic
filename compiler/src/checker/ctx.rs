@@ -121,7 +121,7 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         Some((ix, &entry.ty))
     }
 
-    /// Helper to create a lifted type [[T]]
+    /// Helper to create a lifted type \[\[T\]\]
     pub fn lift_ty(
         &self,
         inner: &'core core::Term<'names, 'core>,
