@@ -16,8 +16,8 @@ Uses NbE with De Bruijn levels (substitution-based). Covered by snapshot-based s
 ### 2.1 First-Class Meta-level Functions — DONE
 
 Pi types with `[[A]]` in domain/codomain are supported; functions can accept and apply
-code-transforming lambdas at compile time. See `repeat`/`square_twice` in
-[prototype.md](../prototype.md) for an example.
+code-transforming lambdas at compile time. See `repeat`/`square_twice` in the
+[Functions section of prototype.md](../prototype.md#functions) for an example.
 
 ### 2.2 Product Types — TODO
 
