@@ -3,6 +3,8 @@ use crate::common::Name;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Token<'names> {
     Fn,
+    Def,
+    Lam,
     Code,
     Let,
     Match,
@@ -44,6 +46,8 @@ pub enum Token<'names> {
 impl Token<'static> {
     pub const KEYWORDS: &[(&str, Self)] = &[
         ("fn", Token::Fn),
+        ("def", Token::Def),
+        ("lam", Token::Lam),
         ("code", Token::Code),
         ("let", Token::Let),
         ("match", Token::Match),
