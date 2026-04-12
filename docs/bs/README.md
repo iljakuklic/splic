@@ -9,6 +9,7 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 
 ## Language Design
 
+- [defs_syntax.md](defs_syntax.md) — Proposed unified definition syntax (`def`, `let`, `lam`, `fn`)
 - [functional_goto.md](functional_goto.md) — Control flow via SSA-style basic blocks with goto
 - [comparison_operators.md](comparison_operators.md) — Boolean vs propositional comparisons
 - [tuples_and_inference.md](tuples_and_inference.md) — Tuple syntax and type inference
