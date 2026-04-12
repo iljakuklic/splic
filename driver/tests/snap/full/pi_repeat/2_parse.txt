@@ -94,6 +94,7 @@ Program {
                                         ),
                                     },
                                 ],
+                                ret_ty: None,
                                 body: Quote(
                                     App {
                                         func: Mul,

@@ -207,7 +207,11 @@ pub fn infer<'names, 'ast, 'core>(
         }
 
         // ------------------------------------------------------------------ Lam (infer mode)
-        ast::Term::Lam { params, body } => {
+        ast::Term::Lam {
+            params,
+            ret_ty,
+            body,
+        } => {
             ensure!(
                 phase.is_meta(),
                 "lambdas are only valid in meta-phase context"
@@ -223,7 +227,15 @@ pub fn infer<'names, 'ast, 'core>(
                 ctx.push_local(p.name, param_ty);
             }
 
-            let (core_body, body_ty) = infer(ctx, phase, body)?;
+            let (core_body, body_ty) = if let Some(ret_ty_ann) = ret_ty {
+                // Explicit return type annotation: check body against it.
+                let (ret_ty_core, _) = infer(ctx, Phase::Meta, ret_ty_ann)?;
+                let ret_ty_val = ctx.eval(ret_ty_core);
+                let core_body = check_val(ctx, phase, body, ret_ty_val.clone())?;
+                (core_body, ret_ty_val)
+            } else {
+                infer(ctx, phase, body)?
+            };
 
             // Build the Pi type for this lambda by quoting the body type at
             // the extended depth, then constructing a Pi term and evaluating it.
@@ -650,7 +662,11 @@ fn check_val_impl<'names, 'ast, 'core>(
         }
 
         // ------------------------------------------------------------------ Lam (check mode)
-        ast::Term::Lam { params, body } => {
+        ast::Term::Lam {
+            params,
+            ret_ty,
+            body,
+        } => {
             ensure!(
                 phase.is_meta(),
                 "lambdas are only valid in meta-phase context"
@@ -691,6 +707,17 @@ fn check_val_impl<'names, 'ast, 'core>(
             }
 
             let body_ty_val = value::inst_n(ctx.arena, &vpi.ret_closure, &arg_vals);
+
+            // If an explicit return type annotation is present, verify it matches.
+            if let Some(ret_ty_ann) = ret_ty {
+                let (ret_ty_core, _) = infer(ctx, Phase::Meta, ret_ty_ann)?;
+                let ret_ty_ann_val = ctx.eval(ret_ty_core);
+                ensure!(
+                    value::val_eq(ctx.depth(), &ret_ty_ann_val, &body_ty_val),
+                    "lambda return type annotation does not match the expected type"
+                );
+            }
+
             let core_body = check_val(ctx, phase, body, body_ty_val)?;
 
             for _ in &elaborated_params {

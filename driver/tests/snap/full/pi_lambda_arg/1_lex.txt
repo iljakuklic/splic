@@ -33,11 +33,13 @@ Ident("u64")
 LBrace
 Ident("apply")
 LParen
-Bar
+Lam
+LParen
 Ident("x")
 Colon
 Ident("u64")
-Bar
+RParen
+Eq
 Ident("x")
 Plus
 Num(1)

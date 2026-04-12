@@ -1,5 +1,5 @@
 fn make_thunk(x@0: u64) -> fn() -> u64 {
-    || x@0
+    lam() = x@0
 }
 
 fn test() -> u64 {

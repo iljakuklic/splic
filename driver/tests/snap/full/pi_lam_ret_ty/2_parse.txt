@@ -49,7 +49,9 @@ Program {
                                     ty: "u64",
                                 },
                             ],
-                            ret_ty: None,
+                            ret_ty: Some(
+                                "u64",
+                            ),
                             body: App {
                                 func: Add,
                                 args: [

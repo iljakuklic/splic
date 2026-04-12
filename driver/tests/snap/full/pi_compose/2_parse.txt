@@ -47,6 +47,7 @@ Program {
                             ty: "u64",
                         },
                     ],
+                    ret_ty: None,
                     body: App {
                         func: "f",
                         args: [

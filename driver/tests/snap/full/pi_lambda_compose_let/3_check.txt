@@ -12,7 +12,7 @@ fn to_u8(x@0: u64) -> u8 {
 }
 
 fn test() -> u8 {
-    let compose@0: fn(A@0: Type, B@1: Type, C@2: Type) -> fn(f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) -> fn(x@5: A@0) -> C@2 = |A@0: Type, B@1: Type, C@2: Type| |f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1| |x@5: A@0| f@3(g@4(x@5));
+    let compose@0: fn(A@0: Type, B@1: Type, C@2: Type) -> fn(f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) -> fn(x@5: A@0) -> C@2 = lam(A@0: Type, B@1: Type, C@2: Type) = lam(f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) = lam(x@5: A@0) = f@3(g@4(x@5));
     compose@0(u64, u64, u8)(to_u8, double)(5_u64)
 }
 

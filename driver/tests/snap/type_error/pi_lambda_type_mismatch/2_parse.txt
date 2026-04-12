@@ -49,6 +49,7 @@ Program {
                                     ty: "u32",
                                 },
                             ],
+                            ret_ty: None,
                             body: "x",
                         },
                         42,

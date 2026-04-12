@@ -33,11 +33,13 @@ RParen
 Arrow
 Ident("u64")
 LBrace
-Bar
+Lam
+LParen
 Ident("x")
 Colon
 Ident("u64")
-Bar
+RParen
+Eq
 Ident("f")
 LParen
 Ident("g")

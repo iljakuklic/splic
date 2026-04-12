@@ -1,0 +1,23 @@
+Lam {
+    params: [
+        Param {
+            name: "f",
+            ty: Pi {
+                params: [
+                    Param {
+                        name: "_",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: "u64",
+            },
+        },
+    ],
+    ret_ty: None,
+    body: App {
+        func: "f",
+        args: [
+            0,
+        ],
+    },
+}

@@ -100,7 +100,7 @@ impl<'names> Term<'names, '_> {
             // ── Lambda ────────────────────────────────────────────────────────────
             Term::Lam(lam) => {
                 let depth_before = env.depth();
-                write!(f, "|")?;
+                write!(f, "lam(")?;
                 for (i, &(name, ty)) in lam.params.iter().enumerate() {
                     if i > 0 {
                         write!(f, ", ")?;
@@ -109,7 +109,7 @@ impl<'names> Term<'names, '_> {
                     ty.fmt_expr(env, indent, f)?;
                     env.push(name);
                 }
-                write!(f, "| ")?;
+                write!(f, ") = ")?;
                 lam.body.fmt_expr(env, indent, f)?;
                 env.truncate(depth_before);
                 Ok(())

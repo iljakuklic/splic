@@ -7,5 +7,5 @@ fn repeat(f: fn(_: [[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
 }
 
 code fn square_twice(x: u64) -> u64 {
-    $(repeat(|y: [[u64]]| #($(y) * $(y)), 2, #(x)))
+    $(repeat(lam(y: [[u64]]) = #($(y) * $(y)), 2, #(x)))
 }

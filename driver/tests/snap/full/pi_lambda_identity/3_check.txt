@@ -1,11 +1,11 @@
 fn test_id() -> u64 {
-    let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = |T@0: Type| |x@1: T@0| x@1;
+    let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = lam(x@1: T@0) = x@1;
     let _@1: u32 = id@0(u32)(67_u32);
     id@0(u64)(42_u64)
 }
 
 fn test_id_u8() -> u8 {
-    let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = |T@0: Type| |x@1: T@0| x@1;
+    let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = lam(x@1: T@0) = x@1;
     let id_u8@1: fn(x@1: u8) -> u8 = id@0(u8);
     id_u8@1(7_u8)
 }

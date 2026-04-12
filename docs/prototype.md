@@ -94,7 +94,7 @@ The `$` syntax mimics Rust macros, which should feel familiar. The `#` syntax is
 
 - `fn foo() -> T` — meta-level function (runs at compile time)
 - `code fn foo() -> T` — object-level function (included in runtime binary)
-- `|x: T| expr` — lambda expression (meta-level only; annotations required)
+- `lam(x: T) = expr` — lambda expression (meta-level only; annotations required)
 - `fn(_: T) -> U` — function type (used in parameter/return type positions)
 
 A `fn` with `[[T]]` parameters/return type manipulates code at compile time. A `code fn` defines a function that exists in the resulting binary. The `code` keyword explicitly marks object-level functions—this is temporary until phase polymorphism is better understood.
@@ -110,7 +110,7 @@ fn repeat(f: fn(_: [[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
 }
 
 code fn square_twice(x: u64) -> u64 {
-    $(repeat(|y: [[u64]]| #($(y) * $(y)), 2, #(x)))
+    $(repeat(lam(y: [[u64]]) = #($(y) * $(y)), 2, #(x)))
 }
 ```
 

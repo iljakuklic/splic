@@ -17,6 +17,7 @@ Program {
                 stmts: [],
                 expr: Lam {
                     params: [],
+                    ret_ty: None,
                     body: "x",
                 },
             },

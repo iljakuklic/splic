@@ -1,0 +1,16 @@
+Lam {
+    params: [
+        Param {
+            name: "x",
+            ty: "u64",
+        },
+    ],
+    ret_ty: None,
+    body: App {
+        func: Add,
+        args: [
+            "x",
+            1,
+        ],
+    },
+}

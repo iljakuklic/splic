@@ -9,10 +9,12 @@ RParen
 Arrow
 Ident("u64")
 LBrace
-Bar
+Lam
+LParen
 Ident("y")
 Colon
 Ident("u64")
-Bar
+RParen
+Eq
 Ident("y")
 RBrace
