@@ -12,8 +12,10 @@ RParen
 Arrow
 Ident("u64")
 LBrace
-Bar
-Bar
+Lam
+LParen
+RParen
+Eq
 Ident("x")
 RBrace
 Fn

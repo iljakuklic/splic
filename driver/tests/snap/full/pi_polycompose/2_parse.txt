@@ -59,6 +59,7 @@ Program {
                             ty: "A",
                         },
                     ],
+                    ret_ty: None,
                     body: App {
                         func: "f",
                         args: [

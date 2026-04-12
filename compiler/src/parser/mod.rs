@@ -395,30 +395,39 @@ where
         Ok(Term::Pi { params, ret_ty })
     }
 
-    /// Parse a lambda expression: `|params| body`
+    /// Parse a lambda expression: `lam(params) (-> ret_ty)? = body`
     ///
-    /// Called after consuming the `|` token. Each param is `name: type`.
+    /// Called after consuming the `lam` token.
     fn parse_lambda(&mut self) -> Result<Term<'names, 'ast>> {
-        let params_vec = self.parse_separated_list(Token::Bar, |parser| {
+        self.take(Token::LParen)
+            .context("expected '(' after 'lam'")?;
+        let params_vec = self.parse_separated_list(Token::RParen, |parser| {
             let name = parser
                 .take_ident()
                 .context("expected parameter name in lambda")?;
             parser
                 .take(Token::Colon)
                 .context("expected ':' in lambda parameter (type annotations are required)")?;
-            // TODO(#23): Use parse_expr instead of parse_atom_owned to allow full expressions as param types.
-            let ty = parser
-                .parse_atom_owned()
-                .context("expected parameter type")?;
-            let ty = parser.arena.alloc(ty);
+            let ty = parser.parse_expr().context("expected parameter type")?;
             Ok(Param { name, ty })
         })?;
-        self.take(Token::Bar)
-            .context("expected '|' after lambda parameters")?;
+        self.take(Token::RParen)
+            .context("expected ')' after lambda parameters")?;
 
+        let ret_ty = self
+            .consume_if(Token::Arrow)
+            .then(|| self.parse_expr().context("expected return type after '->'"))
+            .transpose()?;
+
+        self.take(Token::Eq)
+            .context("expected '=' after lambda parameters")?;
         let body = self.parse_expr().context("expected lambda body")?;
         let params = self.arena.alloc_slice_fill_iter(params_vec);
-        Ok(Term::Lam { params, body })
+        Ok(Term::Lam {
+            params,
+            ret_ty,
+            body,
+        })
     }
 
     #[expect(
@@ -438,8 +447,7 @@ where
             }
             // `fn` not followed by ident → function type expression
             Token::Fn => self.parse_fn_type(),
-            // `|` in atom position → lambda (not bitwise OR, which is infix)
-            Token::Bar => self.parse_lambda(),
+            Token::Lam => self.parse_lambda(),
             Token::LParen => self.parse_paren_expr(),
             Token::HashLParen => self.parse_quoted_expr(),
             Token::HashLBrace => self.parse_quoted_block(),

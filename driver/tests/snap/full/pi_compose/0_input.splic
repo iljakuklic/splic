@@ -1,6 +1,6 @@
 // Function composition (monomorphic)
 fn compose(f: fn(_: u64) -> u64, g: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
-    |x: u64| f(g(x))
+    lam(x: u64) = f(g(x))
 }
 
 fn double(x: u64) -> u64 { x + x }

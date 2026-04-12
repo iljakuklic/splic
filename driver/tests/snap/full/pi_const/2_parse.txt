@@ -39,6 +39,7 @@ Program {
                             ty: "A",
                         },
                     ],
+                    ret_ty: None,
                     body: Lam {
                         params: [
                             Param {
@@ -46,6 +47,7 @@ Program {
                                 ty: "B",
                             },
                         ],
+                        ret_ty: None,
                         body: "a",
                     },
                 },

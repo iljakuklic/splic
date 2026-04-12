@@ -70,13 +70,15 @@ LBrace
 DollarLParen
 Ident("repeat")
 LParen
-Bar
+Lam
+LParen
 Ident("y")
 Colon
 DoubleLBracket
 Ident("u64")
 DoubleRBracket
-Bar
+RParen
+Eq
 HashLParen
 DollarLParen
 Ident("y")

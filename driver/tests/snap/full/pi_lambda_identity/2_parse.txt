@@ -17,6 +17,7 @@ Program {
                                     ty: "Type",
                                 },
                             ],
+                            ret_ty: None,
                             body: Lam {
                                 params: [
                                     Param {
@@ -24,6 +25,7 @@ Program {
                                         ty: "T",
                                     },
                                 ],
+                                ret_ty: None,
                                 body: "x",
                             },
                         },
@@ -74,6 +76,7 @@ Program {
                                     ty: "Type",
                                 },
                             ],
+                            ret_ty: None,
                             body: Lam {
                                 params: [
                                     Param {
@@ -81,6 +84,7 @@ Program {
                                         ty: "T",
                                     },
                                 ],
+                                ret_ty: None,
                                 body: "x",
                             },
                         },

@@ -71,9 +71,10 @@ pub enum Term<'names, 'ast> {
         ret_ty: &'ast Self,
     },
 
-    /// Lambda: `|params| body`
+    /// Lambda: `lam(params) (-> ret_ty)? = body`
     Lam {
         params: &'ast [Param<'names, 'ast>],
+        ret_ty: Option<&'ast Self>,
         body: &'ast Self,
     },
 

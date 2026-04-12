@@ -1,5 +1,5 @@
 fn compose(A@0: Type, B@1: Type, C@2: Type, f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) -> fn(_: A@0) -> C@2 {
-    |x@5: A@0| f@3(g@4(x@5))
+    lam(x@5: A@0) = f@3(g@4(x@5))
 }
 
 fn double(x@0: u64) -> u64 {

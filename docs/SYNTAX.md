@@ -71,15 +71,17 @@ Function types are meta-level only — they inhabit `Type`, not `VmType`.
 
 ## Lambda Expressions
 
-Lambdas use Rust's closure syntax with mandatory type annotations:
+Lambdas use the `lam` keyword with mandatory parameter type annotations:
 
 ```
-|x: u64| x + 1                   // single parameter
-|x: u64, y: u64| x + y           // multi-parameter (desugars to nested lambdas)
-|f: fn(_: u64) -> u64, x: u64| f(x) // higher-order
+lam(x: u64) = x + 1                       // single parameter
+lam(x: u64, y: u64) = x + y               // multi-parameter
+lam(f: fn(_: u64) -> u64, x: u64) = f(x)  // higher-order
+lam(x: u64) -> u64 = x + 1                // with explicit return type
+lam() = expr                               // nullary: produces a fn() -> T value
 ```
 
-Type annotations on lambda parameters are required. This makes lambdas inferable — the typechecker can synthesise the full function type from the annotations and the body.
+Type annotations on lambda parameters are required. This makes lambdas inferable — the typechecker can synthesise the full function type from the annotations and the body. An optional `-> T` return type annotation is also supported.
 
 Lambdas are meta-level only — they cannot appear in object-level (`code fn`) bodies.
 

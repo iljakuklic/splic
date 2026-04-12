@@ -45,11 +45,13 @@ RParen
 Arrow
 Ident("C")
 LBrace
-Bar
+Lam
+LParen
 Ident("x")
 Colon
 Ident("A")
-Bar
+RParen
+Eq
 Ident("f")
 LParen
 Ident("g")

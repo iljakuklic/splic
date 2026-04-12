@@ -1,6 +1,6 @@
 // Polymorphic function composition
 fn compose(A: Type, B: Type, C: Type, f: fn(_: B) -> C, g: fn(_: A) -> B) -> fn(_: A) -> C {
-    |x: A| f(g(x))
+    lam(x: A) = f(g(x))
 }
 
 fn double(x: u64) -> u64 { x + x }
