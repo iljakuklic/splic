@@ -81,11 +81,14 @@ Each form is a small, mechanical addition to the previous:
 | Local binding | `let f(x: u64) -> u64 = x + 1;` |
 | Global binding | `def f(x: u64) -> u64 = x + 1;` |
 
-Desugaring:
+Desugaring (meta-level only):
 ```
 let f(x: u64) -> u64 = e;   ≡   let f: fn(x: u64) -> u64 = lam(x: u64) -> u64 = e;
 def f(x: u64) -> u64 = e;   ≡   def f: fn(x: u64) -> u64 = lam(x: u64) -> u64 = e;
 ```
+
+`code def` does not desugar to a lambda — the object-level sublanguage does not have
+first-class functions.
 
 ## Grammar Changes
 
@@ -94,10 +97,14 @@ Proposed grammar (delta from [SYNTAX.md](../SYNTAX.md)):
 ```
 top_stmt    ::= def_stmt
 
-def_stmt    ::= ("code")? "def" identifier def_sig "=" expr ";"
-let_stmt    ::= "let" identifier def_sig "=" expr ";"
-def_sig     ::= "(" params ")" ("->" expr)?   -- function: params + optional return type
-              | (":" expr)?                    -- value: optional type annotation
+def_stmt    ::= ("code")? "def" identifier def_sig_req "=" expr ";"
+let_stmt    ::= "let" identifier def_sig_opt "=" expr ";"
+
+def_sig_req ::= "(" params ")" "->" expr      -- function: params + required return type
+              | ":" expr                       -- value: required type annotation
+
+def_sig_opt ::= ("(" params ")" ("->" expr)?)?  -- function: params + optional return type
+              | (":" expr)?                      -- value: optional type annotation
 
 lambda      ::= "lam" "(" params ")" ("->" expr)? "=" expr
 ```
@@ -105,8 +112,9 @@ lambda      ::= "lam" "(" params ")" ("->" expr)? "=" expr
 Notable changes from current grammar:
 - `fn_def` / `code_fn_def` replaced by `def_stmt`; body form changes from `block` to `"=" expr ";"`
 - `let_stmt` extended with `def_sig` to support local function definitions
-- `lambda` syntax changes from `"|" params "|" expr` to `"lam" "(" params ")" ("->" expr)? "=" expr`
-- `|` is freed from lambda duty; the operator table ambiguity note in SYNTAX.md can be removed
+- `lambda` syntax changes from `"|" params "|" expr` to `"lam" "(" params ")" ("->" expr)? "=" expr`;
+  `|` is freed from lambda duty and the operator table ambiguity note in SYNTAX.md can be removed
+  (resolves [#23](https://github.com/iljakuklic/splic/issues/23))
 
 ## Open Questions
 
