@@ -414,14 +414,10 @@ where
         self.take(Token::RParen)
             .context("expected ')' after lambda parameters")?;
 
-        let ret_ty = if self.consume_if(Token::Arrow) {
-            Some(
-                self.parse_expr()
-                    .context("expected return type after '->'")?,
-            )
-        } else {
-            None
-        };
+        let ret_ty = self
+            .consume_if(Token::Arrow)
+            .then(|| self.parse_expr().context("expected return type after '->'"))
+            .transpose()?;
 
         self.take(Token::Eq)
             .context("expected '=' after lambda parameters")?;
