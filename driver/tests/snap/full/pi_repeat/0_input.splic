@@ -1,11 +1,11 @@
 // The motivating example: pass a code-generating lambda, unroll at compile time
-fn repeat(f: fn(_: [[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
+def repeat(f: fn(_: [[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] = {
     match n {
         0 => x,
         n => repeat(f, n - 1, f(x)),
     }
-}
+};
 
-code fn square_twice(x: u64) -> u64 {
+code def square_twice(x: u64) -> u64 = {
     $(repeat(lam(y: [[u64]]) = #($(y) * $(y)), 2, #(x)))
-}
+};

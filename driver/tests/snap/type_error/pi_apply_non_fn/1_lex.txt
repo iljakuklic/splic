@@ -1,9 +1,10 @@
-Fn
+Def
 Ident("test")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Let
 Ident("x")
@@ -17,3 +18,4 @@ LParen
 Num(1)
 RParen
 RBrace
+Semi

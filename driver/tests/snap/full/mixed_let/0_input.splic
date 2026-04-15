@@ -1,4 +1,4 @@
-code fn foo() -> u32 {
+code def foo() -> u32 = {
     ${
         let y: u32 = 1337;
         #{
@@ -6,4 +6,4 @@ code fn foo() -> u32 {
             z
         }
     }
-}
+};

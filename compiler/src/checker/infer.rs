@@ -227,24 +227,33 @@ pub fn infer<'names, 'ast, 'core>(
                 ctx.push_local(p.name, param_ty);
             }
 
-            let (core_body, body_ty) = if let Some(ret_ty_ann) = ret_ty {
+            // Elaborate the body inside the param scope. Delay the `?` so that
+            // params are always popped even when the body fails to elaborate.
+            let body_result = if let Some(ret_ty_ann) = ret_ty {
                 // Explicit return type annotation: check body against it.
-                let (ret_ty_core, _) = infer(ctx, Phase::Meta, ret_ty_ann)?;
-                let ret_ty_val = ctx.eval(ret_ty_core);
-                let core_body = check_val(ctx, phase, body, ret_ty_val.clone())?;
-                (core_body, ret_ty_val)
+                infer(ctx, Phase::Meta, ret_ty_ann).and_then(|(ret_ty_core, _)| {
+                    let ret_ty_val = ctx.eval(ret_ty_core);
+                    let core_body = check_val(ctx, phase, body, ret_ty_val.clone())?;
+                    Ok((core_body, ret_ty_val))
+                })
             } else {
-                infer(ctx, phase, body)?
+                infer(ctx, phase, body)
             };
 
-            // Build the Pi type for this lambda by quoting the body type at
-            // the extended depth, then constructing a Pi term and evaluating it.
-            let body_ty_term = value::quote(ctx.arena, ctx.depth(), &body_ty);
+            // Quote the body type before popping (while params are still in scope).
+            let body_ty_term = body_result
+                .as_ref()
+                .ok()
+                .map(|(_, body_ty)| value::quote(ctx.arena, ctx.depth(), body_ty));
 
             for _ in &elaborated_params {
                 ctx.pop_local();
             }
             assert_eq!(ctx.depth(), depth_before, "Lam elaboration leaked locals");
+
+            let (core_body, _body_ty) = body_result?;
+            // Safe: body_ty_term is Some whenever body_result is Ok (computed before the ? above).
+            let body_ty_term = body_ty_term.expect("body_ty_term is Some when body_result is Ok");
             let params_slice = ctx.alloc_slice(elaborated_params);
 
             // Build the Pi value for the inferred type.
@@ -690,41 +699,48 @@ fn check_val_impl<'names, 'ast, 'core>(
                 Vec::new();
             let mut arg_vals: Vec<value::Value<'names, 'core>> = Vec::new();
 
-            for (p, (_, domain_cl)) in params.iter().zip(vpi.params.iter()) {
-                let param_name = p.name;
-                let (annotated_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
-                let annotated_ty_val = ctx.eval(annotated_ty);
-                let expected_domain = value::inst_n(ctx.arena, domain_cl, &arg_vals);
-                ensure!(
-                    value::val_eq(ctx.depth(), &annotated_ty_val, &expected_domain),
-                    "lambda parameter type mismatch: annotation gives a different type \
-                     than the expected function type"
-                );
-                elaborated_params.push((param_name, annotated_ty));
-                let lvl = ctx.depth().as_lvl();
-                ctx.push_local_val(param_name, expected_domain);
-                arg_vals.push(value::Value::Rigid(lvl));
-            }
+            // Elaborate params and body inside a closure so that `?`/`ensure!` return
+            // from the closure rather than the outer function, allowing locals to be
+            // popped unconditionally after the closure call.
+            let core_body_result: Result<_> = (|| {
+                for (p, (_, domain_cl)) in params.iter().zip(vpi.params.iter()) {
+                    let param_name = p.name;
+                    let (annotated_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
+                    let annotated_ty_val = ctx.eval(annotated_ty);
+                    let expected_domain = value::inst_n(ctx.arena, domain_cl, &arg_vals);
+                    ensure!(
+                        value::val_eq(ctx.depth(), &annotated_ty_val, &expected_domain),
+                        "lambda parameter type mismatch: annotation gives a different type \
+                         than the expected function type"
+                    );
+                    elaborated_params.push((param_name, annotated_ty));
+                    let lvl = ctx.depth().as_lvl();
+                    ctx.push_local_val(param_name, expected_domain);
+                    arg_vals.push(value::Value::Rigid(lvl));
+                }
 
-            let body_ty_val = value::inst_n(ctx.arena, &vpi.ret_closure, &arg_vals);
+                let body_ty_val = value::inst_n(ctx.arena, &vpi.ret_closure, &arg_vals);
 
-            // If an explicit return type annotation is present, verify it matches.
-            if let Some(ret_ty_ann) = ret_ty {
-                let (ret_ty_core, _) = infer(ctx, Phase::Meta, ret_ty_ann)?;
-                let ret_ty_ann_val = ctx.eval(ret_ty_core);
-                ensure!(
-                    value::val_eq(ctx.depth(), &ret_ty_ann_val, &body_ty_val),
-                    "lambda return type annotation does not match the expected type"
-                );
-            }
+                // If an explicit return type annotation is present, verify it matches.
+                if let Some(ret_ty_ann) = ret_ty {
+                    let (ret_ty_core, _) = infer(ctx, Phase::Meta, ret_ty_ann)?;
+                    let ret_ty_ann_val = ctx.eval(ret_ty_core);
+                    ensure!(
+                        value::val_eq(ctx.depth(), &ret_ty_ann_val, &body_ty_val),
+                        "lambda return type annotation does not match the expected type"
+                    );
+                }
 
-            let core_body = check_val(ctx, phase, body, body_ty_val)?;
+                check_val(ctx, phase, body, body_ty_val)
+            })();
 
+            // Pop however many params were successfully pushed, regardless of outcome.
             for _ in &elaborated_params {
                 ctx.pop_local();
             }
             assert_eq!(ctx.depth(), depth_before, "Lam check leaked locals");
             let params_slice = ctx.alloc_slice(elaborated_params);
+            let core_body = core_body_result?;
             Ok(ctx.alloc(core::Term::Lam(Lam {
                 params: params_slice,
                 body: core_body,

@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("apply")
 LParen
 Ident("f")
@@ -18,18 +18,21 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Ident("f")
 LParen
 Ident("x")
 RParen
 RBrace
-Fn
+Semi
+Def
 Ident("test")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Ident("apply")
 LParen
@@ -45,3 +48,4 @@ Comma
 Num(42)
 RParen
 RBrace
+Semi

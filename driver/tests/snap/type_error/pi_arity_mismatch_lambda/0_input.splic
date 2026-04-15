@@ -1,5 +1,5 @@
 // ERROR: too few arguments to a function-typed variable (non-global callee)
-fn too_few(f: fn(_: u64, _: u64) -> u64, x: u64) -> u64 {
+def too_few(f: fn(_: u64, _: u64) -> u64, x: u64) -> u64 = {
     let foo = f(x);
     1337
-}
+};

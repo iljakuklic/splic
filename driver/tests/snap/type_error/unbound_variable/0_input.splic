@@ -1,1 +1,1 @@
-fn bad() -> u32 { x }
+def bad() -> u32 = { x };

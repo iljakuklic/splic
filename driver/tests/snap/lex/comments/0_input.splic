@@ -1,7 +1,7 @@
 // This is a comment
-fn add(x: u64, y: u64) -> u64 {
+def add(x: u64, y: u64) -> u64 = {
     // x + y // commented out code
     x + y // inline: a + b == c
-}
+};
 
 // + - * / => -> ==

@@ -25,9 +25,11 @@ x + y  // This is also a comment
 
 | Keyword   | Description |
 |-----------|-------------|
-| `fn`      | Function definition or function type |
+| `def`     | Global definition (function or constant) |
+| `let`     | Local variable binding |
+| `lam`     | Anonymous lambda expression |
+| `fn`      | Function type (pi type) |
 | `code`    | Object-level marker |
-| `let`     | Variable binding |
 | `match`   | Pattern matching |
 
 ## Builtins
@@ -47,6 +49,38 @@ x + y  // This is also a comment
 | `$(e)`    | Splice, corresponds to ∼ in 2LTT literature |
 
 Identifiers matching `u[0-9]+` are reserved for primitive types.
+
+## Global Definitions
+
+Global definitions use `def` with a required return type annotation and `= expr;` body:
+
+```
+def f(x: u64) -> u64 = x + 1;          // function, expression body
+def f(x: u64) -> u64 = { x + 1 };      // function, block body
+def f(x: u64, y: u64) -> u64 = x + y;  // multi-parameter
+code def f(x: u64) -> u64 = x + 1;     // object-level function
+```
+
+`code def` marks object-level functions. Type and return type annotations are required
+(cannot be inferred at the top level). `def` allows self-reference — recursion is permitted.
+
+`def f(params) -> T = e;` is syntactic sugar for `def f: fn(params) -> T = lam(params) -> T = e;`.
+This desugaring applies at the meta level only; `code def` does not desugar to a lambda —
+the object-level sublanguage does not have first-class functions.
+
+## Local Bindings
+
+Local bindings use `let` inside a block. Type annotations are optional:
+
+```
+let x = 5;                              // value, inferred type
+let x: u64 = 5;                        // value, explicit type
+let f(x: u64) = x + 1;                // local function, inferred return type
+let f(x: u64) -> u64 = x + 1;        // local function, explicit return type
+let f(x: u64) -> u64 = { x + n };    // local function, block body (may close over n)
+```
+
+`let f(params) (-> T)? = e;` is syntactic sugar for `let f (: fn(params) -> T)? = lam(params) (-> T)? = e;`.
 
 ## Function Types
 
@@ -81,9 +115,11 @@ lam(x: u64) -> u64 = x + 1                // with explicit return type
 lam() = expr                               // nullary: produces a fn() -> T value
 ```
 
-Type annotations on lambda parameters are required. This makes lambdas inferable — the typechecker can synthesise the full function type from the annotations and the body. An optional `-> T` return type annotation is also supported.
+Type annotations on lambda parameters are required. This makes lambdas inferable — the
+typechecker can synthesise the full function type from the annotations and the body. An
+optional `-> T` return type annotation is also supported.
 
-Lambdas are meta-level only — they cannot appear in object-level (`code fn`) bodies.
+Lambdas are meta-level only — they cannot appear in object-level (`code def`) bodies.
 
 ## Operators
 
@@ -98,8 +134,6 @@ Lowest to highest, left-associative unless noted:
 | 5 | `*` `/` |
 | 6 | `!` (unary) |
 
-Note: `|` as bitwise OR is distinguished from `|` as lambda delimiter by position: a leading `|` in atom position starts a lambda; `|` after an expression is bitwise OR.
-
 Note: The comparison operators are provisional. See [bs/comparison_operators.md](bs/comparison_operators.md) for discussion.
 
 ## Grammar (EBNF-like)
@@ -107,17 +141,23 @@ Note: The comparison operators are provisional. See [bs/comparison_operators.md]
 ```
 program     ::= top_stmt*
 
-top_stmt    ::= fn_def
-             | code_fn_def
+top_stmt    ::= def_stmt
 
-fn_def      ::= "fn" identifier "(" params ")" "->" expr block
-code_fn_def ::= "code" fn_def
+def_stmt    ::= ("code")? "def" identifier def_sig_req "=" expr ";"
+
+def_sig_req ::= "(" params ")" "->" expr   -- function: params + required return type
+              | ":" expr                    -- value: required type annotation
 
 params      ::= (param ("," param)*)?
 param       ::= identifier ":" expr
 
 block       ::= "{" stmt* expr "}"   -- returns value of expr
-stmt        ::= "let" identifier (":" expr)? "=" expr ";"
+stmt        ::= let_stmt
+
+let_stmt    ::= "let" identifier def_sig_opt "=" expr ";"
+
+def_sig_opt ::= "(" params ")" ("->" expr)?   -- function: optional return type
+              | (":" expr)?                    -- value: optional type annotation
 
 match_arm   ::= pattern "=>" expr ","
 
@@ -143,7 +183,7 @@ fn_type     ::= "fn" "(" fn_params ")" "->" expr
 fn_params   ::= (fn_param ("," fn_param)*)?
 fn_param    ::= identifier ":" expr             -- name required; use "_" for non-dependent
 
-lambda      ::= "|" param ("," param)* "|" expr
+lambda      ::= "lam" "(" params ")" ("->" expr)? "=" expr
 
 binary_op   ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&" | "|"
 unary_op    ::= "!"

@@ -1,6 +1,6 @@
-fn bad(x: u32, y: u64) -> u32 {
+def bad(x: u32, y: u64) -> u32 = {
     match x {
         0 => x,
         n => y,
     }
-}
+};

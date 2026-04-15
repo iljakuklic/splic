@@ -1,0 +1,4 @@
+code fn result() -> u64 {
+    42_u64
+}
+

@@ -1,5 +1,5 @@
 Code
-Fn
+Def
 Ident("nand")
 LParen
 Ident("a")
@@ -12,6 +12,7 @@ Ident("u1")
 RParen
 Arrow
 Ident("u1")
+Eq
 LBrace
 Bang
 LParen
@@ -20,3 +21,4 @@ Ampersand
 Ident("b")
 RParen
 RBrace
+Semi

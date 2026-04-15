@@ -1,10 +1,10 @@
 // A lambda with an empty parameter list creates a thunk
-fn make_thunk(x: u64) -> fn() -> u64 {
+def make_thunk(x: u64) -> fn() -> u64 = {
     lam() = x
-}
+};
 
-fn test() -> u64 {
+def test() -> u64 = {
     make_thunk(42)()
-}
+};
 
-code fn result() -> u64 { $(test()) }
+code def result() -> u64 = { $(test()) };

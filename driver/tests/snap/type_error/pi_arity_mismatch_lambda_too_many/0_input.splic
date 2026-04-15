@@ -1,4 +1,4 @@
 // ERROR: too many arguments to a function-typed variable (non-global callee)
-fn too_many(f: fn(_: u64) -> u64, x: u64) -> u64 {
+def too_many(f: fn(_: u64) -> u64, x: u64) -> u64 = {
     f(x, x)
-}
+};

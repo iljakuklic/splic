@@ -1,10 +1,10 @@
 // Const combinator: returns a function that ignores its argument
-fn const_(A: Type, B: Type) -> fn(_: A) -> fn(_: B) -> A {
+def const_(A: Type, B: Type) -> fn(_: A) -> fn(_: B) -> A = {
     lam(a: A) = lam(b: B) = a
-}
+};
 
-fn test() -> u64 {
+def test() -> u64 = {
     const_(u64, u8)(42)(7)
-}
+};
 
-code fn result() -> u64 { $(test()) }
+code def result() -> u64 = { $(test()) };

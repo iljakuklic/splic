@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("const_")
 LParen
 Ident("A")
@@ -25,6 +25,7 @@ Ident("B")
 RParen
 Arrow
 Ident("A")
+Eq
 LBrace
 Lam
 LParen
@@ -42,12 +43,14 @@ RParen
 Eq
 Ident("a")
 RBrace
-Fn
+Semi
+Def
 Ident("test")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Ident("const_")
 LParen
@@ -62,13 +65,15 @@ LParen
 Num(7)
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("result")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("test")
@@ -76,3 +81,4 @@ LParen
 RParen
 RParen
 RBrace
+Semi

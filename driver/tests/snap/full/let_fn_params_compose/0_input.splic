@@ -1,0 +1,11 @@
+// Polymorphic function composition using parametrized let for the outer binding
+def double(x: u64) -> u64 = { x + x };
+
+def to_u8(x: u64) -> u8 = { match x { 0 => 0, 1 => 1, 2 => 2, _ => 3 } };
+
+def test() -> u8 = {
+    let compose(A: Type, B: Type, C: Type) = lam(f: fn(_: B) -> C, g: fn(_: A) -> B) = lam(x: A) = f(g(x));
+    compose(u64, u64, u8)(to_u8, double)(5)
+};
+
+code def result() -> u8 = { $(test()) };

@@ -155,7 +155,7 @@ where
             Phase::Meta
         };
 
-        self.take(Token::Fn).context("expected 'fn'")?;
+        self.take(Token::Def).context("expected 'def'")?;
         let name = self.take_ident().context("expected function name")?;
 
         self.parse_fn_def_after_name(phase, name)
@@ -177,7 +177,10 @@ where
             .parse_expr()
             .context("expected return type expression")?;
 
-        let body = self.parse_block().context("expected function body")?;
+        self.take(Token::Eq).context("expected '='")?;
+        let body = self.parse_expr().context("expected function body")?;
+        self.take(Token::Semi)
+            .context("expected ';' after function body")?;
 
         Ok(Function {
             phase,
@@ -201,12 +204,6 @@ where
         Ok(self.arena.alloc_slice_fill_iter(params))
     }
 
-    fn parse_block(&mut self) -> Result<&'ast Term<'names, 'ast>> {
-        self.take(Token::LBrace).context("expected '{'")?;
-        let (stmts, expr) = self.parse_block_inner()?;
-        Ok(self.alloc(Term::Block { stmts, expr }))
-    }
-
     fn parse_block_inner(
         &mut self,
     ) -> Result<(&'ast [Let<'names, 'ast>], &'ast Term<'names, 'ast>)> {
@@ -227,6 +224,38 @@ where
     fn parse_let_stmt(&mut self) -> Result<Let<'names, 'ast>> {
         self.take(Token::Let).context("expected 'let'")?;
         let name = self.take_ident().context("expected variable name")?;
+
+        // `let f(params) (-> ret_ty)? = expr;` — desugar to
+        // `let f: fn(params) -> ret_ty = lam(params) -> ret_ty = expr;`
+        if self.consume_if(Token::LParen) {
+            let params = self.parse_params()?;
+            self.take(Token::RParen).context("expected ')'")?;
+            let ret_ty = self
+                .consume_if(Token::Arrow)
+                .then(|| self.parse_expr().context("expected return type after '->'"))
+                .transpose()?;
+            self.take(Token::Eq)
+                .context("expected '=' in let binding")?;
+            let body = self
+                .parse_expr()
+                .with_context(|| format!("in let binding `{name}`"))?;
+            self.take(Token::Semi)
+                .context("expected ';' after let binding")?;
+
+            let ty = ret_ty.map(|ret| {
+                self.alloc(Term::Pi {
+                    params,
+                    ret_ty: ret,
+                })
+            });
+            let expr = self.arena.alloc(Term::Lam {
+                params,
+                ret_ty,
+                body,
+            });
+            return Ok(Let { name, ty, expr });
+        }
+
         let ty = if self.consume_if(Token::Colon) {
             Some(self.parse_expr().context("expected type in let binding")?)
         } else {

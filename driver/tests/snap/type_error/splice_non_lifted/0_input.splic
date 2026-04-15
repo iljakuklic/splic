@@ -1,1 +1,1 @@
-code fn bad(x: u64) -> u64 { $(x) }
+code def bad(x: u64) -> u64 = { $(x) };

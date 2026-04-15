@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("apply_twice")
 LParen
 Ident("A")
@@ -22,6 +22,7 @@ Ident("A")
 RParen
 Arrow
 Ident("A")
+Eq
 LBrace
 Ident("f")
 LParen
@@ -31,7 +32,8 @@ Ident("x")
 RParen
 RParen
 RBrace
-Fn
+Semi
+Def
 Ident("inc")
 LParen
 Ident("x")
@@ -40,17 +42,20 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Ident("x")
 Plus
 Num(1)
 RBrace
-Fn
+Semi
+Def
 Ident("test")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Ident("apply_twice")
 LParen
@@ -61,13 +66,15 @@ Comma
 Num(0)
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("result")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("test")
@@ -75,3 +82,4 @@ LParen
 RParen
 RParen
 RBrace
+Semi
