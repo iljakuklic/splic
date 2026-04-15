@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("double")
 LParen
 Ident("x")
@@ -7,12 +7,14 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Ident("x")
 Plus
 Ident("x")
 RBrace
-Fn
+Semi
+Def
 Ident("to_u8")
 LParen
 Ident("x")
@@ -21,6 +23,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u8")
+Eq
 LBrace
 Match
 Ident("x")
@@ -42,12 +45,14 @@ DArrow
 Num(3)
 RBrace
 RBrace
-Fn
+Semi
+Def
 Ident("test")
 LParen
 RParen
 Arrow
 Ident("u8")
+Eq
 LBrace
 Let
 Ident("compose")
@@ -124,13 +129,15 @@ LParen
 Num(5)
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("result")
 LParen
 RParen
 Arrow
 Ident("u8")
+Eq
 LBrace
 DollarLParen
 Ident("test")
@@ -138,3 +145,4 @@ LParen
 RParen
 RParen
 RBrace
+Semi

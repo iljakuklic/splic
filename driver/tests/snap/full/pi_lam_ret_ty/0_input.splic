@@ -1,10 +1,10 @@
 // Lambda with explicit return type annotation
-fn apply(f: fn(_: u64) -> u64, x: u64) -> u64 {
+def apply(f: fn(_: u64) -> u64, x: u64) -> u64 = {
     f(x)
-}
+};
 
-fn test() -> u64 {
+def test() -> u64 = {
     apply(lam(x: u64) -> u64 = x + 1, 42)
-}
+};
 
-code fn result() -> u64 { $(test()) }
+code def result() -> u64 = { $(test()) };

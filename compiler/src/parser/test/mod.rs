@@ -48,7 +48,7 @@ fn parse_trivial_block() {
 #[test]
 fn parse_simple_fn() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("fn add(x: u32, y: u32) -> u32 { x + y }", &arena);
+    let lexer = Lexer::new("def add(x: u32, y: u32) -> u32 = { x + y };", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let program = parser.parse_program().unwrap();
     assert_eq!(program.functions.len(), 1);
@@ -60,7 +60,7 @@ fn parse_simple_fn() {
 #[test]
 fn parse_simple_fn_and_junk() {
     let arena = bumpalo::Bump::new();
-    let lexer = Lexer::new("fn foo() -> u32 { 0 } wat", &arena);
+    let lexer = Lexer::new("def foo() -> u32 = { 0 }; wat", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let program = parser.parse_program();
     assert!(program.is_err());

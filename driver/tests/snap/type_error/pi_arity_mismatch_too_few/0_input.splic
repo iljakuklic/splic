@@ -1,8 +1,8 @@
 // ERROR: too few arguments to a two-arg function
-fn add(x: u64, y: u64) -> u64 {
+def add(x: u64, y: u64) -> u64 = {
     x + y
-}
+};
 
-fn test() -> u64 {
+def test() -> u64 = {
     add(1)
-}
+};

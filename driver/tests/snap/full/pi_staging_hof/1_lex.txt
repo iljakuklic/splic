@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("map_code")
 LParen
 Ident("f")
@@ -26,14 +26,16 @@ Arrow
 DoubleLBracket
 Ident("u64")
 DoubleRBracket
+Eq
 LBrace
 Ident("f")
 LParen
 Ident("x")
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("double")
 LParen
 Ident("x")
@@ -42,6 +44,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("map_code")
@@ -71,3 +74,4 @@ RParen
 RParen
 RParen
 RBrace
+Semi

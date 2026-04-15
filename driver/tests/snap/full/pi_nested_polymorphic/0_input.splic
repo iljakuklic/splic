@@ -1,12 +1,12 @@
 // Polymorphic apply_twice: polymorphic in both the value type and the function
-fn apply_twice(A: Type, f: fn(_: A) -> A, x: A) -> A {
+def apply_twice(A: Type, f: fn(_: A) -> A, x: A) -> A = {
     f(f(x))
-}
+};
 
-fn inc(x: u64) -> u64 { x + 1 }
+def inc(x: u64) -> u64 = { x + 1 };
 
-fn test() -> u64 {
+def test() -> u64 = {
     apply_twice(u64, inc, 0)
-}
+};
 
-code fn result() -> u64 { $(test()) }
+code def result() -> u64 = { $(test()) };

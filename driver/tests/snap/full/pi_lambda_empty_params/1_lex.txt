@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("make_thunk")
 LParen
 Ident("x")
@@ -11,6 +11,7 @@ LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Lam
 LParen
@@ -18,12 +19,14 @@ RParen
 Eq
 Ident("x")
 RBrace
-Fn
+Semi
+Def
 Ident("test")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Ident("make_thunk")
 LParen
@@ -32,13 +35,15 @@ RParen
 LParen
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("result")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("test")
@@ -46,3 +51,4 @@ LParen
 RParen
 RParen
 RBrace
+Semi

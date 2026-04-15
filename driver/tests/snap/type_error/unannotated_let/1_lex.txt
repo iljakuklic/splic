@@ -1,9 +1,10 @@
-Fn
+Def
 Ident("bad")
 LParen
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Let
 Ident("x")
@@ -12,3 +13,4 @@ Num(42)
 Semi
 Ident("x")
 RBrace
+Semi

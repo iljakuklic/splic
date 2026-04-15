@@ -155,7 +155,7 @@ where
             Phase::Meta
         };
 
-        self.take(Token::Fn).context("expected 'fn'")?;
+        self.take(Token::Def).context("expected 'def'")?;
         let name = self.take_ident().context("expected function name")?;
 
         self.parse_fn_def_after_name(phase, name)
@@ -177,7 +177,10 @@ where
             .parse_expr()
             .context("expected return type expression")?;
 
-        let body = self.parse_block().context("expected function body")?;
+        self.take(Token::Eq).context("expected '='")?;
+        let body = self.parse_expr().context("expected function body")?;
+        self.take(Token::Semi)
+            .context("expected ';' after function body")?;
 
         Ok(Function {
             phase,
@@ -199,12 +202,6 @@ where
             Ok(Param { name, ty })
         })?;
         Ok(self.arena.alloc_slice_fill_iter(params))
-    }
-
-    fn parse_block(&mut self) -> Result<&'ast Term<'names, 'ast>> {
-        self.take(Token::LBrace).context("expected '{'")?;
-        let (stmts, expr) = self.parse_block_inner()?;
-        Ok(self.alloc(Term::Block { stmts, expr }))
     }
 
     fn parse_block_inner(

@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("k")
 LParen
 RParen
@@ -6,18 +6,21 @@ Arrow
 DoubleLBracket
 Ident("u64")
 DoubleRBracket
+Eq
 LBrace
 HashLParen
 Num(0)
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("zero")
 LParen
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("k")
@@ -25,3 +28,4 @@ LParen
 RParen
 RParen
 RBrace
+Semi

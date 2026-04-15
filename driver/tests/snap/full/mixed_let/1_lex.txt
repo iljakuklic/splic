@@ -1,10 +1,11 @@
 Code
-Fn
+Def
 Ident("foo")
 LParen
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 DollarLBrace
 Let
@@ -26,3 +27,4 @@ Ident("z")
 RBrace
 RBrace
 RBrace
+Semi

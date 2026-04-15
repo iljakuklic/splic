@@ -1,5 +1,5 @@
 Code
-Fn
+Def
 Ident("test")
 LParen
 Ident("x")
@@ -8,6 +8,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Lam
 LParen
@@ -18,3 +19,4 @@ RParen
 Eq
 Ident("y")
 RBrace
+Semi

@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("too_few")
 LParen
 Ident("f")
@@ -22,6 +22,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Let
 Ident("foo")
@@ -33,3 +34,4 @@ RParen
 Semi
 Num(1337)
 RBrace
+Semi

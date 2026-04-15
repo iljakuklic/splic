@@ -1,2 +1,2 @@
-fn k() -> [[u64]] { #(0) }
-code fn zero() -> u64 { $(k()) }
+def k() -> [[u64]] = { #(0) };
+code def zero() -> u64 = { $(k()) };

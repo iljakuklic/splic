@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("power_acc")
 LParen
 Ident("x")
@@ -21,6 +21,7 @@ Arrow
 DoubleLBracket
 Ident("u64")
 DoubleRBracket
+Eq
 LBrace
 Match
 Ident("k")
@@ -107,7 +108,8 @@ RBrace
 RBrace
 RBrace
 RBrace
-Fn
+Semi
+Def
 Ident("power_acc_1")
 LParen
 Ident("x")
@@ -124,6 +126,7 @@ Arrow
 DoubleLBracket
 Ident("u64")
 DoubleRBracket
+Eq
 LBrace
 Match
 Ident("k")
@@ -202,7 +205,8 @@ RBrace
 RBrace
 RBrace
 RBrace
-Fn
+Semi
+Def
 Ident("power")
 LParen
 Ident("x")
@@ -219,6 +223,7 @@ Arrow
 DoubleLBracket
 Ident("u64")
 DoubleRBracket
+Eq
 LBrace
 Ident("power_acc_1")
 LParen
@@ -227,8 +232,9 @@ Comma
 Ident("k")
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("pow1")
 LParen
 Ident("x")
@@ -237,6 +243,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("power")
@@ -249,8 +256,9 @@ Num(1)
 RParen
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("pow5")
 LParen
 Ident("x")
@@ -259,6 +267,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("power")
@@ -271,8 +280,9 @@ Num(5)
 RParen
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("pow11_inc")
 LParen
 Ident("x")
@@ -281,6 +291,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("power")
@@ -304,8 +315,9 @@ Num(11)
 RParen
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("pow15")
 LParen
 Ident("x")
@@ -314,6 +326,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("power")
@@ -326,8 +339,9 @@ Num(15)
 RParen
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("pow16")
 LParen
 Ident("x")
@@ -336,6 +350,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("power")
@@ -348,8 +363,9 @@ Num(16)
 RParen
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("pow17")
 LParen
 Ident("x")
@@ -358,6 +374,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 DollarLParen
 Ident("power")
@@ -370,3 +387,4 @@ Num(17)
 RParen
 RParen
 RBrace
+Semi

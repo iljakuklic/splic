@@ -1,5 +1,5 @@
 
-fn power_acc(x: [[u64]], k: u64, r: [[u64]]) -> [[u64]] {
+def power_acc(x: [[u64]], k: u64, r: [[u64]]) -> [[u64]] = {
     match k {
         0 => r,
         k => {
@@ -15,9 +15,9 @@ fn power_acc(x: [[u64]], k: u64, r: [[u64]]) -> [[u64]] {
             }
         }
     }
-}
+};
 
-fn power_acc_1(x: [[u64]], k: u64) -> [[u64]] {
+def power_acc_1(x: [[u64]], k: u64) -> [[u64]] = {
     match k {
         0 => #(1),
         k => {
@@ -31,32 +31,32 @@ fn power_acc_1(x: [[u64]], k: u64) -> [[u64]] {
             }
         }
     }
-}
+};
 
-fn power(x: [[u64]], k: u64) -> [[u64]] {
+def power(x: [[u64]], k: u64) -> [[u64]] = {
     power_acc_1(x, k)
-}
+};
 
-code fn pow1(x: u64) -> u64 {
+code def pow1(x: u64) -> u64 = {
     $(power(#(x), 1))
-}
+};
 
-code fn pow5(x: u64) -> u64 {
+code def pow5(x: u64) -> u64 = {
     $(power(#(x), 5))
-}
+};
 
-code fn pow11_inc(x: u64) -> u64 {
+code def pow11_inc(x: u64) -> u64 = {
     $(power(#({ let y: u64 = x + 1; y }), 11))
-}
+};
 
-code fn pow15(x: u64) -> u64 {
+code def pow15(x: u64) -> u64 = {
     $(power(#(x), 15))
-}
+};
 
-code fn pow16(x: u64) -> u64 {
+code def pow16(x: u64) -> u64 = {
     $(power(#(x), 16))
-}
+};
 
-code fn pow17(x: u64) -> u64 {
+code def pow17(x: u64) -> u64 = {
     $(power(#(x), 17))
-}
+};

@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("bad")
 LParen
 Ident("x")
@@ -11,6 +11,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Match
 Ident("x")
@@ -25,3 +26,4 @@ Ident("y")
 Comma
 RBrace
 RBrace
+Semi

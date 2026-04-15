@@ -1,4 +1,4 @@
-fn power(x: [[u64]], exp: u64) -> [[u64]] {
+def power(x: [[u64]], exp: u64) -> [[u64]] = {
     match exp {
         0 => #(1),
         1 => x,
@@ -6,12 +6,12 @@ fn power(x: [[u64]], exp: u64) -> [[u64]] {
             #($(power(x, exp - 1)) * $(x))
         }
     }
-}
+};
 
-code fn pow5(x: u64) -> u64 {
+code def pow5(x: u64) -> u64 = {
     $(power(#(x), 5))
-}
+};
 
-code fn pow11(x: u64) -> u64 {
+code def pow11(x: u64) -> u64 = {
     $(power(#(x), 11))
-}
+};

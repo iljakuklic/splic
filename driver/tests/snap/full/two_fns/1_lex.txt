@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("mul")
 LParen
 Ident("x")
@@ -11,12 +11,14 @@ Ident("u32")
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Ident("x")
 Star
 Ident("y")
 RBrace
-Fn
+Semi
+Def
 Ident("add")
 LParen
 Ident("x")
@@ -29,8 +31,10 @@ Ident("u32")
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Ident("x")
 Plus
 Ident("y")
 RBrace
+Semi

@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("sub")
 LParen
 Ident("x")
@@ -11,6 +11,7 @@ Ident("u32")
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Let
 Ident("d")
@@ -23,3 +24,4 @@ Ident("y")
 Semi
 Ident("d")
 RBrace
+Semi

@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("get_value")
 LParen
 Ident("b")
@@ -19,6 +19,7 @@ DArrow
 Ident("u16")
 RBrace
 RParen
+Eq
 LBrace
 Match
 Ident("b")
@@ -33,13 +34,15 @@ Num(42)
 Comma
 RBrace
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("result_0")
 LParen
 RParen
 Arrow
 Ident("u0")
+Eq
 LBrace
 DollarLParen
 Ident("get_value")
@@ -48,13 +51,15 @@ Num(0)
 RParen
 RParen
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("result_1")
 LParen
 RParen
 Arrow
 Ident("u16")
+Eq
 LBrace
 DollarLParen
 Ident("get_value")
@@ -63,3 +68,4 @@ Num(1)
 RParen
 RParen
 RBrace
+Semi

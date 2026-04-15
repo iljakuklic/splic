@@ -1,5 +1,5 @@
 Code
-Fn
+Def
 Ident("pow5")
 LParen
 Ident("x")
@@ -8,6 +8,8 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
+Eq
 LBrace
 Num(15)
 RBrace
+Semi

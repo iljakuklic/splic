@@ -1,9 +1,11 @@
-Fn
+Def
 Ident("bad")
 LParen
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Ident("x")
 RBrace
+Semi

@@ -1,4 +1,4 @@
-Fn
+Def
 Ident("add")
 LParen
 Ident("x")
@@ -11,8 +11,10 @@ Ident("u32")
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Ident("x")
 Plus
 Ident("y")
 RBrace
+Semi

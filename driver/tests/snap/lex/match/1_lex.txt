@@ -16,3 +16,4 @@ Plus
 Num(1)
 Comma
 RBrace
+Semi

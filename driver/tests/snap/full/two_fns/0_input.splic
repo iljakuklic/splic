@@ -1,2 +1,2 @@
-fn mul(x: u32, y: u32) -> u32 { x * y }
-fn add(x: u32, y: u32) -> u32 { x + y }
+def mul(x: u32, y: u32) -> u32 = { x * y };
+def add(x: u32, y: u32) -> u32 = { x + y };

@@ -1,1 +1,1 @@
-code fn pow5(x: u64) -> u64 { 15 }
+code def pow5(x: u64) -> u64 = { 15 };

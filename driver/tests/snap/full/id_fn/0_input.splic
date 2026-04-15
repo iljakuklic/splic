@@ -1,1 +1,1 @@
-fn id(x: u32) -> u32 { x }
+def id(x: u32) -> u32 = { x };

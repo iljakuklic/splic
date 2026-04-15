@@ -1,9 +1,10 @@
-Fn
+Def
 Ident("let_type")
 LParen
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 Let
 Ident("ty")
@@ -21,13 +22,15 @@ Num(1337)
 Semi
 Ident("x")
 RBrace
+Semi
 Code
-Fn
+Def
 Ident("test")
 LParen
 RParen
 Arrow
 Ident("u32")
+Eq
 LBrace
 DollarLParen
 Ident("let_type")
@@ -35,3 +38,4 @@ LParen
 RParen
 RParen
 RBrace
+Semi

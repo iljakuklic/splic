@@ -1,5 +1,5 @@
 // ERROR: applying a non-function value
-fn test() -> u64 {
+def test() -> u64 = {
     let x: u64 = 42;
     x(1)
-}
+};
