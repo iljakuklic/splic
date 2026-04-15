@@ -1,0 +1,7 @@
+// Local parametrized let: without return type (inferred) and with return type annotation
+def test() -> u64 = {
+    let fst(x: u64, y: u64) = x;
+    let add(x: u64, y: u64) -> u64 = x + y;
+    add(fst(10, 99), 32)
+};
+code def result() -> u64 = { $(test()) };

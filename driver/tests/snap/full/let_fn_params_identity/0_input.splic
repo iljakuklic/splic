@@ -1,0 +1,15 @@
+// Polymorphic identity using parametrized let for the outer binding
+def test_id() -> u64 = {
+    let id(T: Type) = lam(x: T) = x;
+    let _ = id(u32)(67);
+    id(u64)(42)
+};
+
+def test_id_u8() -> u8 = {
+    let id(T: Type) = { let id_T(x: T) = x; id_T };
+    let id_u8 = id(u8);
+    id_u8(7)
+};
+
+code def result_u64() -> u64 = { $(test_id()) };
+code def result_u8() -> u8 = { $(test_id_u8()) };

@@ -1,0 +1,6 @@
+// Local parametrized let binding with explicit return type annotation
+def test() -> u64 = {
+    let inc(x: u64) -> u64 = x + 1;
+    inc(41)
+};
+code def result() -> u64 = { $(test()) };
