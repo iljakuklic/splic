@@ -14,7 +14,7 @@ jobs:
     name: Format
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - uses: taiki-e/install-action@just
       - name: Check formatting
         run: just check-fmt
@@ -23,7 +23,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
       - name: Clippy
@@ -33,7 +33,7 @@ jobs:
     name: Rustdoc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
       - name: Check rustdocs
@@ -43,7 +43,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
       - uses: taiki-e/install-action@just
       - uses: Swatinem/rust-cache@v2
       - name: Run tests
