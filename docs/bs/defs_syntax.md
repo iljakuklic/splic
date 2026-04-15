@@ -24,51 +24,65 @@ functions, local values and functions, anonymous lambdas, and function types. Se
 
 ## Syntax
 
-### Global definitions (`def`)
+The `def`, `let`, and `lam` forms described in this proposal are now implemented — see
+[SYNTAX.md](../SYNTAX.md) for the canonical reference. Brief summary with key examples:
 
+**`def`** — global definitions with `= expr;` body; `code def` for object-level:
 ```
-def x: u64 = 5;                         // global constant, explicit type
-def x = 5;                              // global constant, inferred type (if permitted)
-def f(x: u64) -> u64 = x + 1;          // global function, expression body
-def f(x: u64) -> u64 = { x + 1 };      // global function, block body
-def f(x: u64, y: u64) -> u64 = x + y;  // multi-parameter
-code def f(x: u64) -> u64 = x + 1;     // object-level function
+def f(x: u64, y: u64) -> u64 = x + y;
+code def g(x: u64) -> u64 = x + 1;
 ```
 
-Type and return type annotations are required for global definitions (cannot be inferred
-at the top level).
-
-### Local definitions (`let`)
-
+**`let`** — local bindings with optional params and return type:
 ```
-let x = 5;                              // local value, inferred type
-let x: u64 = 5;                        // local value, explicit type
-let f(x: u64) -> u64 = x + n;         // local function (may close over n)
-let f(x: u64) -> u64 = { x + n };     // local function, block body
+let f(x: u64) -> u64 = x + n;   // closes over n
 ```
 
-Type annotations are optional for locals.
-
-### Lambdas (`lam`)
-
+**`lam`** — anonymous lambda with mandatory parameter annotations:
 ```
-lam(x: u64) = x + 1                    // inferred return type
-lam(x: u64) -> u64 = x + 1            // explicit return type
-lam(x: u64, y: u64) = x + y           // multi-parameter
+lam(x: u64, y: u64) = x + y
+lam(x: u64) -> u64 = x + 1     // with explicit return type
 ```
 
-Lambdas are expressions, not statements — no trailing `;`. Parameter type annotations are
-required (as currently), making the lambda's type fully synthesisable.
+**`fn`** — function types (pi types), unchanged:
+```
+fn(A: Type, x: A) -> A   ≡   fn(A: Type) -> fn(x: A) -> A
+```
 
-### Function types (`fn`)
+### Curried parameter groups (proposed)
 
-Unchanged from current syntax:
+Multiple parenthesised parameter groups are syntactic sugar for nested lambdas and
+function types. The `-> T` return-type annotation, when present, applies to the
+innermost body. All parameters from all groups are in scope for the return type and body,
+enabling dependent currying:
 
 ```
-fn(_: u64) -> u64                      // non-dependent
-fn(x: u64) -> u64                      // dependent (return type may mention x)
-fn(A: Type) -> fn(x: A) -> A          // polymorphic
+// All equivalent ways to write a curried polymorphic identity:
+def id(A: Type)(x: A) -> A = x;
+def id: fn(A: Type)(x: A) -> A = lam(A: Type)(x: A) -> A = x;
+def id: fn(A: Type) -> fn(x: A) -> A = lam(A: Type) = lam(x: A) = x;
 ```
+
+Desugaring rules:
+
+```
+lam(p1)(p2)...(pN) (-> T)? = e
+  ≡  lam(p1) = lam(p2) = ... = lam(pN) (-> T)? = e
+
+let f(p1)(p2)...(pN) (-> T)? = e;
+  ≡  let f = lam(p1)(p2)...(pN) (-> T)? = e;
+
+def f(p1)(p2)...(pN) -> T = e;
+  ≡  def f: fn(p1)(p2)...(pN) -> T = lam(p1)(p2)...(pN) -> T = e;
+
+fn(p1)(p2)...(pN) -> T
+  ≡  fn(p1) -> fn(p2) -> ... -> fn(pN) -> T
+```
+
+Note: within a parameter group, parameters are still declared tuple-style (comma-separated),
+so `lam(x: u64, y: u64)` and `lam(x: u64)(y: u64)` are distinct:
+the former produces a single two-argument lambda; the latter produces two nested
+single-argument lambdas.
 
 ## Progressive Enhancement
 
@@ -80,6 +94,7 @@ Each form is a small, mechanical addition to the previous:
 | Lambda | `lam(x: u64) -> u64 = x + 1` |
 | Local binding | `let f(x: u64) -> u64 = x + 1;` |
 | Global binding | `def f(x: u64) -> u64 = x + 1;` |
+| Curried (any of the above) | `fn(A: Type)(x: A) -> A` / `lam(A: Type)(x: A) = x` / … |
 
 Desugaring (meta-level only):
 ```
@@ -87,34 +102,32 @@ let f(x: u64) -> u64 = e;   ≡   let f: fn(x: u64) -> u64 = lam(x: u64) -> u64 
 def f(x: u64) -> u64 = e;   ≡   def f: fn(x: u64) -> u64 = lam(x: u64) -> u64 = e;
 ```
 
+Curried desugaring (see [Curried parameter groups](#curried-parameter-groups-proposed)):
+```
+lam(A: Type)(x: A) = x   ≡   lam(A: Type) = lam(x: A) = x
+fn(A: Type)(x: A) -> A   ≡   fn(A: Type) -> fn(x: A) -> A
+```
+
 `code def` does not desugar to a lambda — the object-level sublanguage does not have
 first-class functions.
 
 ## Grammar Changes
 
-Proposed grammar (delta from [SYNTAX.md](../SYNTAX.md)):
+The `def`, `let`, and `lam` grammar changes are implemented — see [SYNTAX.md](../SYNTAX.md).
+The proposed curried extension requires the following additional changes:
 
 ```
-top_stmt    ::= def_stmt
+param_groups ::= ("(" params ")")+             -- one or more parameter groups (currently exactly one)
 
-def_stmt    ::= ("code")? "def" identifier def_sig_req "=" expr ";"
-let_stmt    ::= "let" identifier def_sig_opt "=" expr ";"
-
-def_sig_req ::= "(" params ")" "->" expr      -- function: params + required return type
-              | ":" expr                       -- value: required type annotation
-
-def_sig_opt ::= ("(" params ")" ("->" expr)?)?  -- function: params + optional return type
-              | (":" expr)?                      -- value: optional type annotation
-
-lambda      ::= "lam" "(" params ")" ("->" expr)? "=" expr
+def_sig_req ::= param_groups "->" expr         -- currently: "(" params ")" "->" expr
+def_sig_opt ::= param_groups ("->" expr)?      -- currently: "(" params ")" ("->" expr)?
+lambda      ::= "lam" param_groups ("->" expr)? "=" expr   -- currently: single "(" params ")"
+fn_ty       ::= "fn" param_groups "->" expr    -- currently: single "(" fn_params ")"
+              | expr "->" expr                  -- shorthand non-dependent (right-associative)
 ```
 
-Notable changes from current grammar:
-- `fn_def` / `code_fn_def` replaced by `def_stmt`; body form changes from `block` to `"=" expr ";"`
-- `let_stmt` extended with `def_sig` to support local function definitions
-- `lambda` syntax changes from `"|" params "|" expr` to `"lam" "(" params ")" ("->" expr)? "=" expr`;
-  `|` is freed from lambda duty and the operator table ambiguity note in SYNTAX.md can be removed
-  (resolves [#23](https://github.com/iljakuklic/splic/issues/23))
+In each case the change is mechanical: replace a single `"(" params ")"` with `param_groups`
+(one or more groups). No new tokens or precedence rules are needed.
 
 ## Open Questions
 
@@ -139,12 +152,14 @@ Deferred — the current proposals do not prevent this from being added.
 These changes are independent enough to land separately:
 
 1. **`lam` keyword**: Replace `|params| expr` with `lam(params) (-> T)? = expr` — purely
-   syntactic, no new semantics
+   syntactic, no new semantics ✅
 2. **`let` with parameters**: Allow `let f(params) -> T = expr;` for local function
-   definitions — syntactic sugar over existing local bindings
+   definitions — syntactic sugar over existing local bindings ✅
 3. **`def` for functions**: Replace global `fn name(params)` with `def name(params)`;
    change body syntax from `{ ... }` to `= expr;` — syntactic change to existing
-   functionality
-4. **`def` for constants**: Allow parameter-free `def x: T = expr;` at the top level —
+   functionality ✅
+4. **Curried parameter groups**: Allow multiple `(params)` groups on `lam`, `let`, `def`,
+   and `fn` — purely syntactic, desugars to nested lambdas/pi types at parse time
+5. **`def` for constants**: Allow parameter-free `def x: T = expr;` at the top level —
    requires new semantics (top-level constants do not currently exist)
-5. **Default parameters**: Add `?=` once the design is finalised
+6. **Default parameters**: Add `?=` once the design is finalised
