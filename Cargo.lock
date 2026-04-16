@@ -701,6 +701,7 @@ dependencies = [
  "rstest",
  "splic-backend-wasm",
  "splic-compiler",
+ "splic-driver",
  "wasmprinter",
 ]
 
