@@ -1,21 +1,29 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "val",
-            params: [],
-            ret_ty: "u32",
-            body: Block {
-                stmts: [],
-                expr: 42,
+            ty: Pi {
+                params: [],
+                ret_ty: "u32",
+            },
+            expr: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: 42,
+                },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "use_val",
-            params: [],
-            ret_ty: "u32",
-            body: Block {
+            ty: Pi {
+                params: [],
+                ret_ty: "u32",
+            },
+            expr: Block {
                 stmts: [],
                 expr: Splice(
                     App {

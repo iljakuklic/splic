@@ -5,7 +5,7 @@ use anyhow::{Context as _, Result};
 use crate::common::Precedence;
 use crate::lexer::Token;
 use crate::parser::ast::{
-    Assoc, BinOp, FunName, Function, Let, MatchArm, Name, Param, Pat, Phase, Program, Term, UnOp,
+    Assoc, BinOp, FunName, GlobalDef, Let, MatchArm, Name, Param, Pat, Phase, Program, Term, UnOp,
 };
 
 pub mod ast;
@@ -139,16 +139,16 @@ where
     }
 
     pub fn parse_program(&mut self) -> Result<Program<'names, 'ast>> {
-        let mut functions = Vec::new();
+        let mut defs = Vec::new();
         while self.peek().is_some() {
-            let fun = self.parse_fn_def()?;
-            functions.push(fun);
+            let def = self.parse_global_def()?;
+            defs.push(def);
         }
-        let functions = self.arena.alloc_slice_fill_iter(functions);
-        Ok(Program { functions })
+        let defs = self.arena.alloc_slice_fill_iter(defs);
+        Ok(Program { defs })
     }
 
-    fn parse_fn_def(&mut self) -> Result<Function<'names, 'ast>> {
+    fn parse_global_def(&mut self) -> Result<GlobalDef<'names, 'ast>> {
         let phase = if self.consume_if(Token::Code) {
             Phase::Object
         } else {
@@ -156,39 +156,117 @@ where
         };
 
         self.take(Token::Def).context("expected 'def'")?;
-        let name = self.take_ident().context("expected function name")?;
+        let name = self.take_ident().context("expected definition name")?;
 
-        self.parse_fn_def_after_name(phase, name)
-            .with_context(|| format!("in function `{name}`"))
+        self.parse_global_def_after_name(phase, name)
+            .with_context(|| format!("in definition `{name}`"))
     }
 
-    fn parse_fn_def_after_name(
+    fn parse_global_def_after_name(
         &mut self,
         phase: Phase,
         name: &'names Name,
-    ) -> Result<Function<'names, 'ast>> {
-        self.take(Token::LParen).context("expected '('")?;
+    ) -> Result<GlobalDef<'names, 'ast>> {
+        if self.consume_if(Token::LParen) {
+            // Function form: `def f(params) -> T = body;`
+            // Desugar to `GlobalDef { ty: Pi{params,T}, expr: Lam{params,T,body} }`
+            let (ty, expr) = self.parse_params_and_desugar(phase)?;
+            return Ok(GlobalDef { phase, name, ty, expr });
+        }
+
+        // Constant form: `def x: T = expr;`
+        // `code def` cannot be used without parameters.
+        if phase == Phase::Object {
+            anyhow::bail!(
+                "`code def` requires a parameter list; \
+                 use `def name: Type = expr;` for meta-level constants only"
+            );
+        }
+        self.take(Token::Colon).context("expected ':' or '('")?;
+        let ty = self
+            .parse_expr()
+            .context("expected type annotation after ':'")?;
+        self.take(Token::Eq)
+            .context("expected '=' after type annotation")?;
+        let expr = self
+            .parse_expr()
+            .context("expected constant body after '='")?;
+        self.take(Token::Semi)
+            .context("expected ';' after constant body")?;
+        Ok(GlobalDef { phase, name, ty, expr })
+    }
+
+    /// Parse `(params) -> T = body ;` and desugar into a `(ty, expr)` pair.
+    ///
+    /// Shared by `parse_global_def_after_name` (function form) and `parse_let_stmt`
+    /// (parametrised let). `phase` is used to emit the correct error when `->` is missing
+    /// on a `def` (not used for `let`, which allows omitting `->` and inferring the type).
+    ///
+    /// After a `(` has already been consumed, parses:
+    ///   `params ) (-> ret_ty)? = body ;`
+    ///
+    /// Returns `(ty, expr)` where:
+    ///   - `ty  = Pi { params, ret_ty }` (or `None` wrapped in the caller's `Option` for `let`)
+    ///   - `expr = Lam { params, ret_ty, body }`
+    ///
+    /// The `->` is **required** when called from `parse_global_def_after_name`
+    /// (callers pass `require_ret_ty = true`).
+    fn parse_fn_sig_and_body(
+        &mut self,
+        require_ret_ty: bool,
+    ) -> Result<(
+        &'ast [Param<'names, 'ast>],
+        Option<&'ast Term<'names, 'ast>>,
+        &'ast Term<'names, 'ast>,
+    )> {
         let params = self.parse_params()?;
         self.take(Token::RParen).context("expected ')'")?;
-
-        self.take(Token::Arrow).context("expected '->'")?;
-
-        let ret_ty = self
-            .parse_expr()
-            .context("expected return type expression")?;
-
+        let ret_ty = if self.consume_if(Token::Arrow) {
+            Some(
+                self.parse_expr()
+                    .context("expected return type expression after '->'")?,
+            )
+        } else if require_ret_ty {
+            anyhow::bail!("expected '->' return type annotation");
+        } else {
+            None
+        };
         self.take(Token::Eq).context("expected '='")?;
-        let body = self.parse_expr().context("expected function body")?;
+        let body = self.parse_expr().context("expected body expression")?;
         self.take(Token::Semi)
-            .context("expected ';' after function body")?;
+            .context("expected ';' after body")?;
+        Ok((params, ret_ty, body))
+    }
 
-        Ok(Function {
-            phase,
-            name,
+    /// Parse the function form of a `def` after the `(` has been consumed.
+    ///
+    /// - Meta-phase (`def`): returns `(Pi{params,T}, Lam{params,T,body})` — desugars to a lambda.
+    /// - Object-phase (`code def`): returns `(Pi{params,T}, body)` — no Lam, because the
+    ///   object-level sublanguage does not have first-class functions.
+    fn parse_params_and_desugar(
+        &mut self,
+        phase: Phase,
+    ) -> Result<(&'ast Term<'names, 'ast>, &'ast Term<'names, 'ast>)> {
+        let (params, ret_ty, body) = self.parse_fn_sig_and_body(true)?;
+        let ret_ty_term = ret_ty.expect("require_ret_ty=true guarantees Some");
+        let ty = self.alloc(Term::Pi {
             params,
-            ret_ty,
-            body,
-        })
+            ret_ty: ret_ty_term,
+        });
+        let expr = if phase.is_meta() {
+            // The Lam is always checked against the Pi (which carries ret_ty).
+            // Omit ret_ty from the Lam to avoid inferring it independently —
+            // this matters for complex return types like `match` expressions.
+            self.arena.alloc(Term::Lam {
+                params,
+                ret_ty: None,
+                body,
+            })
+        } else {
+            // `code def`: body is used directly; params are pushed by the elaborator.
+            body
+        };
+        Ok((ty, expr))
     }
 
     fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {
@@ -226,21 +304,11 @@ where
         let name = self.take_ident().context("expected variable name")?;
 
         // `let f(params) (-> ret_ty)? = expr;` — desugar to
-        // `let f: fn(params) -> ret_ty = lam(params) -> ret_ty = expr;`
+        // `let f (: fn(params) -> ret_ty)? = lam(params) (-> ret_ty)? = expr;`
         if self.consume_if(Token::LParen) {
-            let params = self.parse_params()?;
-            self.take(Token::RParen).context("expected ')'")?;
-            let ret_ty = self
-                .consume_if(Token::Arrow)
-                .then(|| self.parse_expr().context("expected return type after '->'"))
-                .transpose()?;
-            self.take(Token::Eq)
-                .context("expected '=' in let binding")?;
-            let body = self
-                .parse_expr()
+            let (params, ret_ty, body) = self
+                .parse_fn_sig_and_body(false)
                 .with_context(|| format!("in let binding `{name}`"))?;
-            self.take(Token::Semi)
-                .context("expected ';' after let binding")?;
 
             let ty = ret_ty.map(|ret| {
                 self.alloc(Term::Pi {

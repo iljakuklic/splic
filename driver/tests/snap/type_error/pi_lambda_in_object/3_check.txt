@@ -1,2 +1,2 @@
 ERROR
-in function `test`: lambdas are only valid in meta-phase context
+in definition `test`: lambdas are only valid in meta-phase context

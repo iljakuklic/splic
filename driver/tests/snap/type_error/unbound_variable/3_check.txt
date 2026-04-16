@@ -1,2 +1,2 @@
 ERROR
-in function `bad`: unbound variable `x`
+in definition `bad`: unbound variable `x`

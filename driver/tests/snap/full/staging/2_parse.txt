@@ -1,25 +1,33 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "k",
-            params: [],
-            ret_ty: Lift(
-                "u64",
-            ),
-            body: Block {
-                stmts: [],
-                expr: Quote(
-                    0,
+            ty: Pi {
+                params: [],
+                ret_ty: Lift(
+                    "u64",
                 ),
             },
+            expr: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: Quote(
+                        0,
+                    ),
+                },
+            },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "zero",
-            params: [],
-            ret_ty: "u64",
-            body: Block {
+            ty: Pi {
+                params: [],
+                ret_ty: "u64",
+            },
+            expr: Block {
                 stmts: [],
                 expr: Splice(
                     App {

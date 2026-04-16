@@ -5,7 +5,7 @@ use bumpalo::Bump;
 
 use crate::common::de_bruijn;
 use crate::common::env::Env as LevelEnv;
-use crate::core::{Arm, Function, IntType, IntWidth, Name, Pat, Pi, Prim, Program, Term};
+use crate::core::{Arm, IntType, IntWidth, Name, Pat, Pi, Prim, Program, Term};
 use crate::parser::ast::Phase;
 
 // ── Object-level semantic values ──────────────────────────────────────────────
@@ -142,13 +142,14 @@ impl<'names, 'eval> Env<'names, 'eval> {
 
 // ── Globals table ─────────────────────────────────────────────────────────────
 
-/// Everything the evaluator needs to know about a top-level function.
-struct GlobalDef<'names, 'a> {
-    ty: &'a Pi<'names, 'a>,
+/// Everything the evaluator needs to know about a top-level definition.
+struct StagingDef<'names, 'a> {
+    /// Type of the definition: `Term::Pi` for functions, any type term for constants.
+    ty: &'a Term<'names, 'a>,
     body: &'a Term<'names, 'a>,
 }
 
-type Globals<'names, 'a> = HashMap<&'names Name, GlobalDef<'names, 'a>>;
+type Globals<'names, 'a> = HashMap<&'names Name, StagingDef<'names, 'a>>;
 
 // ── Meta-level evaluator ──────────────────────────────────────────────────────
 
@@ -177,7 +178,7 @@ fn eval_meta<'names, 'eval>(
             let def = globals
                 .get(name)
                 .unwrap_or_else(|| panic!("unknown global `{name}` during staging"));
-            Ok(global_to_closure(def, env.obj_depth))
+            global_to_value(eval_arena, globals, def, env.obj_depth)
         }
 
         // ── Lambda ───────────────────────────────────────────────────────────
@@ -237,16 +238,30 @@ fn eval_meta<'names, 'eval>(
     }
 }
 
-/// Convert a global function definition into a closure value.
-const fn global_to_closure<'names, 'eval>(
-    def: &GlobalDef<'names, 'eval>,
+/// Convert a global definition into its meta-evaluation value.
+///
+/// - Functions (`Term::Pi`): return a closure with the appropriate arity.
+/// - Constants (any other type): eagerly evaluate the body with an empty environment.
+fn global_to_value<'names, 'eval>(
+    eval_arena: &'eval Bump,
+    globals: &Globals<'names, 'eval>,
+    def: &StagingDef<'names, 'eval>,
     obj_depth: de_bruijn::Depth,
-) -> MetaVal<'names, 'eval> {
-    MetaVal::Closure {
-        body: def.body,
-        arity: def.ty.params.len(),
-        env: LevelEnv::new(),
-        obj_depth,
+) -> Result<MetaVal<'names, 'eval>> {
+    if let Term::Pi(pi) = def.ty {
+        Ok(MetaVal::Closure {
+            body: def.body,
+            arity: pi.params.len(),
+            env: LevelEnv::new(),
+            obj_depth,
+        })
+    } else {
+        // Constant: evaluate body with empty environment.
+        let mut env = Env {
+            bindings: LevelEnv::new(),
+            obj_depth,
+        };
+        eval_meta(eval_arena, globals, &mut env, def.body)
     }
 }
 
@@ -622,29 +637,32 @@ pub fn unstage_program<'names, 'out, 'core>(
     program: &'core Program<'names, 'core>,
 ) -> Result<Program<'names, 'out>> {
     let globals: Globals<'names, '_> = program
-        .functions
+        .defs
         .iter()
-        .map(|f| {
+        .map(|d| {
             (
-                f.name,
-                GlobalDef {
-                    ty: f.ty,
-                    body: f.body,
+                d.name,
+                StagingDef {
+                    ty: d.ty,
+                    body: d.body,
                 },
             )
         })
         .collect();
 
-    let staged_fns: Vec<Function<'names, 'out>> = program
-        .functions
+    let staged_fns: Vec<crate::core::GlobalDef<'names, 'out>> = program
+        .defs
         .iter()
-        .filter(|f| f.pi().phase.is_object())
-        .map(|f| -> Result<_> {
-            // Per-function eval arena: all intermediate `ObjVal` nodes are
+        .filter(|d| matches!(d.ty, Term::Pi(pi) if pi.phase.is_object()))
+        .map(|d| -> Result<_> {
+            // Per-definition eval arena: all intermediate `ObjVal` nodes are
             // allocated here and freed automatically when this closure returns.
             let eval_arena = Bump::new();
 
-            let pi = f.pi();
+            let pi = match d.ty {
+                Term::Pi(pi) => pi,
+                _ => unreachable!("filter above guarantees Term::Pi"),
+            };
             let mut env = Env::new(de_bruijn::Depth::ZERO);
 
             let staged_params = out_arena.alloc_slice_try_fill_iter(pi.params.iter().map(
@@ -659,21 +677,21 @@ pub fn unstage_program<'names, 'out, 'core>(
             let ret_ty_val = eval_obj(&eval_arena, &globals, &mut env, pi.body_ty)?;
             let staged_ret_ty = quote_obj(out_arena, env.obj_depth, ret_ty_val);
 
-            let body_val = eval_obj(&eval_arena, &globals, &mut env, f.body)?;
+            let body_val = eval_obj(&eval_arena, &globals, &mut env, d.body)?;
             let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
 
-            Ok(Function {
-                name: f.name,
-                ty: out_arena.alloc(Pi {
+            Ok(crate::core::GlobalDef {
+                name: d.name,
+                ty: out_arena.alloc(Term::Pi(Pi {
                     params: staged_params,
                     body_ty: staged_ret_ty,
                     phase: Phase::Object,
-                }),
+                })),
                 body: staged_body,
             })
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let functions = out_arena.alloc_slice_fill_iter(staged_fns);
-    Ok(Program { functions })
+    let defs = out_arena.alloc_slice_fill_iter(staged_fns);
+    Ok(Program { defs })
 }

@@ -19,11 +19,16 @@ impl<'names> FuncRegistry<'names> {
     pub(crate) fn from_program(program: &Program<'names, '_>) -> Result<Self> {
         let mut func_indices = HashMap::new();
         let mut func_return_types = HashMap::new();
-        for (i, f) in program.functions.iter().enumerate() {
+        for (i, f) in program.defs.iter().enumerate() {
             let name = f.name.as_str();
             let idx = u32::try_from(i).map_err(|_| anyhow!("too many functions (> u32::MAX)"))?;
             func_indices.insert(name, idx);
-            func_return_types.insert(name, term_to_valtype(f.ty.body_ty));
+            // Staged defs are all object-level functions (Term::Pi).
+            let pi = match f.ty {
+                splic_compiler::core::Term::Pi(pi) => pi,
+                _ => unreachable!("staged def is not a function (unstager invariant)"),
+            };
+            func_return_types.insert(name, term_to_valtype(pi.body_ty));
         }
         Ok(Self {
             func_indices,

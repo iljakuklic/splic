@@ -3,7 +3,7 @@ use std::fmt;
 use crate::common::env::Env;
 use crate::parser::ast::Phase;
 
-use super::{Arm, Function, Name, Pat, Program, Term};
+use super::{Arm, GlobalDef, Name, Pat, Pi, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -223,48 +223,66 @@ impl<'names> Arm<'names, '_> {
 
 impl fmt::Display for Program<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, func) in self.functions.iter().enumerate() {
+        for (i, def) in self.defs.iter().enumerate() {
             if i > 0 {
                 writeln!(f)?;
             }
-            write!(f, "{func}")?;
+            write!(f, "{def}")?;
         }
         Ok(())
     }
 }
 
-impl fmt::Display for Function<'_, '_> {
+impl fmt::Display for GlobalDef<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pi = self.pi();
-
-        // Build the name environment for the body: one entry per parameter.
-        let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
-
-        // Phase prefix.
-        match pi.phase {
-            Phase::Object => write!(f, "code ")?,
-            Phase::Meta => {}
+        if let Term::Pi(pi) = self.ty {
+            fmt_fn_def(self.name, pi, self.body, f)
+        } else {
+            // Constant definition: `def name: ty = body`
+            let mut env: Env<&Name> = Env::new();
+            write!(f, "def {}: ", self.name)?;
+            self.ty.fmt_expr(&mut env, 1, f)?;
+            writeln!(f, " {{")?;
+            self.body.fmt_term(&mut env, 1, f)?;
+            writeln!(f)?;
+            writeln!(f, "}}")
         }
-        write!(f, "fn {}(", self.name)?;
-
-        // Parameters: types are printed with the env as built so far (dependent
-        // function types: earlier params are in scope for later param types).
-        for (i, (name, ty)) in pi.params.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
-            }
-            write!(f, "{name}@{i}: ")?;
-            ty.fmt_expr(&mut env, 1, f)?;
-            env.push(*name);
-        }
-
-        write!(f, ") -> ")?;
-        pi.body_ty.fmt_expr(&mut env, 1, f)?;
-        writeln!(f, " {{")?;
-
-        // Body in statement position at indent depth 1.
-        self.body.fmt_term(&mut env, 1, f)?;
-        writeln!(f)?;
-        writeln!(f, "}}")
     }
+}
+
+fn fmt_fn_def(
+    name: &Name,
+    pi: &Pi<'_, '_>,
+    body: &Term<'_, '_>,
+    f: &mut fmt::Formatter<'_>,
+) -> fmt::Result {
+    // Build the name environment for the body: one entry per parameter.
+    let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
+
+    // Phase prefix.
+    match pi.phase {
+        Phase::Object => write!(f, "code ")?,
+        Phase::Meta => {}
+    }
+    write!(f, "fn {}(", name)?;
+
+    // Parameters: types are printed with the env as built so far (dependent
+    // function types: earlier params are in scope for later param types).
+    for (i, (pname, ty)) in pi.params.iter().enumerate() {
+        if i > 0 {
+            write!(f, ", ")?;
+        }
+        write!(f, "{pname}@{i}: ")?;
+        ty.fmt_expr(&mut env, 1, f)?;
+        env.push(*pname);
+    }
+
+    write!(f, ") -> ")?;
+    pi.body_ty.fmt_expr(&mut env, 1, f)?;
+    writeln!(f, " {{")?;
+
+    // Body in statement position at indent depth 1.
+    body.fmt_term(&mut env, 1, f)?;
+    writeln!(f)?;
+    writeln!(f, "}}")
 }

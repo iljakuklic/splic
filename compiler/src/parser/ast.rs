@@ -39,17 +39,19 @@ pub struct Param<'names, 'ast> {
 }
 
 #[derive(Debug)]
-pub struct Function<'names, 'ast> {
+pub struct GlobalDef<'names, 'ast> {
     pub phase: Phase,
     pub name: &'names Name,
-    pub params: &'ast [Param<'names, 'ast>],
-    pub ret_ty: &'ast Term<'names, 'ast>,
-    pub body: &'ast Term<'names, 'ast>,
+    /// Declared type. For functions desugared from `def f(params) -> T = e;` this is a
+    /// `Term::Pi`; for constants from `def x: T = e;` it is an arbitrary type term.
+    pub ty: &'ast Term<'names, 'ast>,
+    /// Definition body. For functions this is a `Term::Lam`; for constants it is the value.
+    pub expr: &'ast Term<'names, 'ast>,
 }
 
 #[derive(Debug)]
 pub struct Program<'names, 'ast> {
-    pub functions: &'ast [Function<'names, 'ast>],
+    pub defs: &'ast [GlobalDef<'names, 'ast>],
 }
 
 #[derive(derive_more::Debug)]

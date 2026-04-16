@@ -46,8 +46,8 @@ pub fn infer<'names, 'ast, 'core>(
                 return Ok((ctx.alloc(core::Term::Var(ix)), ty));
             }
             // Globals — bare reference without call
-            if let Some(pi) = ctx.globals.get(name).copied() {
-                let ty = value::eval_pi(ctx.arena, &value::Env::new(), pi);
+            if let Some(ty_term) = ctx.globals.get(name).copied() {
+                let ty = value::eval(ctx.arena, &value::Env::new(), ty_term);
                 return Ok((ctx.alloc(core::Term::Global(name)), ty));
             }
             Err(anyhow!("unbound variable `{name}`"))
@@ -65,13 +65,17 @@ pub fn infer<'names, 'ast, 'core>(
         } => {
             let (callee, callee_ty) = infer(ctx, phase, func_term)?;
 
-            // For globals: verify phase from the globals table.
+            // For globals: verify that it is a function and check its phase.
             if let core::Term::Global(gname) = callee {
-                let pi = ctx
+                let ty = ctx
                     .globals
                     .get(gname)
                     .copied()
                     .ok_or_else(|| anyhow!("unknown global `{gname}`"))?;
+                let pi = match ty {
+                    core::Term::Pi(pi) => pi,
+                    _ => bail!("global `{gname}` is not a function"),
+                };
                 ensure!(
                     pi.phase == phase,
                     "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
@@ -731,7 +735,13 @@ fn check_val_impl<'names, 'ast, 'core>(
                     );
                 }
 
-                check_val(ctx, phase, body, body_ty_val)
+                // Use the closure body as the expected term rather than the instantiated
+                // value so that dependent-type arm refinement works: the match checker
+                // needs a *term* to re-evaluate under a per-arm substitution.
+                // `vpi.ret_closure.body` has De Bruijn indices that match the current
+                // context (outer params ++ function params), so `check` re-evaluating it
+                // in `ctx.value_env()` yields the same value as `body_ty_val`.
+                check(ctx, phase, body, vpi.ret_closure.body)
             })();
 
             // Pop however many params were successfully pushed, regardless of outcome.

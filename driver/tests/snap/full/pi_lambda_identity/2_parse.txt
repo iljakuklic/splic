@@ -1,119 +1,133 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "test_id",
-            params: [],
-            ret_ty: "u64",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "id",
-                        ty: None,
-                        expr: Lam {
-                            params: [
-                                Param {
-                                    name: "T",
-                                    ty: "Type",
-                                },
-                            ],
-                            ret_ty: None,
-                            body: Lam {
-                                params: [
-                                    Param {
-                                        name: "x",
-                                        ty: "T",
-                                    },
-                                ],
-                                ret_ty: None,
-                                body: "x",
-                            },
-                        },
-                    },
-                    Let {
-                        name: "_",
-                        ty: None,
-                        expr: App {
-                            func: App {
-                                func: "id",
-                                args: [
-                                    "u32",
-                                ],
-                            },
-                            args: [
-                                67,
-                            ],
-                        },
-                    },
-                ],
-                expr: App {
-                    func: App {
-                        func: "id",
-                        args: [
-                            "u64",
-                        ],
-                    },
-                    args: [
-                        42,
-                    ],
-                },
+            ty: Pi {
+                params: [],
+                ret_ty: "u64",
             },
-        },
-        Function {
-            phase: Meta,
-            name: "test_id_u8",
-            params: [],
-            ret_ty: "u8",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "id",
-                        ty: None,
-                        expr: Lam {
-                            params: [
-                                Param {
-                                    name: "T",
-                                    ty: "Type",
-                                },
-                            ],
-                            ret_ty: None,
-                            body: Lam {
+            expr: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [
+                        Let {
+                            name: "id",
+                            ty: None,
+                            expr: Lam {
                                 params: [
                                     Param {
-                                        name: "x",
-                                        ty: "T",
+                                        name: "T",
+                                        ty: "Type",
                                     },
                                 ],
                                 ret_ty: None,
-                                body: "x",
+                                body: Lam {
+                                    params: [
+                                        Param {
+                                            name: "x",
+                                            ty: "T",
+                                        },
+                                    ],
+                                    ret_ty: None,
+                                    body: "x",
+                                },
                             },
                         },
-                    },
-                    Let {
-                        name: "id_u8",
-                        ty: None,
-                        expr: App {
+                        Let {
+                            name: "_",
+                            ty: None,
+                            expr: App {
+                                func: App {
+                                    func: "id",
+                                    args: [
+                                        "u32",
+                                    ],
+                                },
+                                args: [
+                                    67,
+                                ],
+                            },
+                        },
+                    ],
+                    expr: App {
+                        func: App {
                             func: "id",
                             args: [
-                                "u8",
+                                "u64",
                             ],
                         },
+                        args: [
+                            42,
+                        ],
                     },
-                ],
-                expr: App {
-                    func: "id_u8",
-                    args: [
-                        7,
-                    ],
                 },
             },
         },
-        Function {
+        GlobalDef {
+            phase: Meta,
+            name: "test_id_u8",
+            ty: Pi {
+                params: [],
+                ret_ty: "u8",
+            },
+            expr: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [
+                        Let {
+                            name: "id",
+                            ty: None,
+                            expr: Lam {
+                                params: [
+                                    Param {
+                                        name: "T",
+                                        ty: "Type",
+                                    },
+                                ],
+                                ret_ty: None,
+                                body: Lam {
+                                    params: [
+                                        Param {
+                                            name: "x",
+                                            ty: "T",
+                                        },
+                                    ],
+                                    ret_ty: None,
+                                    body: "x",
+                                },
+                            },
+                        },
+                        Let {
+                            name: "id_u8",
+                            ty: None,
+                            expr: App {
+                                func: "id",
+                                args: [
+                                    "u8",
+                                ],
+                            },
+                        },
+                    ],
+                    expr: App {
+                        func: "id_u8",
+                        args: [
+                            7,
+                        ],
+                    },
+                },
+            },
+        },
+        GlobalDef {
             phase: Object,
             name: "result_u64",
-            params: [],
-            ret_ty: "u64",
-            body: Block {
+            ty: Pi {
+                params: [],
+                ret_ty: "u64",
+            },
+            expr: Block {
                 stmts: [],
                 expr: Splice(
                     App {
@@ -123,12 +137,14 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result_u8",
-            params: [],
-            ret_ty: "u8",
-            body: Block {
+            ty: Pi {
+                params: [],
+                ret_ty: "u8",
+            },
+            expr: Block {
                 stmts: [],
                 expr: Splice(
                     App {

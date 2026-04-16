@@ -1,2 +1,2 @@
 ERROR
-in function `test`: in argument 0 of function call: lambda parameter type mismatch: annotation gives a different type than the expected function type
+in definition `test`: in argument 0 of function call: lambda parameter type mismatch: annotation gives a different type than the expected function type

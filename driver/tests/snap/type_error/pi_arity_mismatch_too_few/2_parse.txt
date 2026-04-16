@@ -1,42 +1,63 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "add",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-                Param {
-                    name: "y",
-                    ty: "u64",
-                },
-            ],
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: Add,
-                    args: [
-                        "x",
-                        "y",
-                    ],
+            ty: Pi {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                    Param {
+                        name: "y",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: "u64",
+            },
+            expr: Lam {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                    Param {
+                        name: "y",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Add,
+                        args: [
+                            "x",
+                            "y",
+                        ],
+                    },
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: "add",
-                    args: [
-                        1,
-                    ],
+            ty: Pi {
+                params: [],
+                ret_ty: "u64",
+            },
+            expr: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: "add",
+                        args: [
+                            1,
+                        ],
+                    },
                 },
             },
         },

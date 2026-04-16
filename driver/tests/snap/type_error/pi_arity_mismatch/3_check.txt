@@ -1,2 +1,2 @@
 ERROR
-in function `apply`: wrong number of arguments: callee expects 1, got 2
+in definition `apply`: wrong number of arguments: callee expects 1, got 2

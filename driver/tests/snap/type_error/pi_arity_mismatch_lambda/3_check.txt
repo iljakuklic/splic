@@ -1,2 +1,2 @@
 ERROR
-in function `too_few`: in let binding `foo`: wrong number of arguments: callee expects 2, got 1
+in definition `too_few`: in let binding `foo`: wrong number of arguments: callee expects 2, got 1

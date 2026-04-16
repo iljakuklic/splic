@@ -1,2 +1,2 @@
 ERROR
-in function `test`: callee is not a function
+in definition `test`: callee is not a function

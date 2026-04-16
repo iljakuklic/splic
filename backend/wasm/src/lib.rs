@@ -20,15 +20,19 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
     let mut exports = ExportSection::new();
     let mut code = CodeSection::new();
 
-    for (func_idx, func) in program.functions.iter().enumerate() {
+    for (func_idx, func) in program.defs.iter().enumerate() {
+        // All defs in the staged output are object-level functions (Term::Pi).
+        let pi = match func.ty {
+            splic_compiler::core::Term::Pi(pi) => pi,
+            _ => unreachable!("staged program contains a non-function def (unstager invariant)"),
+        };
         // Extract Wasm signature from the Pi type.
-        let param_valtypes: Vec<_> = func
-            .ty
+        let param_valtypes: Vec<_> = pi
             .params
             .iter()
             .map(|(_, ty)| term_to_valtype(ty))
             .collect();
-        let result_valtype = term_to_valtype(func.ty.body_ty);
+        let result_valtype = term_to_valtype(pi.body_ty);
 
         let type_idx =
             u32::try_from(func_idx).map_err(|_| anyhow!("too many functions (> u32::MAX)"))?;
