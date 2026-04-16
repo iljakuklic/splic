@@ -27,10 +27,24 @@ fn collect_signatures_two_functions() {
         ty: add_param_ty,
     }]);
 
-    let id_ty = src_arena.alloc(ast::Term::Pi { params: id_params, ret_ty: id_ret_ty });
-    let id_body_lam = src_arena.alloc(ast::Term::Lam { params: id_params, ret_ty: None, body: id_body });
-    let add_ty = src_arena.alloc(ast::Term::Pi { params: add_params, ret_ty: add_ret_ty });
-    let add_body_lam = src_arena.alloc(ast::Term::Lam { params: add_params, ret_ty: None, body: add_body });
+    let id_ty = src_arena.alloc(ast::Term::Pi {
+        params: id_params,
+        ret_ty: id_ret_ty,
+    });
+    let id_body_lam = src_arena.alloc(ast::Term::Lam {
+        params: id_params,
+        ret_ty: None,
+        body: id_body,
+    });
+    let add_ty = src_arena.alloc(ast::Term::Pi {
+        params: add_params,
+        ret_ty: add_ret_ty,
+    });
+    let add_body_lam = src_arena.alloc(ast::Term::Lam {
+        params: add_params,
+        ret_ty: None,
+        body: add_body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([
         ast::GlobalDef {
             phase: Phase::Meta,
@@ -52,8 +66,12 @@ fn collect_signatures_two_functions() {
 
     assert_eq!(globals.len(), 2);
 
-    let id_ty = *globals.get(&Name::new("id")).expect("id should be in globals");
-    let core::Term::Pi(pi) = id_ty else { panic!("id should have Pi type") };
+    let id_ty = *globals
+        .get(&Name::new("id"))
+        .expect("id should be in globals");
+    let core::Term::Pi(pi) = id_ty else {
+        panic!("id should have Pi type")
+    };
     assert_eq!(pi.phase, Phase::Meta);
     assert_eq!(pi.params.len(), 1);
     assert_eq!(pi.params[0].0.as_str(), "x");
@@ -72,8 +90,12 @@ fn collect_signatures_two_functions() {
         }))
     ));
 
-    let add_ty = *globals.get(&Name::new("add_one")).expect("add_one should be in globals");
-    let core::Term::Pi(pi) = add_ty else { panic!("add_one should have Pi type") };
+    let add_ty = *globals
+        .get(&Name::new("add_one"))
+        .expect("add_one should be in globals");
+    let core::Term::Pi(pi) = add_ty else {
+        panic!("add_one should have Pi type")
+    };
     assert_eq!(pi.phase, Phase::Object);
     assert_eq!(pi.params.len(), 1);
     assert_eq!(pi.params[0].0.as_str(), "y");
@@ -105,8 +127,15 @@ fn collect_signatures_lift_in_object_fn_fails() {
     ));
     let body = src_arena.alloc(ast::Term::Lit(0));
 
-    let ty = src_arena.alloc(ast::Term::Pi { params: &[], ret_ty: lifted_ret });
-    let body_lam = src_arena.alloc(ast::Term::Lam { params: &[], ret_ty: None, body });
+    let ty = src_arena.alloc(ast::Term::Pi {
+        params: &[],
+        ret_ty: lifted_ret,
+    });
+    let body_lam = src_arena.alloc(ast::Term::Lam {
+        params: &[],
+        ret_ty: None,
+        body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Object,
         name: ast::Name::new("bad"),
@@ -137,7 +166,11 @@ fn collect_signatures_type_universe_in_object_fn_fails() {
     }]);
 
     let ty = src_arena.alloc(ast::Term::Pi { params, ret_ty });
-    let body_lam = src_arena.alloc(ast::Term::Lam { params, ret_ty: None, body });
+    let body_lam = src_arena.alloc(ast::Term::Lam {
+        params,
+        ret_ty: None,
+        body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Object,
         name: ast::Name::new("bad"),
@@ -162,8 +195,15 @@ fn collect_signatures_vmtype_in_meta_fn_fails() {
     let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("VmType")));
     let body = src_arena.alloc(ast::Term::Lit(0));
 
-    let ty = src_arena.alloc(ast::Term::Pi { params: &[], ret_ty });
-    let body_lam = src_arena.alloc(ast::Term::Lam { params: &[], ret_ty: None, body });
+    let ty = src_arena.alloc(ast::Term::Pi {
+        params: &[],
+        ret_ty,
+    });
+    let body_lam = src_arena.alloc(ast::Term::Lam {
+        params: &[],
+        ret_ty: None,
+        body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Meta,
         name: ast::Name::new("bad"),
@@ -187,11 +227,28 @@ fn collect_signatures_duplicate_name_fails() {
     let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("u32")));
     let body = src_arena.alloc(ast::Term::Lit(0));
 
-    let ty = src_arena.alloc(ast::Term::Pi { params: &[], ret_ty });
-    let body_lam = src_arena.alloc(ast::Term::Lam { params: &[], ret_ty: None, body });
+    let ty = src_arena.alloc(ast::Term::Pi {
+        params: &[],
+        ret_ty,
+    });
+    let body_lam = src_arena.alloc(ast::Term::Lam {
+        params: &[],
+        ret_ty: None,
+        body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([
-        ast::GlobalDef { phase: Phase::Meta, name: ast::Name::new("foo"), ty, body: body_lam },
-        ast::GlobalDef { phase: Phase::Meta, name: ast::Name::new("foo"), ty, body: body_lam },
+        ast::GlobalDef {
+            phase: Phase::Meta,
+            name: ast::Name::new("foo"),
+            ty,
+            body: body_lam,
+        },
+        ast::GlobalDef {
+            phase: Phase::Meta,
+            name: ast::Name::new("foo"),
+            ty,
+            body: body_lam,
+        },
     ]);
     let program = ast::Program { defs };
 
@@ -218,8 +275,15 @@ fn elaborate_program_simple_identity_fn() {
     }]);
     let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("u32")));
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let ty = src_arena.alloc(ast::Term::Pi { params: param, ret_ty });
-    let body_lam = src_arena.alloc(ast::Term::Lam { params: param, ret_ty: None, body });
+    let ty = src_arena.alloc(ast::Term::Pi {
+        params: param,
+        ret_ty,
+    });
+    let body_lam = src_arena.alloc(ast::Term::Lam {
+        params: param,
+        ret_ty: None,
+        body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Meta,
         name: ast::Name::new("id"),
@@ -260,10 +324,24 @@ fn elaborate_program_code_fn_with_splice() {
     }]);
     let pow0_ret = src_arena.alloc(ast::Term::Var(ast::Name::new("u64")));
 
-    let k_ty = src_arena.alloc(ast::Term::Pi { params: &[], ret_ty: k_ret });
-    let k_body_lam = src_arena.alloc(ast::Term::Lam { params: &[], ret_ty: None, body: k_body });
-    let pow0_ty = src_arena.alloc(ast::Term::Pi { params: x_param, ret_ty: pow0_ret });
-    let pow0_body_lam = src_arena.alloc(ast::Term::Lam { params: x_param, ret_ty: None, body: pow0_body });
+    let k_ty = src_arena.alloc(ast::Term::Pi {
+        params: &[],
+        ret_ty: k_ret,
+    });
+    let k_body_lam = src_arena.alloc(ast::Term::Lam {
+        params: &[],
+        ret_ty: None,
+        body: k_body,
+    });
+    let pow0_ty = src_arena.alloc(ast::Term::Pi {
+        params: x_param,
+        ret_ty: pow0_ret,
+    });
+    let pow0_body_lam = src_arena.alloc(ast::Term::Lam {
+        params: x_param,
+        ret_ty: None,
+        body: pow0_body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([
         ast::GlobalDef {
             phase: Phase::Meta,
@@ -299,13 +377,37 @@ fn elaborate_program_forward_reference_succeeds() {
     let b_body = src_arena.alloc(ast::Term::Lit(42));
 
     let u32_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("u32")));
-    let a_ty = src_arena.alloc(ast::Term::Pi { params: &[], ret_ty: u32_ty });
-    let a_body_lam = src_arena.alloc(ast::Term::Lam { params: &[], ret_ty: None, body: a_body });
-    let b_ty = src_arena.alloc(ast::Term::Pi { params: &[], ret_ty: u32_ty });
-    let b_body_lam = src_arena.alloc(ast::Term::Lam { params: &[], ret_ty: None, body: b_body });
+    let a_ty = src_arena.alloc(ast::Term::Pi {
+        params: &[],
+        ret_ty: u32_ty,
+    });
+    let a_body_lam = src_arena.alloc(ast::Term::Lam {
+        params: &[],
+        ret_ty: None,
+        body: a_body,
+    });
+    let b_ty = src_arena.alloc(ast::Term::Pi {
+        params: &[],
+        ret_ty: u32_ty,
+    });
+    let b_body_lam = src_arena.alloc(ast::Term::Lam {
+        params: &[],
+        ret_ty: None,
+        body: b_body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([
-        ast::GlobalDef { phase: Phase::Meta, name: ast::Name::new("a"), ty: a_ty, body: a_body_lam },
-        ast::GlobalDef { phase: Phase::Meta, name: ast::Name::new("b"), ty: b_ty, body: b_body_lam },
+        ast::GlobalDef {
+            phase: Phase::Meta,
+            name: ast::Name::new("a"),
+            ty: a_ty,
+            body: a_body_lam,
+        },
+        ast::GlobalDef {
+            phase: Phase::Meta,
+            name: ast::Name::new("b"),
+            ty: b_ty,
+            body: b_body_lam,
+        },
     ]);
     let program = ast::Program { defs };
 
@@ -330,8 +432,15 @@ fn elaborate_program_return_type_mismatch_fails() {
     }]);
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x"))); // x: u64, but ret says u32
 
-    let ty = src_arena.alloc(ast::Term::Pi { params: param, ret_ty: u32_ret });
-    let body_lam = src_arena.alloc(ast::Term::Lam { params: param, ret_ty: None, body });
+    let ty = src_arena.alloc(ast::Term::Pi {
+        params: param,
+        ret_ty: u32_ret,
+    });
+    let body_lam = src_arena.alloc(ast::Term::Lam {
+        params: param,
+        ret_ty: None,
+        body,
+    });
     let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Meta,
         name: ast::Name::new("bad"),

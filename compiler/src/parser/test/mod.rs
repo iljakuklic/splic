@@ -54,7 +54,9 @@ fn parse_simple_fn() {
     assert_eq!(program.defs.len(), 1);
     let f = &program.defs[0];
     assert_eq!(f.name.as_str(), "add");
-    let ast::Term::Pi { params, .. } = f.ty else { panic!("expected Pi type") };
+    let ast::Term::Pi { params, .. } = f.ty else {
+        panic!("expected Pi type")
+    };
     assert_eq!(params.len(), 2);
 }
 

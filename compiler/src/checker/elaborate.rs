@@ -47,8 +47,7 @@ pub fn collect_signatures<'names, 'ast, 'core>(
     arena: &'core bumpalo::Bump,
     program: &ast::Program<'names, 'ast>,
 ) -> Result<HashMap<&'names core::Name, &'core core::Term<'names, 'core>>> {
-    let mut globals: HashMap<&'names core::Name, &'core core::Term<'names, 'core>> =
-        HashMap::new();
+    let mut globals: HashMap<&'names core::Name, &'core core::Term<'names, 'core>> = HashMap::new();
 
     for def in program.defs {
         let name = def.name;
@@ -104,7 +103,12 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                     .with_context(|| format!("in `{name}`"))?,
             };
 
-            Ok(core::GlobalDef { name, phase: def.phase, ty, body })
+            Ok(core::GlobalDef {
+                name,
+                phase: def.phase,
+                ty,
+                body,
+            })
         }))?;
 
     Ok(core::Program { defs })

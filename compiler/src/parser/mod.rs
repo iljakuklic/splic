@@ -185,9 +185,18 @@ where
         // Desugar: `def f(params) -> ret_ty = body`
         //       ≡  `def f: fn(params) -> ret_ty = lam(params) = body`
         let ty = self.alloc(Term::Pi { params, ret_ty });
-        let body = self.alloc(Term::Lam { params, ret_ty: None, body: body_expr });
+        let body = self.alloc(Term::Lam {
+            params,
+            ret_ty: None,
+            body: body_expr,
+        });
 
-        Ok(GlobalDef { phase, name, ty, body })
+        Ok(GlobalDef {
+            phase,
+            name,
+            ty,
+            body,
+        })
     }
 
     fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {

@@ -607,11 +607,7 @@ pub fn unstage_program<'names, 'out, 'core>(
     out_arena: &'out Bump,
     program: &'core Program<'names, 'core>,
 ) -> Result<Program<'names, 'out>> {
-    let globals: Globals<'names, '_> = program
-        .defs
-        .iter()
-        .map(|f| (f.name, f.body))
-        .collect();
+    let globals: Globals<'names, '_> = program.defs.iter().map(|f| (f.name, f.body)).collect();
 
     let staged_defs: Vec<core::GlobalDef<'names, 'out>> = program
         .defs
