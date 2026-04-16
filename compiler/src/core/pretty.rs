@@ -3,7 +3,7 @@ use std::fmt;
 use crate::common::env::Env;
 use crate::parser::ast::Phase;
 
-use super::{Arm, Function, Name, Pat, Program, Term};
+use super::{Arm, GlobalDef, Name, Pat, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -223,17 +223,17 @@ impl<'names> Arm<'names, '_> {
 
 impl fmt::Display for Program<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, func) in self.functions.iter().enumerate() {
+        for (i, defn) in self.defs.iter().enumerate() {
             if i > 0 {
                 writeln!(f)?;
             }
-            write!(f, "{func}")?;
+            write!(f, "{defn}")?;
         }
         Ok(())
     }
 }
 
-impl fmt::Display for Function<'_, '_> {
+impl fmt::Display for GlobalDef<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let pi = self.pi();
 

@@ -34,14 +34,14 @@ pub struct Arm<'names, 'a> {
 
 /// Elaborated top-level function definition.
 #[derive(Debug)]
-pub struct Function<'names, 'a> {
+pub struct GlobalDef<'names, 'a> {
     pub name: &'names Name,
     /// Function type: phase, params, and return type.
     pub ty: &'a Pi<'names, 'a>,
     pub body: &'a Term<'names, 'a>,
 }
 
-impl<'names, 'a> Function<'names, 'a> {
+impl<'names, 'a> GlobalDef<'names, 'a> {
     /// Return the function's Pi type.
     pub const fn pi(&self) -> &Pi<'names, 'a> {
         self.ty
@@ -51,7 +51,7 @@ impl<'names, 'a> Function<'names, 'a> {
 /// Elaborated program: a sequence of top-level function definitions
 #[derive(Debug)]
 pub struct Program<'names, 'a> {
-    pub functions: &'a [Function<'names, 'a>],
+    pub defs: &'a [GlobalDef<'names, 'a>],
 }
 
 /// Function or primitive application: `func(args...)`

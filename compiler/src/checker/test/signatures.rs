@@ -27,15 +27,15 @@ fn collect_signatures_two_functions() {
         ty: add_param_ty,
     }]);
 
-    let functions = src_arena.alloc_slice_fill_iter([
-        ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([
+        ast::GlobalDef {
             phase: Phase::Meta,
             name: ast::Name::new("id"),
             params: id_params,
             ret_ty: id_ret_ty,
             body: id_body,
         },
-        ast::Function {
+        ast::GlobalDef {
             phase: Phase::Object,
             name: ast::Name::new("add_one"),
             params: add_params,
@@ -43,7 +43,7 @@ fn collect_signatures_two_functions() {
             body: add_body,
         },
     ]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     let globals = super::collect_signatures(&core_arena, &program)
         .expect("collect_signatures should succeed");
@@ -105,14 +105,14 @@ fn collect_signatures_lift_in_object_fn_fails() {
     ));
     let body = src_arena.alloc(ast::Term::Lit(0));
 
-    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Object,
         name: ast::Name::new("bad"),
         params: &[],
         ret_ty: lifted_ret,
         body,
     }]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     assert!(
         super::collect_signatures(&core_arena, &program).is_err(),
@@ -135,14 +135,14 @@ fn collect_signatures_type_universe_in_object_fn_fails() {
         ty: type_ann,
     }]);
 
-    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Object,
         name: ast::Name::new("bad"),
         params,
         ret_ty,
         body,
     }]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     assert!(
         super::collect_signatures(&core_arena, &program).is_err(),
@@ -160,14 +160,14 @@ fn collect_signatures_vmtype_in_meta_fn_fails() {
     let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("VmType")));
     let body = src_arena.alloc(ast::Term::Lit(0));
 
-    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Meta,
         name: ast::Name::new("bad"),
         params: &[],
         ret_ty,
         body,
     }]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     assert!(
         super::collect_signatures(&core_arena, &program).is_err(),
@@ -184,15 +184,15 @@ fn collect_signatures_duplicate_name_fails() {
     let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("u32")));
     let body = src_arena.alloc(ast::Term::Lit(0));
 
-    let functions = src_arena.alloc_slice_fill_iter([
-        ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([
+        ast::GlobalDef {
             phase: Phase::Meta,
             name: ast::Name::new("foo"),
             params: &[],
             ret_ty,
             body,
         },
-        ast::Function {
+        ast::GlobalDef {
             phase: Phase::Meta,
             name: ast::Name::new("foo"),
             params: &[],
@@ -200,7 +200,7 @@ fn collect_signatures_duplicate_name_fails() {
             body,
         },
     ]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     assert!(
         super::collect_signatures(&core_arena, &program).is_err(),
@@ -225,14 +225,14 @@ fn elaborate_program_simple_identity_fn() {
     }]);
     let ret_ty = src_arena.alloc(ast::Term::Var(ast::Name::new("u32")));
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Meta,
         name: ast::Name::new("id"),
         params: param,
         ret_ty,
         body,
     }]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     let result = elaborate_program(&core_arena, &program);
     assert!(result.is_ok());
@@ -266,15 +266,15 @@ fn elaborate_program_code_fn_with_splice() {
     }]);
     let pow0_ret = src_arena.alloc(ast::Term::Var(ast::Name::new("u64")));
 
-    let functions = src_arena.alloc_slice_fill_iter([
-        ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([
+        ast::GlobalDef {
             phase: Phase::Meta,
             name: ast::Name::new("k"),
             params: &[],
             ret_ty: k_ret,
             body: k_body,
         },
-        ast::Function {
+        ast::GlobalDef {
             phase: Phase::Object,
             name: ast::Name::new("pow0"),
             params: x_param,
@@ -282,7 +282,7 @@ fn elaborate_program_code_fn_with_splice() {
             body: pow0_body,
         },
     ]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     let result = elaborate_program(&core_arena, &program);
     assert!(result.is_ok());
@@ -302,15 +302,15 @@ fn elaborate_program_forward_reference_succeeds() {
     // fn b() -> u32 { 42 }
     let b_body = src_arena.alloc(ast::Term::Lit(42));
 
-    let functions = src_arena.alloc_slice_fill_iter([
-        ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([
+        ast::GlobalDef {
             phase: Phase::Meta,
             name: ast::Name::new("a"),
             params: &[],
             ret_ty: src_arena.alloc(ast::Term::Var(ast::Name::new("u32"))),
             body: a_body,
         },
-        ast::Function {
+        ast::GlobalDef {
             phase: Phase::Meta,
             name: ast::Name::new("b"),
             params: &[],
@@ -318,7 +318,7 @@ fn elaborate_program_forward_reference_succeeds() {
             body: b_body,
         },
     ]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     let result = elaborate_program(&core_arena, &program);
     assert!(result.is_ok());
@@ -341,14 +341,14 @@ fn elaborate_program_return_type_mismatch_fails() {
     }]);
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x"))); // x: u64, but ret says u32
 
-    let functions = src_arena.alloc_slice_fill_iter([ast::Function {
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
         phase: Phase::Meta,
         name: ast::Name::new("bad"),
         params: param,
         ret_ty: u32_ret,
         body,
     }]);
-    let program = ast::Program { functions };
+    let program = ast::Program { defs };
 
     assert!(elaborate_program(&core_arena, &program).is_err());
 }

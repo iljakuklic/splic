@@ -11,7 +11,7 @@ use super::infer;
 /// Elaborate one function's signature into a `Pi` (the globals table entry).
 fn elaborate_sig<'names, 'ast, 'core>(
     arena: &'core bumpalo::Bump,
-    func: &ast::Function<'names, 'ast>,
+    func: &ast::GlobalDef<'names, 'ast>,
 ) -> Result<&'core core::Pi<'names, 'core>> {
     let empty_globals: HashMap<&'names core::Name, &'core core::Pi<'names, 'core>> = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
@@ -44,15 +44,15 @@ pub fn collect_signatures<'names, 'ast, 'core>(
 ) -> Result<HashMap<&'names core::Name, &'core core::Pi<'names, 'core>>> {
     let mut globals: HashMap<&'names core::Name, &'core core::Pi<'names, 'core>> = HashMap::new();
 
-    for func in program.functions {
-        let name = func.name;
+    for def in program.defs {
+        let name = def.name;
 
         ensure!(
             !globals.contains_key(&name),
             "duplicate function name `{name}`"
         );
 
-        let ty = elaborate_sig(arena, func).with_context(|| format!("in function `{name}`"))?;
+        let ty = elaborate_sig(arena, def).with_context(|| format!("in function `{name}`"))?;
 
         globals.insert(name, ty);
     }
@@ -66,9 +66,9 @@ fn elaborate_bodies<'names, 'ast, 'core>(
     program: &ast::Program<'names, 'ast>,
     globals: &HashMap<&'names core::Name, &'core core::Pi<'names, 'core>>,
 ) -> Result<core::Program<'names, 'core>> {
-    let functions: &'core [core::Function<'names, 'core>] =
-        arena.alloc_slice_try_fill_iter(program.functions.iter().map(|func| -> Result<_> {
-            let name = func.name;
+    let defs: &'core [core::GlobalDef<'names, 'core>] =
+        arena.alloc_slice_try_fill_iter(program.defs.iter().map(|def| -> Result<_> {
+            let name = def.name;
             let pi = *globals.get(&name).expect("signature missing from pass 1");
 
             // Build a fresh context borrowing the stack-owned globals map.
@@ -82,13 +82,13 @@ fn elaborate_bodies<'names, 'ast, 'core>(
             // Elaborate the body, checking it against the declared return type.
             // Using `check` (rather than pre-evaluating) threads the core term through
             // so the checker can refine dependent return types per match arm.
-            let body = infer::check(&mut ctx, pi.phase, func.body, pi.body_ty)
+            let body = infer::check(&mut ctx, pi.phase, def.body, pi.body_ty)
                 .with_context(|| format!("in function `{name}`"))?;
 
-            Ok(core::Function { name, ty: pi, body })
+            Ok(core::GlobalDef { name, ty: pi, body })
         }))?;
 
-    Ok(core::Program { functions })
+    Ok(core::Program { defs })
 }
 
 /// Elaborate the entire program in two passes

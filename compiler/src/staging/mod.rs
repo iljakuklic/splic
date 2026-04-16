@@ -5,7 +5,7 @@ use bumpalo::Bump;
 
 use crate::common::de_bruijn;
 use crate::common::env::Env as LevelEnv;
-use crate::core::{Arm, Function, IntType, IntWidth, Name, Pat, Pi, Prim, Program, Term};
+use crate::core::{self, Arm, IntType, IntWidth, Name, Pat, Pi, Prim, Program, Term};
 use crate::parser::ast::Phase;
 
 // ── Object-level semantic values ──────────────────────────────────────────────
@@ -622,7 +622,7 @@ pub fn unstage_program<'names, 'out, 'core>(
     program: &'core Program<'names, 'core>,
 ) -> Result<Program<'names, 'out>> {
     let globals: Globals<'names, '_> = program
-        .functions
+        .defs
         .iter()
         .map(|f| {
             (
@@ -635,8 +635,8 @@ pub fn unstage_program<'names, 'out, 'core>(
         })
         .collect();
 
-    let staged_fns: Vec<Function<'names, 'out>> = program
-        .functions
+    let staged_defs: Vec<core::GlobalDef<'names, 'out>> = program
+        .defs
         .iter()
         .filter(|f| f.pi().phase.is_object())
         .map(|f| -> Result<_> {
@@ -662,7 +662,7 @@ pub fn unstage_program<'names, 'out, 'core>(
             let body_val = eval_obj(&eval_arena, &globals, &mut env, f.body)?;
             let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
 
-            Ok(Function {
+            Ok(core::GlobalDef {
                 name: f.name,
                 ty: out_arena.alloc(Pi {
                     params: staged_params,
@@ -674,6 +674,6 @@ pub fn unstage_program<'names, 'out, 'core>(
         })
         .collect::<Result<Vec<_>>>()?;
 
-    let functions = out_arena.alloc_slice_fill_iter(staged_fns);
-    Ok(Program { functions })
+    let defs = out_arena.alloc_slice_fill_iter(staged_defs);
+    Ok(Program { defs })
 }

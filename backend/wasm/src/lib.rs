@@ -20,7 +20,7 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
     let mut exports = ExportSection::new();
     let mut code = CodeSection::new();
 
-    for (func_idx, func) in program.functions.iter().enumerate() {
+    for (func_idx, func) in program.defs.iter().enumerate() {
         // Extract Wasm signature from the Pi type.
         let param_valtypes: Vec<_> = func
             .ty

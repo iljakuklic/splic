@@ -39,7 +39,7 @@ pub struct Param<'names, 'ast> {
 }
 
 #[derive(Debug)]
-pub struct Function<'names, 'ast> {
+pub struct GlobalDef<'names, 'ast> {
     pub phase: Phase,
     pub name: &'names Name,
     pub params: &'ast [Param<'names, 'ast>],
@@ -49,7 +49,7 @@ pub struct Function<'names, 'ast> {
 
 #[derive(Debug)]
 pub struct Program<'names, 'ast> {
-    pub functions: &'ast [Function<'names, 'ast>],
+    pub defs: &'ast [GlobalDef<'names, 'ast>],
 }
 
 #[derive(derive_more::Debug)]

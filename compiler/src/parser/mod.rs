@@ -5,7 +5,7 @@ use anyhow::{Context as _, Result};
 use crate::common::Precedence;
 use crate::lexer::Token;
 use crate::parser::ast::{
-    Assoc, BinOp, FunName, Function, Let, MatchArm, Name, Param, Pat, Phase, Program, Term, UnOp,
+    Assoc, BinOp, FunName, GlobalDef, Let, MatchArm, Name, Param, Pat, Phase, Term, UnOp,
 };
 
 pub mod ast;
@@ -138,17 +138,17 @@ where
         Ok(items)
     }
 
-    pub fn parse_program(&mut self) -> Result<Program<'names, 'ast>> {
-        let mut functions = Vec::new();
+    pub fn parse_program(&mut self) -> Result<ast::Program<'names, 'ast>> {
+        let mut defs = Vec::new();
         while self.peek().is_some() {
             let fun = self.parse_fn_def()?;
-            functions.push(fun);
+            defs.push(fun);
         }
-        let functions = self.arena.alloc_slice_fill_iter(functions);
-        Ok(Program { functions })
+        let defs = self.arena.alloc_slice_fill_iter(defs);
+        Ok(ast::Program { defs })
     }
 
-    fn parse_fn_def(&mut self) -> Result<Function<'names, 'ast>> {
+    fn parse_fn_def(&mut self) -> Result<GlobalDef<'names, 'ast>> {
         let phase = if self.consume_if(Token::Code) {
             Phase::Object
         } else {
@@ -166,7 +166,7 @@ where
         &mut self,
         phase: Phase,
         name: &'names Name,
-    ) -> Result<Function<'names, 'ast>> {
+    ) -> Result<GlobalDef<'names, 'ast>> {
         self.take(Token::LParen).context("expected '('")?;
         let params = self.parse_params()?;
         self.take(Token::RParen).context("expected ')'")?;
@@ -182,7 +182,7 @@ where
         self.take(Token::Semi)
             .context("expected ';' after function body")?;
 
-        Ok(Function {
+        Ok(GlobalDef {
             phase,
             name,
             params,
