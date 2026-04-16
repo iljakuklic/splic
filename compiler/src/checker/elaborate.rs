@@ -57,7 +57,7 @@ pub fn collect_signatures<'names, 'ast, 'core>(
             "duplicate function name `{name}`"
         );
 
-        let ty = elaborate_sig(arena, def).with_context(|| format!("in function `{name}`"))?;
+        let ty = elaborate_sig(arena, def).with_context(|| format!("in `{name}`"))?;
 
         globals.insert(name, ty);
     }

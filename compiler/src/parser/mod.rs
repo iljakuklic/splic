@@ -156,10 +156,15 @@ where
         };
 
         self.take(Token::Def).context("expected 'def'")?;
-        let name = self.take_ident().context("expected function name")?;
+        let name = self.take_ident().context("expected definition name")?;
 
-        self.parse_fn_def_after_name(phase, name)
-            .with_context(|| format!("in function `{name}`"))
+        if self.peek() == Some(Token::LParen) {
+            self.parse_fn_def_after_name(phase, name)
+                .with_context(|| format!("in function `{name}`"))
+        } else {
+            self.parse_const_def_after_name(phase, name)
+                .with_context(|| format!("in constant `{name}`"))
+        }
     }
 
     fn parse_fn_def_after_name(
@@ -197,6 +202,20 @@ where
             ty,
             body,
         })
+    }
+
+    fn parse_const_def_after_name(
+        &mut self,
+        phase: Phase,
+        name: &'names Name,
+    ) -> Result<GlobalDef<'names, 'ast>> {
+        self.take(Token::Colon).context("expected ':' or '('")?;
+        let ty = self.parse_expr().context("expected type")?;
+        self.take(Token::Eq).context("expected '='")?;
+        let body = self.parse_expr().context("expected body")?;
+        self.take(Token::Semi)
+            .context("expected ';' after constant definition")?;
+        Ok(GlobalDef { phase, name, ty, body })
     }
 
     fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {

@@ -1,0 +1,7 @@
+Def
+Ident("my_int")
+Colon
+Ident("Type")
+Eq
+Ident("u32")
+Semi

@@ -1,0 +1,4 @@
+code fn get_answer() -> u32 {
+    42_u32
+}
+

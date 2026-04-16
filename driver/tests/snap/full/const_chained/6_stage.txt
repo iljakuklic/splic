@@ -1,0 +1,4 @@
+code fn result() -> u32 {
+    20_u32
+}
+

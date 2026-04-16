@@ -1,0 +1,10 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Object,
+            name: "answer",
+            ty: "Type",
+            body: "u32",
+        },
+    ],
+}

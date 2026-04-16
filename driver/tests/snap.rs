@@ -71,6 +71,7 @@ impl ExpectedOutcome {
 fn expected_outcome(folder: &str) -> ExpectedOutcome {
     match folder {
         "full" | "examples" => ExpectedOutcome::run_till(Phase::Wasm),
+        "stage" => ExpectedOutcome::run_till(Phase::Stage),
         "lex" => ExpectedOutcome::run_till(Phase::Lex),
         "lex_error" => ExpectedOutcome::fail_at(Phase::Lex),
         "parse_error" => ExpectedOutcome::fail_at(Phase::Parse),
