@@ -12,11 +12,11 @@ fn check_match_all_arms_same_type_succeeds() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k32"),
-        core_arena.alloc(Pi {
+        &*core_arena.alloc(core::Term::Pi(Pi {
             params: &[],
             body_ty: u32_ty_core,
             phase: Phase::Meta,
-        }) as &_,
+        })),
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = &core::Term::U32_META;
@@ -56,11 +56,11 @@ fn check_match_u1_fully_covered_succeeds() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k1"),
-        core_arena.alloc(Pi {
+        &*core_arena.alloc(core::Term::Pi(Pi {
             params: &[],
             body_ty: u1_ty_core,
             phase: Phase::Meta,
-        }) as &_,
+        })),
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     ctx.push_local(core::Name::new("x"), u1_ty_core);
@@ -100,11 +100,11 @@ fn infer_match_u1_partially_covered_fails() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k1"),
-        core_arena.alloc(Pi {
+        &*core_arena.alloc(core::Term::Pi(Pi {
             params: &[],
             body_ty: u1_ty_core,
             phase: Phase::Meta,
-        }) as &_,
+        })),
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     ctx.push_local(core::Name::new("x"), u1_ty_core);
@@ -134,11 +134,11 @@ fn infer_match_no_catch_all_fails() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k32"),
-        core_arena.alloc(Pi {
+        &*core_arena.alloc(core::Term::Pi(Pi {
             params: &[],
             body_ty: u32_ty_core,
             phase: Phase::Meta,
-        }) as &_,
+        })),
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = &core::Term::U32_META;
@@ -180,19 +180,19 @@ fn infer_match_arms_type_mismatch_fails() {
     let mut globals = HashMap::new();
     globals.insert(
         Name::new("k32"),
-        core_arena.alloc(Pi {
+        &*core_arena.alloc(core::Term::Pi(Pi {
             params: &[],
             body_ty: u32_ty_core,
             phase: Phase::Meta,
-        }) as &_,
+        })),
     );
     globals.insert(
         Name::new("k64"),
-        core_arena.alloc(Pi {
+        &*core_arena.alloc(core::Term::Pi(Pi {
             params: &[],
             body_ty: u64_ty_core,
             phase: Phase::Meta,
-        }) as &_,
+        })),
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = &core::Term::U32_META;

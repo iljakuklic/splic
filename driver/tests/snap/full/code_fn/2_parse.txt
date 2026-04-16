@@ -1,23 +1,34 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Object,
             name: "double",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: Add,
-                    args: [
-                        "x",
-                        "x",
-                    ],
+            ty: Pi {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: "u64",
+            },
+            body: Lam {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Add,
+                        args: [
+                            "x",
+                            "x",
+                        ],
+                    },
                 },
             },
         },

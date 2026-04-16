@@ -235,35 +235,36 @@ impl fmt::Display for Program<'_, '_> {
 
 impl fmt::Display for GlobalDef<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pi = self.pi();
-
-        // Build the name environment for the body: one entry per parameter.
-        let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
-
-        // Phase prefix.
-        match pi.phase {
+        match self.phase {
             Phase::Object => write!(f, "code ")?,
             Phase::Meta => {}
         }
-        write!(f, "fn {}(", self.name)?;
 
-        // Parameters: types are printed with the env as built so far (dependent
-        // function types: earlier params are in scope for later param types).
-        for (i, (name, ty)) in pi.params.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
+        if let Term::Pi(pi) = self.ty {
+            // Function definition: display as `fn name(params) -> ret = body`.
+            let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
+            write!(f, "fn {}(", self.name)?;
+            for (i, (name, ty)) in pi.params.iter().enumerate() {
+                if i > 0 {
+                    write!(f, ", ")?;
+                }
+                write!(f, "{name}@{i}: ")?;
+                ty.fmt_expr(&mut env, 1, f)?;
+                env.push(*name);
             }
-            write!(f, "{name}@{i}: ")?;
-            ty.fmt_expr(&mut env, 1, f)?;
-            env.push(*name);
+            write!(f, ") -> ")?;
+            pi.body_ty.fmt_expr(&mut env, 1, f)?;
+            writeln!(f, " {{")?;
+            self.body.fmt_term(&mut env, 1, f)?;
+        } else {
+            // Constant definition: display as `def name: ty = body`.
+            let mut env: Env<&Name> = Env::new();
+            write!(f, "def {}: ", self.name)?;
+            self.ty.fmt_expr(&mut env, 1, f)?;
+            writeln!(f, " {{")?;
+            self.body.fmt_term(&mut env, 1, f)?;
         }
 
-        write!(f, ") -> ")?;
-        pi.body_ty.fmt_expr(&mut env, 1, f)?;
-        writeln!(f, " {{")?;
-
-        // Body in statement position at indent depth 1.
-        self.body.fmt_term(&mut env, 1, f)?;
         writeln!(f)?;
         writeln!(f, "}}")
     }

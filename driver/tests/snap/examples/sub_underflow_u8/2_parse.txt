@@ -1,34 +1,46 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "f",
-            params: [],
-            ret_ty: "u8",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: Sub,
-                    args: [
-                        5,
-                        10,
-                    ],
+            ty: Pi {
+                params: [],
+                ret_ty: "u8",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Sub,
+                        args: [
+                            5,
+                            10,
+                        ],
+                    },
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "g",
-            params: [],
-            ret_ty: "u8",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "f",
-                        args: [],
-                    },
-                ),
+            ty: Pi {
+                params: [],
+                ret_ty: "u8",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "f",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

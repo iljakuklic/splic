@@ -1,4 +1,4 @@
 code fn double(x@0: u64) -> u64 {
-    @add_u64(x@0, x@0)
+    lam(x@1: u64) = @add_u64(x@1, x@1)
 }
 

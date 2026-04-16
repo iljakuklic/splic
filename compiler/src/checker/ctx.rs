@@ -33,16 +33,15 @@ pub struct Ctx<'names, 'core, 'globals> {
     /// Local variable bindings (oldest first), each carrying name, type, and value.
     pub locals: Env<CtxEntry<'names, 'core>>,
 
-    /// Global function types: name -> Pi term.
-    /// Storing `&Term` (always a Pi) unifies type lookup for globals and locals.
+    /// Global definition types: name -> type term.
     /// Borrowed independently of the arena so the map can live on the stack.
-    pub globals: &'globals HashMap<&'names core::Name, &'core core::Pi<'names, 'core>>,
+    pub globals: &'globals HashMap<&'names core::Name, &'core core::Term<'names, 'core>>,
 }
 
 impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
     pub const fn new(
         arena: &'core bumpalo::Bump,
-        globals: &'globals HashMap<&'names core::Name, &'core core::Pi<'names, 'core>>,
+        globals: &'globals HashMap<&'names core::Name, &'core core::Term<'names, 'core>>,
     ) -> Self {
         Ctx {
             arena,

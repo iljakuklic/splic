@@ -1,43 +1,55 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "let_type",
-            params: [],
-            ret_ty: "u32",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "ty",
-                        ty: Some(
-                            "Type",
-                        ),
-                        expr: "u32",
-                    },
-                    Let {
-                        name: "x",
-                        ty: Some(
-                            "ty",
-                        ),
-                        expr: 1337,
-                    },
-                ],
-                expr: "x",
+            ty: Pi {
+                params: [],
+                ret_ty: "u32",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [
+                        Let {
+                            name: "ty",
+                            ty: Some(
+                                "Type",
+                            ),
+                            expr: "u32",
+                        },
+                        Let {
+                            name: "x",
+                            ty: Some(
+                                "ty",
+                            ),
+                            expr: 1337,
+                        },
+                    ],
+                    expr: "x",
+                },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "test",
-            params: [],
-            ret_ty: "u32",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "let_type",
-                        args: [],
-                    },
-                ),
+            ty: Pi {
+                params: [],
+                ret_ty: "u32",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "let_type",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

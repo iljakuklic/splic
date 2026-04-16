@@ -1,172 +1,249 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "compose",
-            params: [
-                Param {
-                    name: "A",
-                    ty: "Type",
-                },
-                Param {
-                    name: "B",
-                    ty: "Type",
-                },
-                Param {
-                    name: "C",
-                    ty: "Type",
-                },
-                Param {
-                    name: "f",
-                    ty: Pi {
-                        params: [
-                            Param {
-                                name: "_",
-                                ty: "B",
-                            },
-                        ],
-                        ret_ty: "C",
-                    },
-                },
-                Param {
-                    name: "g",
-                    ty: Pi {
-                        params: [
-                            Param {
-                                name: "_",
-                                ty: "A",
-                            },
-                        ],
-                        ret_ty: "B",
-                    },
-                },
-            ],
-            ret_ty: Pi {
+            ty: Pi {
                 params: [
                     Param {
-                        name: "_",
-                        ty: "A",
+                        name: "A",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "B",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "C",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "B",
+                                },
+                            ],
+                            ret_ty: "C",
+                        },
+                    },
+                    Param {
+                        name: "g",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "A",
+                                },
+                            ],
+                            ret_ty: "B",
+                        },
                     },
                 ],
-                ret_ty: "C",
-            },
-            body: Block {
-                stmts: [],
-                expr: Lam {
+                ret_ty: Pi {
                     params: [
                         Param {
-                            name: "x",
+                            name: "_",
                             ty: "A",
                         },
                     ],
-                    ret_ty: None,
-                    body: App {
-                        func: "f",
+                    ret_ty: "C",
+                },
+            },
+            body: Lam {
+                params: [
+                    Param {
+                        name: "A",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "B",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "C",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "B",
+                                },
+                            ],
+                            ret_ty: "C",
+                        },
+                    },
+                    Param {
+                        name: "g",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "A",
+                                },
+                            ],
+                            ret_ty: "B",
+                        },
+                    },
+                ],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: Lam {
+                        params: [
+                            Param {
+                                name: "x",
+                                ty: "A",
+                            },
+                        ],
+                        ret_ty: None,
+                        body: App {
+                            func: "f",
+                            args: [
+                                App {
+                                    func: "g",
+                                    args: [
+                                        "x",
+                                    ],
+                                },
+                            ],
+                        },
+                    },
+                },
+            },
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "double",
+            ty: Pi {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: "u64",
+            },
+            body: Lam {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Add,
                         args: [
-                            App {
-                                func: "g",
-                                args: [
-                                    "x",
-                                ],
+                            "x",
+                            "x",
+                        ],
+                    },
+                },
+            },
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "to_u8",
+            ty: Pi {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: "u8",
+            },
+            body: Lam {
+                params: [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: Match {
+                        scrutinee: "x",
+                        arms: [
+                            MatchArm {
+                                pat: 0,
+                                body: 0,
+                            },
+                            MatchArm {
+                                pat: 1,
+                                body: 1,
+                            },
+                            MatchArm {
+                                pat: 2,
+                                body: 2,
+                            },
+                            MatchArm {
+                                pat: "_",
+                                body: 3,
                             },
                         ],
                     },
                 },
             },
         },
-        Function {
-            phase: Meta,
-            name: "double",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: Add,
-                    args: [
-                        "x",
-                        "x",
-                    ],
-                },
-            },
-        },
-        Function {
-            phase: Meta,
-            name: "to_u8",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
-            ret_ty: "u8",
-            body: Block {
-                stmts: [],
-                expr: Match {
-                    scrutinee: "x",
-                    arms: [
-                        MatchArm {
-                            pat: 0,
-                            body: 0,
-                        },
-                        MatchArm {
-                            pat: 1,
-                            body: 1,
-                        },
-                        MatchArm {
-                            pat: 2,
-                            body: 2,
-                        },
-                        MatchArm {
-                            pat: "_",
-                            body: 3,
-                        },
-                    ],
-                },
-            },
-        },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
-            ret_ty: "u8",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: App {
-                        func: "compose",
+            ty: Pi {
+                params: [],
+                ret_ty: "u8",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: App {
+                            func: "compose",
+                            args: [
+                                "u64",
+                                "u64",
+                                "u8",
+                                "to_u8",
+                                "double",
+                            ],
+                        },
                         args: [
-                            "u64",
-                            "u64",
-                            "u8",
-                            "to_u8",
-                            "double",
+                            5,
                         ],
                     },
-                    args: [
-                        5,
-                    ],
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result",
-            params: [],
-            ret_ty: "u8",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "test",
-                        args: [],
-                    },
-                ),
+            ty: Pi {
+                params: [],
+                ret_ty: "u8",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "test",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

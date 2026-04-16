@@ -32,20 +32,14 @@ pub struct Arm<'names, 'a> {
     pub body: &'a Term<'names, 'a>,
 }
 
-/// Elaborated top-level function definition.
+/// Elaborated top-level definition (function or constant).
 #[derive(Debug)]
 pub struct GlobalDef<'names, 'a> {
     pub name: &'names Name,
-    /// Function type: phase, params, and return type.
-    pub ty: &'a Pi<'names, 'a>,
+    pub phase: Phase,
+    /// Type of the definition. Functions have a `Pi` type; constants have any type.
+    pub ty: &'a Term<'names, 'a>,
     pub body: &'a Term<'names, 'a>,
-}
-
-impl<'names, 'a> GlobalDef<'names, 'a> {
-    /// Return the function's Pi type.
-    pub const fn pi(&self) -> &Pi<'names, 'a> {
-        self.ty
-    }
 }
 
 /// Elaborated program: a sequence of top-level function definitions

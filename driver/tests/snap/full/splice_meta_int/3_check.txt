@@ -1,8 +1,8 @@
 fn val() -> u32 {
-    42_u32
+    lam() = 42_u32
 }
 
 code fn use_val() -> u32 {
-    $(@embed_u32(val()))
+    lam() = $(@embed_u32(val()))
 }
 

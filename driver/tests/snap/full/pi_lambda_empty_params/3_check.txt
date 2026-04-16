@@ -1,12 +1,12 @@
 fn make_thunk(x@0: u64) -> fn() -> u64 {
-    lam() = x@0
+    lam(x@1: u64) = lam() = x@1
 }
 
 fn test() -> u64 {
-    make_thunk(42_u64)()
+    lam() = make_thunk(42_u64)()
 }
 
 code fn result() -> u64 {
-    $(@embed_u64(test()))
+    lam() = $(@embed_u64(test()))
 }
 

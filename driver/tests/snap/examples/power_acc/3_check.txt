@@ -1,67 +1,71 @@
 fn power_acc(x@0: [[u64]], k@1: u64, r@2: [[u64]]) -> [[u64]] {
-    match k@1 {
-        0 => r@2,
-        k@3 => {
-            let odd@4: u64 = @and_u64(k@3, 1_u64);
-            #({
-                let x1@5: u64 = $(x@0);
-                $({
-                    match @eq_u64(odd@4, 1_u64) {
-                        0 => power_acc(#(@mul_u64(x1@5, x1@5)), @div_u64(k@3, 2_u64), r@2),
-                        1 => #($(power_acc(#(@mul_u64(x1@5, x1@5)), @div_u64(k@3, 2_u64), #(@mul_u64($(r@2), x1@5))))),
-                    }
+    lam(x@3: [[u64]], k@4: u64, r@5: [[u64]]) = {
+        match k@4 {
+            0 => r@5,
+            k@6 => {
+                let odd@7: u64 = @and_u64(k@6, 1_u64);
+                #({
+                    let x1@8: u64 = $(x@3);
+                    $({
+                        match @eq_u64(odd@7, 1_u64) {
+                            0 => power_acc(#(@mul_u64(x1@8, x1@8)), @div_u64(k@6, 2_u64), r@5),
+                            1 => #($(power_acc(#(@mul_u64(x1@8, x1@8)), @div_u64(k@6, 2_u64), #(@mul_u64($(r@5), x1@8))))),
+                        }
+                    })
                 })
-            })
-        },
+            },
+        }
     }
 }
 
 fn power_acc_1(x@0: [[u64]], k@1: u64) -> [[u64]] {
-    match k@1 {
-        0 => #(1_u64),
-        k@2 => {
-            let odd@3: u64 = @and_u64(k@2, 1_u64);
-            #({
-                let x1@4: u64 = $(x@0);
-                $({
-                    match @eq_u64(odd@3, 1_u64) {
-                        0 => power_acc_1(#(@mul_u64(x1@4, x1@4)), @div_u64(k@2, 2_u64)),
-                        1 => power_acc(#(@mul_u64(x1@4, x1@4)), @div_u64(k@2, 2_u64), #(x1@4)),
-                    }
+    lam(x@2: [[u64]], k@3: u64) = {
+        match k@3 {
+            0 => #(1_u64),
+            k@4 => {
+                let odd@5: u64 = @and_u64(k@4, 1_u64);
+                #({
+                    let x1@6: u64 = $(x@2);
+                    $({
+                        match @eq_u64(odd@5, 1_u64) {
+                            0 => power_acc_1(#(@mul_u64(x1@6, x1@6)), @div_u64(k@4, 2_u64)),
+                            1 => power_acc(#(@mul_u64(x1@6, x1@6)), @div_u64(k@4, 2_u64), #(x1@6)),
+                        }
+                    })
                 })
-            })
-        },
+            },
+        }
     }
 }
 
 fn power(x@0: [[u64]], k@1: u64) -> [[u64]] {
-    power_acc_1(x@0, k@1)
+    lam(x@2: [[u64]], k@3: u64) = power_acc_1(x@2, k@3)
 }
 
 code fn pow1(x@0: u64) -> u64 {
-    $(power(#(x@0), 1_u64))
+    lam(x@1: u64) = $(power(#(x@1), 1_u64))
 }
 
 code fn pow5(x@0: u64) -> u64 {
-    $(power(#(x@0), 5_u64))
+    lam(x@1: u64) = $(power(#(x@1), 5_u64))
 }
 
 code fn pow11_inc(x@0: u64) -> u64 {
-    $(power(#({
-        let y@1: u64 = @add_u64(x@0, 1_u64);
-        y@1
+    lam(x@1: u64) = $(power(#({
+        let y@2: u64 = @add_u64(x@1, 1_u64);
+        y@2
     }), 11_u64))
 }
 
 code fn pow15(x@0: u64) -> u64 {
-    $(power(#(x@0), 15_u64))
+    lam(x@1: u64) = $(power(#(x@1), 15_u64))
 }
 
 code fn pow16(x@0: u64) -> u64 {
-    $(power(#(x@0), 16_u64))
+    lam(x@1: u64) = $(power(#(x@1), 16_u64))
 }
 
 code fn pow17(x@0: u64) -> u64 {
-    $(power(#(x@0), 17_u64))
+    lam(x@1: u64) = $(power(#(x@1), 17_u64))
 }
 

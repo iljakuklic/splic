@@ -1,23 +1,27 @@
 fn test_id() -> u64 {
-    let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = lam(x@1: T@0) = x@1;
-    let _@1: u32 = id@0(u32)(67_u32);
-    id@0(u64)(42_u64)
+    lam() = {
+        let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = lam(x@1: T@0) = x@1;
+        let _@1: u32 = id@0(u32)(67_u32);
+        id@0(u64)(42_u64)
+    }
 }
 
 fn test_id_u8() -> u8 {
-    let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = {
-        let id_T@1: fn(x@1: T@0) -> T@0 = lam(x@1: T@0) = x@1;
-        id_T@1
-    };
-    let id_u8@1: fn(x@1: u8) -> u8 = id@0(u8);
-    id_u8@1(7_u8)
+    lam() = {
+        let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = {
+            let id_T@1: fn(x@1: T@0) -> T@0 = lam(x@1: T@0) = x@1;
+            id_T@1
+        };
+        let id_u8@1: fn(x@1: u8) -> u8 = id@0(u8);
+        id_u8@1(7_u8)
+    }
 }
 
 code fn result_u64() -> u64 {
-    $(@embed_u64(test_id()))
+    lam() = $(@embed_u64(test_id()))
 }
 
 code fn result_u8() -> u8 {
-    $(@embed_u8(test_id_u8()))
+    lam() = $(@embed_u8(test_id_u8()))
 }
 

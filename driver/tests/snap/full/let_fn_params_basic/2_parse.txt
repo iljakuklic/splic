@@ -1,34 +1,21 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
-            ret_ty: "u64",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "fst",
-                        ty: None,
-                        expr: Lam {
-                            params: [
-                                Param {
-                                    name: "x",
-                                    ty: "u64",
-                                },
-                                Param {
-                                    name: "y",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: None,
-                            body: "x",
-                        },
-                    },
-                    Let {
-                        name: "add",
-                        ty: Some(
-                            Pi {
+            ty: Pi {
+                params: [],
+                ret_ty: "u64",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [
+                        Let {
+                            name: "fst",
+                            ty: None,
+                            expr: Lam {
                                 params: [
                                     Param {
                                         name: "x",
@@ -39,61 +26,86 @@ Program {
                                         ty: "u64",
                                     },
                                 ],
-                                ret_ty: "u64",
+                                ret_ty: None,
+                                body: "x",
                             },
-                        ),
-                        expr: Lam {
-                            params: [
-                                Param {
-                                    name: "x",
-                                    ty: "u64",
+                        },
+                        Let {
+                            name: "add",
+                            ty: Some(
+                                Pi {
+                                    params: [
+                                        Param {
+                                            name: "x",
+                                            ty: "u64",
+                                        },
+                                        Param {
+                                            name: "y",
+                                            ty: "u64",
+                                        },
+                                    ],
+                                    ret_ty: "u64",
                                 },
-                                Param {
-                                    name: "y",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: Some(
-                                "u64",
                             ),
-                            body: App {
-                                func: Add,
+                            expr: Lam {
+                                params: [
+                                    Param {
+                                        name: "x",
+                                        ty: "u64",
+                                    },
+                                    Param {
+                                        name: "y",
+                                        ty: "u64",
+                                    },
+                                ],
+                                ret_ty: Some(
+                                    "u64",
+                                ),
+                                body: App {
+                                    func: Add,
+                                    args: [
+                                        "x",
+                                        "y",
+                                    ],
+                                },
+                            },
+                        },
+                    ],
+                    expr: App {
+                        func: "add",
+                        args: [
+                            App {
+                                func: "fst",
                                 args: [
-                                    "x",
-                                    "y",
+                                    10,
+                                    99,
                                 ],
                             },
-                        },
+                            32,
+                        ],
                     },
-                ],
-                expr: App {
-                    func: "add",
-                    args: [
-                        App {
-                            func: "fst",
-                            args: [
-                                10,
-                                99,
-                            ],
-                        },
-                        32,
-                    ],
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result",
-            params: [],
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "test",
-                        args: [],
-                    },
-                ),
+            ty: Pi {
+                params: [],
+                ret_ty: "u64",
+            },
+            body: Lam {
+                params: [],
+                ret_ty: None,
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "test",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

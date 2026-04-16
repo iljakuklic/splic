@@ -46,8 +46,8 @@ pub fn infer<'names, 'ast, 'core>(
                 return Ok((ctx.alloc(core::Term::Var(ix)), ty));
             }
             // Globals — bare reference without call
-            if let Some(pi) = ctx.globals.get(name).copied() {
-                let ty = value::eval_pi(ctx.arena, &value::Env::new(), pi);
+            if let Some(ty_term) = ctx.globals.get(name).copied() {
+                let ty = value::eval(ctx.arena, &value::Env::new(), ty_term);
                 return Ok((ctx.alloc(core::Term::Global(name)), ty));
             }
             Err(anyhow!("unbound variable `{name}`"))
@@ -65,25 +65,20 @@ pub fn infer<'names, 'ast, 'core>(
         } => {
             let (callee, callee_ty) = infer(ctx, phase, func_term)?;
 
-            // For globals: verify phase from the globals table.
-            if let core::Term::Global(gname) = callee {
-                let pi = ctx
-                    .globals
-                    .get(gname)
-                    .copied()
-                    .ok_or_else(|| anyhow!("unknown global `{gname}`"))?;
-                ensure!(
-                    pi.phase == phase,
-                    "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
-                    pi.phase,
-                );
-            }
-
             // Universal arity check: callee must be a Pi type with matching param count.
             let vpi = match &callee_ty {
                 value::Value::Pi(vpi) => vpi.clone(),
                 _ => bail!("callee is not a function"),
             };
+
+            // For globals: verify the callee's phase matches the call context.
+            if let core::Term::Global(gname) = callee {
+                ensure!(
+                    vpi.phase == phase,
+                    "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
+                    vpi.phase,
+                );
+            }
             ensure!(
                 args.len() == vpi.params.len(),
                 "wrong number of arguments: callee expects {}, got {}",

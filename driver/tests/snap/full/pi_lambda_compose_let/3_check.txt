@@ -1,22 +1,26 @@
 fn double(x@0: u64) -> u64 {
-    @add_u64(x@0, x@0)
+    lam(x@1: u64) = @add_u64(x@1, x@1)
 }
 
 fn to_u8(x@0: u64) -> u8 {
-    match x@0 {
-        0 => 0_u8,
-        1 => 1_u8,
-        2 => 2_u8,
-        _ => 3_u8,
+    lam(x@1: u64) = {
+        match x@1 {
+            0 => 0_u8,
+            1 => 1_u8,
+            2 => 2_u8,
+            _ => 3_u8,
+        }
     }
 }
 
 fn test() -> u8 {
-    let compose@0: fn(A@0: Type, B@1: Type, C@2: Type) -> fn(f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) -> fn(x@5: A@0) -> C@2 = lam(A@0: Type, B@1: Type, C@2: Type) = lam(f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) = lam(x@5: A@0) = f@3(g@4(x@5));
-    compose@0(u64, u64, u8)(to_u8, double)(5_u64)
+    lam() = {
+        let compose@0: fn(A@0: Type, B@1: Type, C@2: Type) -> fn(f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) -> fn(x@5: A@0) -> C@2 = lam(A@0: Type, B@1: Type, C@2: Type) = lam(f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) = lam(x@5: A@0) = f@3(g@4(x@5));
+        compose@0(u64, u64, u8)(to_u8, double)(5_u64)
+    }
 }
 
 code fn result() -> u8 {
-    $(@embed_u8(test()))
+    lam() = $(@embed_u8(test()))
 }
 

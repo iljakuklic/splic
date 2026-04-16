@@ -42,8 +42,9 @@ pub struct Param<'names, 'ast> {
 pub struct GlobalDef<'names, 'ast> {
     pub phase: Phase,
     pub name: &'names Name,
-    pub params: &'ast [Param<'names, 'ast>],
-    pub ret_ty: &'ast Term<'names, 'ast>,
+    /// Full type annotation. For functions this is a `Pi` term; for constants any type.
+    pub ty: &'ast Term<'names, 'ast>,
+    /// Full body. For functions this is a `Lam`; for constants any expression.
     pub body: &'ast Term<'names, 'ast>,
 }
 

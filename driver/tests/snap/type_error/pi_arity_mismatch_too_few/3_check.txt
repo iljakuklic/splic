@@ -1,2 +1,2 @@
 ERROR
-in function `test`: wrong number of arguments: callee expects 2, got 1
+in `test`: wrong number of arguments: callee expects 2, got 1

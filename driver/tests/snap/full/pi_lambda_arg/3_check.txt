@@ -1,12 +1,12 @@
 fn apply(f@0: fn(_: u64) -> u64, x@1: u64) -> u64 {
-    f@0(x@1)
+    lam(f@2: fn(_: u64) -> u64, x@3: u64) = f@2(x@3)
 }
 
 fn test() -> u64 {
-    apply(lam(x@0: u64) = @add_u64(x@0, 1_u64), 42_u64)
+    lam() = apply(lam(x@0: u64) = @add_u64(x@0, 1_u64), 42_u64)
 }
 
 code fn result() -> u64 {
-    $(@embed_u64(test()))
+    lam() = $(@embed_u64(test()))
 }
 
