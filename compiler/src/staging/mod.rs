@@ -607,13 +607,14 @@ pub fn unstage_program<'names, 'out, 'core>(
     out_arena: &'out Bump,
     program: &'core Program<'names, 'core>,
 ) -> Result<Program<'names, 'out>> {
-    // Build meta globals table: only meta-level definitions are unfolded during staging.
+    // Build globals table for eval: both meta and code-level definitions.
+    // This enables code fns to call other code fns via Global references.
     let globals: Globals<'names, '_> = program
         .defs
         .iter()
-        .filter_map(|f| match &f.global {
-            core::Global::Meta(meta) => Some((f.name, meta.body)),
-            core::Global::CodeFn(_) => None,
+        .map(|f| match &f.global {
+            core::Global::Meta(meta) => (f.name, meta.body),
+            core::Global::CodeFn(codefn) => (f.name, codefn.body),
         })
         .collect();
 
