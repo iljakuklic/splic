@@ -16,48 +16,43 @@ fn elaborate_sig<'names, 'ast, 'core>(
 ) -> Result<GlobalEntry<'names, 'core>> {
     let empty_globals: HashMap<&'names core::Name, GlobalEntry<'names, 'core>> = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
+    let universe = core::Term::universe(def.phase);
+
+    ensure!(def.phase.is_meta() || def.params.is_some(),);
+
+    let core_params = def
+        .params
+        .map(|params| {
+            arena.alloc_slice_try_fill_iter(params.iter().map(|p| -> Result<_> {
+                let ty = infer::check(&mut ctx, def.phase, p.ty, universe)?;
+                ctx.push_local(p.name, ty);
+                Ok((p.name, ty))
+            }))
+        })
+        .transpose()?;
+
+    let core_ret_ty = infer::check(&mut ctx, def.phase, def.ret_ty, universe)?;
 
     match def.phase {
         Phase::Object => {
-            let Some(params) = def.params else {
-                anyhow::bail!("object-phase constant definitions are not supported");
-            };
-            let universe = arena.alloc(core::Term::universe(Phase::Object));
-            let core_params =
-                arena.alloc_slice_try_fill_iter(params.iter().map(|p| -> Result<_> {
-                    let ty = infer::check(&mut ctx, Phase::Object, p.ty, universe)?;
-                    ctx.push_local(p.name, ty);
-                    Ok((p.name, ty))
-                }))?;
-            let core_ret_ty = infer::check(&mut ctx, Phase::Object, def.ret_ty, universe)?;
+            let core_params = core_params.ok_or_else(|| {
+                anyhow::anyhow!("object-phase constant definitions are not supported")
+            })?;
             Ok(GlobalEntry::CodeFn {
                 params: core_params,
                 ret_ty: core_ret_ty,
             })
         }
-        Phase::Meta => {
-            let universe = arena.alloc(core::Term::universe(Phase::Meta));
-            match def.params {
-                Some(params) => {
-                    let core_params =
-                        arena.alloc_slice_try_fill_iter(params.iter().map(|p| -> Result<_> {
-                            let ty = infer::check(&mut ctx, Phase::Meta, p.ty, universe)?;
-                            ctx.push_local(p.name, ty);
-                            Ok((p.name, ty))
-                        }))?;
-                    let core_ret_ty = infer::check(&mut ctx, Phase::Meta, def.ret_ty, universe)?;
-                    let pi = arena.alloc(core::Term::Pi(core::Pi {
-                        params: core_params,
-                        body_ty: core_ret_ty,
-                    }));
-                    Ok(GlobalEntry::Meta(pi))
-                }
-                None => {
-                    let core_ty = infer::check(&mut ctx, Phase::Meta, def.ret_ty, universe)?;
-                    Ok(GlobalEntry::Meta(core_ty))
-                }
+        Phase::Meta => match core_params {
+            Some(core_params) => {
+                let pi = arena.alloc(core::Term::Pi(core::Pi {
+                    params: core_params,
+                    body_ty: core_ret_ty,
+                }));
+                Ok(GlobalEntry::Meta(pi))
             }
-        }
+            None => Ok(GlobalEntry::Meta(core_ret_ty)),
+        },
     }
 }
 
@@ -126,6 +121,7 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                     // params into scope and check the body against pi.body_ty.
                     // This preserves `expected_term` through to match arm refinement —
                     // necessary for dependent return types.
+                    // See also issue #74
                     let body = match (def.params, *ty) {
                         (Some(_), core::Term::Pi(pi)) => {
                             for (param_name, param_ty) in pi.params {
