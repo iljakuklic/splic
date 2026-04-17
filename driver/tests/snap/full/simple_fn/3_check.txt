@@ -1,4 +1,4 @@
-def add(x@0: u32, y@1: u32) -> u32 {
-    lam(x@2: u32, y@3: u32) = @add_u32(x@2, y@3)
+def add: fn(x@0: u32, y@1: u32) -> u32 {
+    lam(x@0: u32, y@1: u32) = @add_u32(x@0, y@1)
 }
 

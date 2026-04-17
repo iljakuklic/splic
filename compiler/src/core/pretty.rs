@@ -241,23 +241,12 @@ impl fmt::Display for GlobalDef<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.global {
             Global::Meta(meta) => {
-                if let Term::Pi(pi) = meta.ty {
-                    // Meta function: `fn name(params) -> ret { body }`
-                    let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
-                    write!(f, "def {}(", self.name)?;
-                    fmt_params(pi.params, &mut env, 1, f)?;
-                    write!(f, ") -> ")?;
-                    pi.body_ty.fmt_expr(&mut env, 1, f)?;
-                    writeln!(f, " {{")?;
-                    meta.body.fmt_term(&mut env, 1, f)?;
-                } else {
-                    // Meta constant: `def name: ty { body }`
-                    let mut env: Env<&Name> = Env::new();
-                    write!(f, "def {}: ", self.name)?;
-                    meta.ty.fmt_expr(&mut env, 1, f)?;
-                    writeln!(f, " {{")?;
-                    meta.body.fmt_term(&mut env, 1, f)?;
-                }
+                // Meta constant: `def name: ty { body }`
+                let mut env: Env<&Name> = Env::new();
+                write!(f, "def {}: ", self.name)?;
+                meta.ty.fmt_expr(&mut env, 1, f)?;
+                writeln!(f, " {{")?;
+                meta.body.fmt_term(&mut env, 1, f)?;
             }
             Global::CodeFn(codefn) => {
                 // Object function: `code fn name(params) -> ret { body }`

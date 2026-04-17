@@ -1,11 +1,11 @@
-def get_value(b@0: u1) -> {
+def get_value: fn(b@0: u1) -> {
         match b@0 {
             0 => u0,
             1 => u16,
         }
     } {
-    lam(b@1: u1) = {
-        match b@1 {
+    lam(b@0: u1) = {
+        match b@0 {
             0 => 0_u0,
             1 => 42_u16,
         }

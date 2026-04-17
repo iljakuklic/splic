@@ -1,4 +1,4 @@
-def let_type() -> u32 {
+def let_type: fn() -> u32 {
     lam() = {
         let ty@0: Type = u32;
         let x@1: u32 = 1337_u32;

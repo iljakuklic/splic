@@ -1,12 +1,12 @@
-def apply(f@0: fn(_: u64) -> u64, x@1: u64) -> u64 {
-    lam(f@2: fn(_: u64) -> u64, x@3: u64) = f@2(x@3)
+def apply: fn(f@0: fn(_: u64) -> u64, x@1: u64) -> u64 {
+    lam(f@0: fn(_: u64) -> u64, x@1: u64) = f@0(x@1)
 }
 
-def inc(x@0: u64) -> u64 {
-    lam(x@1: u64) = @add_u64(x@1, 1_u64)
+def inc: fn(x@0: u64) -> u64 {
+    lam(x@0: u64) = @add_u64(x@0, 1_u64)
 }
 
-def test() -> u64 {
+def test: fn() -> u64 {
     lam() = apply(inc, 42_u64)
 }
 

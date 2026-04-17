@@ -1,4 +1,4 @@
-def id(x@0: u32) -> u32 {
-    lam(x@1: u32) = x@1
+def id: fn(x@0: u32) -> u32 {
+    lam(x@0: u32) = x@0
 }
 

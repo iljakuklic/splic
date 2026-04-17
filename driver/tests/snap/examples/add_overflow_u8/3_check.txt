@@ -1,4 +1,4 @@
-def f() -> u8 {
+def f: fn() -> u8 {
     lam() = @add_u8(200_u8, 100_u8)
 }
 

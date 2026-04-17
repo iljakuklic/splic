@@ -1,4 +1,4 @@
-def val() -> u32 {
+def val: fn() -> u32 {
     lam() = 42_u32
 }
 

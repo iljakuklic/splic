@@ -1,12 +1,12 @@
-def id(A@0: Type, x@1: A@0) -> A@0 {
-    lam(A@2: Type, x@3: A@2) = x@3
+def id: fn(A@0: Type, x@1: A@0) -> A@0 {
+    lam(A@0: Type, x@1: A@0) = x@1
 }
 
-def test_u64() -> u64 {
+def test_u64: fn() -> u64 {
     lam() = id(u64, 42_u64)
 }
 
-def test_u8() -> u8 {
+def test_u8: fn() -> u8 {
     lam() = id(u8, 7_u8)
 }
 

@@ -1,16 +1,16 @@
-def compose(f@0: fn(_: u64) -> u64, g@1: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
-    lam(f@2: fn(_: u64) -> u64, g@3: fn(_: u64) -> u64) = lam(x@4: u64) = f@2(g@3(x@4))
+def compose: fn(f@0: fn(_: u64) -> u64, g@1: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
+    lam(f@0: fn(_: u64) -> u64, g@1: fn(_: u64) -> u64) = lam(x@2: u64) = f@0(g@1(x@2))
 }
 
-def double(x@0: u64) -> u64 {
-    lam(x@1: u64) = @add_u64(x@1, x@1)
+def double: fn(x@0: u64) -> u64 {
+    lam(x@0: u64) = @add_u64(x@0, x@0)
 }
 
-def inc(x@0: u64) -> u64 {
-    lam(x@1: u64) = @add_u64(x@1, 1_u64)
+def inc: fn(x@0: u64) -> u64 {
+    lam(x@0: u64) = @add_u64(x@0, 1_u64)
 }
 
-def test() -> u64 {
+def test: fn() -> u64 {
     lam() = compose(double, inc)(5_u64)
 }
 

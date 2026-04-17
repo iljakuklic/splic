@@ -1,8 +1,8 @@
-def make_thunk(x@0: u64) -> fn() -> u64 {
-    lam(x@1: u64) = lam() = x@1
+def make_thunk: fn(x@0: u64) -> fn() -> u64 {
+    lam(x@0: u64) = lam() = x@0
 }
 
-def test() -> u64 {
+def test: fn() -> u64 {
     lam() = make_thunk(42_u64)()
 }
 

@@ -1,8 +1,8 @@
-def const_(A@0: Type, B@1: Type) -> fn(_: A@0) -> fn(_: B@1) -> A@0 {
-    lam(A@2: Type, B@3: Type) = lam(a@4: A@2) = lam(b@5: B@3) = a@4
+def const_: fn(A@0: Type, B@1: Type) -> fn(_: A@0) -> fn(_: B@1) -> A@0 {
+    lam(A@0: Type, B@1: Type) = lam(a@2: A@0) = lam(b@3: B@1) = a@2
 }
 
-def test() -> u64 {
+def test: fn() -> u64 {
     lam() = const_(u64, u8)(42_u64)(7_u8)
 }
 

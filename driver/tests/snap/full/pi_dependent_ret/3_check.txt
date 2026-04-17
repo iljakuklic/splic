@@ -1,12 +1,12 @@
-def const_(A@0: Type, B@1: Type, a@2: A@0, b@3: B@1) -> A@0 {
-    lam(A@4: Type, B@5: Type, a@6: A@4, b@7: B@5) = a@6
+def const_: fn(A@0: Type, B@1: Type, a@2: A@0, b@3: B@1) -> A@0 {
+    lam(A@0: Type, B@1: Type, a@2: A@0, b@3: B@1) = a@2
 }
 
-def test_u64() -> u64 {
+def test_u64: fn() -> u64 {
     lam() = const_(u64, u8, 10_u64, 7_u8)
 }
 
-def test_u8() -> u8 {
+def test_u8: fn() -> u8 {
     lam() = const_(u8, u64, 7_u8, 10_u64)
 }
 

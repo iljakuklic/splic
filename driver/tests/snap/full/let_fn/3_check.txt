@@ -1,7 +1,7 @@
-def sub(x@0: u32, y@1: u32) -> u32 {
-    lam(x@2: u32, y@3: u32) = {
-        let d@4: u32 = @sub_u32(x@2, y@3);
-        d@4
+def sub: fn(x@0: u32, y@1: u32) -> u32 {
+    lam(x@0: u32, y@1: u32) = {
+        let d@2: u32 = @sub_u32(x@0, y@1);
+        d@2
     }
 }
 

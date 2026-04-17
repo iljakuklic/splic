@@ -1,4 +1,4 @@
-def test_id() -> u64 {
+def test_id: fn() -> u64 {
     lam() = {
         let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = lam(x@1: T@0) = x@1;
         let _@1: u32 = id@0(u32)(67_u32);
@@ -6,7 +6,7 @@ def test_id() -> u64 {
     }
 }
 
-def test_id_u8() -> u8 {
+def test_id_u8: fn() -> u8 {
     lam() = {
         let id@0: fn(T@0: Type) -> fn(x@1: T@0) -> T@0 = lam(T@0: Type) = lam(x@1: T@0) = x@1;
         let id_u8@1: fn(x@1: u8) -> u8 = id@0(u8);
