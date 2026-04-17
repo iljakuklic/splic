@@ -55,7 +55,7 @@ fn parse_simple_fn() {
     let f = &program.defs[0];
     assert_eq!(f.name.as_str(), "add");
     assert!(f.phase.is_meta());
-    assert_eq!(f.params.map(|p| p.len()), Some(2));
+    assert_eq!(f.params.map(<[_]>::len), Some(2));
 }
 
 #[test]
