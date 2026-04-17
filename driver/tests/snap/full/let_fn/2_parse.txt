@@ -1,53 +1,39 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "sub",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u32",
-                        },
-                        Param {
-                            name: "y",
-                            ty: "u32",
-                        },
-                    ],
-                    ret_ty: "u32",
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u32",
-                        },
-                        Param {
-                            name: "y",
-                            ty: "u32",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [
-                            Let {
-                                name: "d",
-                                ty: Some(
-                                    "u32",
-                                ),
-                                expr: App {
-                                    func: Sub,
-                                    args: [
-                                        "x",
-                                        "y",
-                                    ],
-                                },
-                            },
-                        ],
-                        expr: "d",
+        GlobalDef {
+            phase: Meta,
+            name: "sub",
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u32",
                     },
-                },
+                    Param {
+                        name: "y",
+                        ty: "u32",
+                    },
+                ],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "d",
+                        ty: Some(
+                            "u32",
+                        ),
+                        expr: App {
+                            func: Sub,
+                            args: [
+                                "x",
+                                "y",
+                            ],
+                        },
+                    },
+                ],
+                expr: "d",
             },
-        ),
+        },
     ],
 }

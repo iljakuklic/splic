@@ -1,122 +1,104 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "const_",
-                ty: Pi {
+        GlobalDef {
+            phase: Meta,
+            name: "const_",
+            params: Some(
+                [
+                    Param {
+                        name: "A",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "B",
+                        ty: "Type",
+                    },
+                ],
+            ),
+            ret_ty: Pi {
+                params: [
+                    Param {
+                        name: "_",
+                        ty: "A",
+                    },
+                ],
+                ret_ty: Pi {
                     params: [
                         Param {
-                            name: "A",
-                            ty: "Type",
-                        },
-                        Param {
-                            name: "B",
-                            ty: "Type",
+                            name: "_",
+                            ty: "B",
                         },
                     ],
-                    ret_ty: Pi {
+                    ret_ty: "A",
+                },
+            },
+            body: Block {
+                stmts: [],
+                expr: Lam {
+                    params: [
+                        Param {
+                            name: "a",
+                            ty: "A",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Lam {
                         params: [
                             Param {
-                                name: "_",
-                                ty: "A",
+                                name: "b",
+                                ty: "B",
                             },
                         ],
-                        ret_ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: "B",
-                                },
-                            ],
-                            ret_ty: "A",
-                        },
-                    },
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "A",
-                            ty: "Type",
-                        },
-                        Param {
-                            name: "B",
-                            ty: "Type",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: Lam {
-                            params: [
-                                Param {
-                                    name: "a",
-                                    ty: "A",
-                                },
-                            ],
-                            ret_ty: None,
-                            body: Lam {
-                                params: [
-                                    Param {
-                                        name: "b",
-                                        ty: "B",
-                                    },
-                                ],
-                                ret_ty: None,
-                                body: "a",
-                            },
-                        },
+                        ret_ty: None,
+                        body: "a",
                     },
                 },
             },
-        ),
-        Meta(
-            MetaDef {
-                name: "test",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: App {
-                                func: App {
-                                    func: "const_",
-                                    args: [
-                                        "u64",
-                                        "u8",
-                                    ],
-                                },
-                                args: [
-                                    42,
-                                ],
-                            },
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "test",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: App {
+                        func: App {
+                            func: "const_",
                             args: [
-                                7,
+                                "u64",
+                                "u8",
                             ],
                         },
+                        args: [
+                            42,
+                        ],
                     },
+                    args: [
+                        7,
+                    ],
                 },
             },
-        ),
-        Code(
-            CodeDef {
-                name: "result",
-                params: [],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "test",
-                            args: [],
-                        },
-                    ),
-                },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "result",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test",
+                        args: [],
+                    },
+                ),
             },
-        ),
+        },
     ],
 }

@@ -1,27 +1,22 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "bad",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u32",
-                },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [
-                            Let {
-                                name: "x",
-                                ty: None,
-                                expr: 42,
-                            },
-                        ],
-                        expr: "x",
+        GlobalDef {
+            phase: Meta,
+            name: "bad",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "x",
+                        ty: None,
+                        expr: 42,
                     },
-                },
+                ],
+                expr: "x",
             },
-        ),
+        },
     ],
 }

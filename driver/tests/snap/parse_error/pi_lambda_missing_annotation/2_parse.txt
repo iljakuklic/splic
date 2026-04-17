@@ -1,2 +1,2 @@
 ERROR
-in `test`: expected function body: parsing expression in block: parsing function argument: expected ':' in lambda parameter (type annotations are required): expected Colon, got RParen
+expected function body: parsing expression in block: parsing function argument: expected ':' in lambda parameter (type annotations are required): expected Colon, got RParen

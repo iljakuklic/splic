@@ -1,20 +1,21 @@
 Program {
     defs: [
-        Code(
-            CodeDef {
-                name: "pow5",
-                params: [
+        GlobalDef {
+            phase: Object,
+            name: "pow5",
+            params: Some(
+                [
                     Param {
                         name: "x",
                         ty: "u64",
                     },
                 ],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: 15,
-                },
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: 15,
             },
-        ),
+        },
     ],
 }

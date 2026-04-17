@@ -1,43 +1,39 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "f",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u8",
+        GlobalDef {
+            phase: Meta,
+            name: "f",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u8",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Sub,
+                    args: [
+                        5,
+                        10,
+                    ],
                 },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: Sub,
-                            args: [
-                                5,
-                                10,
-                            ],
-                        },
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "g",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u8",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "f",
+                        args: [],
                     },
-                },
+                ),
             },
-        ),
-        Code(
-            CodeDef {
-                name: "g",
-                params: [],
-                ret_ty: "u8",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "f",
-                            args: [],
-                        },
-                    ),
-                },
-            },
-        ),
+        },
     ],
 }

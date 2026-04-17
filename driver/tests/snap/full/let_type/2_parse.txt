@@ -1,52 +1,48 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "let_type",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u32",
-                },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [
-                            Let {
-                                name: "ty",
-                                ty: Some(
-                                    "Type",
-                                ),
-                                expr: "u32",
-                            },
-                            Let {
-                                name: "x",
-                                ty: Some(
-                                    "ty",
-                                ),
-                                expr: 1337,
-                            },
-                        ],
-                        expr: "x",
+        GlobalDef {
+            phase: Meta,
+            name: "let_type",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "ty",
+                        ty: Some(
+                            "Type",
+                        ),
+                        expr: "u32",
                     },
-                },
+                    Let {
+                        name: "x",
+                        ty: Some(
+                            "ty",
+                        ),
+                        expr: 1337,
+                    },
+                ],
+                expr: "x",
             },
-        ),
-        Code(
-            CodeDef {
-                name: "test",
-                params: [],
-                ret_ty: "u32",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "let_type",
-                            args: [],
-                        },
-                    ),
-                },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "test",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "let_type",
+                        args: [],
+                    },
+                ),
             },
-        ),
+        },
     ],
 }

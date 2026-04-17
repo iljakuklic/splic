@@ -1,91 +1,83 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "get_value",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "b",
-                            ty: "u1",
+        GlobalDef {
+            phase: Meta,
+            name: "get_value",
+            params: Some(
+                [
+                    Param {
+                        name: "b",
+                        ty: "u1",
+                    },
+                ],
+            ),
+            ret_ty: Match {
+                scrutinee: "b",
+                arms: [
+                    MatchArm {
+                        pat: 0,
+                        body: "u0",
+                    },
+                    MatchArm {
+                        pat: 1,
+                        body: "u16",
+                    },
+                ],
+            },
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: "b",
+                    arms: [
+                        MatchArm {
+                            pat: 0,
+                            body: 0,
+                        },
+                        MatchArm {
+                            pat: 1,
+                            body: 42,
                         },
                     ],
-                    ret_ty: Match {
-                        scrutinee: "b",
-                        arms: [
-                            MatchArm {
-                                pat: 0,
-                                body: "u0",
-                            },
-                            MatchArm {
-                                pat: 1,
-                                body: "u16",
-                            },
+                },
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "result_0",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u0",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "get_value",
+                        args: [
+                            0,
                         ],
                     },
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "b",
-                            ty: "u1",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: Match {
-                            scrutinee: "b",
-                            arms: [
-                                MatchArm {
-                                    pat: 0,
-                                    body: 0,
-                                },
-                                MatchArm {
-                                    pat: 1,
-                                    body: 42,
-                                },
-                            ],
-                        },
+                ),
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "result_1",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u16",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "get_value",
+                        args: [
+                            1,
+                        ],
                     },
-                },
+                ),
             },
-        ),
-        Code(
-            CodeDef {
-                name: "result_0",
-                params: [],
-                ret_ty: "u0",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "get_value",
-                            args: [
-                                0,
-                            ],
-                        },
-                    ),
-                },
-            },
-        ),
-        Code(
-            CodeDef {
-                name: "result_1",
-                params: [],
-                ret_ty: "u16",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "get_value",
-                            args: [
-                                1,
-                            ],
-                        },
-                    ),
-                },
-            },
-        ),
+        },
     ],
 }

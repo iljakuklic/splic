@@ -1,123 +1,96 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "map_code",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "f",
-                            ty: Pi {
-                                params: [
-                                    Param {
-                                        name: "_",
-                                        ty: Lift(
-                                            "u64",
-                                        ),
-                                    },
-                                ],
-                                ret_ty: Lift(
-                                    "u64",
-                                ),
-                            },
-                        },
-                        Param {
-                            name: "x",
-                            ty: Lift(
-                                "u64",
-                            ),
-                        },
-                    ],
-                    ret_ty: Lift(
-                        "u64",
-                    ),
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "f",
-                            ty: Pi {
-                                params: [
-                                    Param {
-                                        name: "_",
-                                        ty: Lift(
-                                            "u64",
-                                        ),
-                                    },
-                                ],
-                                ret_ty: Lift(
-                                    "u64",
-                                ),
-                            },
-                        },
-                        Param {
-                            name: "x",
-                            ty: Lift(
-                                "u64",
-                            ),
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: "f",
-                            args: [
-                                "x",
+        GlobalDef {
+            phase: Meta,
+            name: "map_code",
+            params: Some(
+                [
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: Lift(
+                                        "u64",
+                                    ),
+                                },
                             ],
+                            ret_ty: Lift(
+                                "u64",
+                            ),
                         },
                     },
+                    Param {
+                        name: "x",
+                        ty: Lift(
+                            "u64",
+                        ),
+                    },
+                ],
+            ),
+            ret_ty: Lift(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "f",
+                    args: [
+                        "x",
+                    ],
                 },
             },
-        ),
-        Code(
-            CodeDef {
-                name: "double",
-                params: [
+        },
+        GlobalDef {
+            phase: Object,
+            name: "double",
+            params: Some(
+                [
                     Param {
                         name: "x",
                         ty: "u64",
                     },
                 ],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "map_code",
-                            args: [
-                                Lam {
-                                    params: [
-                                        Param {
-                                            name: "y",
-                                            ty: Lift(
-                                                "u64",
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "map_code",
+                        args: [
+                            Lam {
+                                params: [
+                                    Param {
+                                        name: "y",
+                                        ty: Lift(
+                                            "u64",
+                                        ),
+                                    },
+                                ],
+                                ret_ty: None,
+                                body: Quote(
+                                    App {
+                                        func: Add,
+                                        args: [
+                                            Splice(
+                                                "y",
                                             ),
-                                        },
-                                    ],
-                                    ret_ty: None,
-                                    body: Quote(
-                                        App {
-                                            func: Add,
-                                            args: [
-                                                Splice(
-                                                    "y",
-                                                ),
-                                                Splice(
-                                                    "y",
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                },
-                                Quote(
-                                    "x",
+                                            Splice(
+                                                "y",
+                                            ),
+                                        ],
+                                    },
                                 ),
-                            ],
-                        },
-                    ),
-                },
+                            },
+                            Quote(
+                                "x",
+                            ),
+                        ],
+                    },
+                ),
             },
-        ),
+        },
     ],
 }

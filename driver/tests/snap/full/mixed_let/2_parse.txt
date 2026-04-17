@@ -1,41 +1,42 @@
 Program {
     defs: [
-        Code(
-            CodeDef {
-                name: "foo",
-                params: [],
-                ret_ty: "u32",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        Block {
-                            stmts: [
-                                Let {
-                                    name: "y",
-                                    ty: Some(
-                                        "u32",
-                                    ),
-                                    expr: 1337,
-                                },
-                            ],
-                            expr: Quote(
-                                Block {
-                                    stmts: [
-                                        Let {
-                                            name: "z",
-                                            ty: Some(
-                                                "u32",
-                                            ),
-                                            expr: 42,
-                                        },
-                                    ],
-                                    expr: "z",
-                                },
-                            ),
-                        },
-                    ),
-                },
+        GlobalDef {
+            phase: Object,
+            name: "foo",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    Block {
+                        stmts: [
+                            Let {
+                                name: "y",
+                                ty: Some(
+                                    "u32",
+                                ),
+                                expr: 1337,
+                            },
+                        ],
+                        expr: Quote(
+                            Block {
+                                stmts: [
+                                    Let {
+                                        name: "z",
+                                        ty: Some(
+                                            "u32",
+                                        ),
+                                        expr: 42,
+                                    },
+                                ],
+                                expr: "z",
+                            },
+                        ),
+                    },
+                ),
             },
-        ),
+        },
     ],
 }

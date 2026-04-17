@@ -1,29 +1,30 @@
 Program {
     defs: [
-        Code(
-            CodeDef {
-                name: "test",
-                params: [
+        GlobalDef {
+            phase: Object,
+            name: "test",
+            params: Some(
+                [
                     Param {
                         name: "x",
                         ty: "u64",
                     },
                 ],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Lam {
-                        params: [
-                            Param {
-                                name: "y",
-                                ty: "u64",
-                            },
-                        ],
-                        ret_ty: None,
-                        body: "y",
-                    },
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Lam {
+                    params: [
+                        Param {
+                            name: "y",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: "y",
                 },
             },
-        ),
+        },
     ],
 }

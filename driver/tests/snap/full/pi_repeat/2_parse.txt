@@ -1,157 +1,126 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "repeat",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "f",
-                            ty: Pi {
-                                params: [
-                                    Param {
-                                        name: "_",
-                                        ty: Lift(
-                                            "u64",
-                                        ),
-                                    },
-                                ],
-                                ret_ty: Lift(
-                                    "u64",
-                                ),
-                            },
-                        },
-                        Param {
-                            name: "n",
-                            ty: "u64",
-                        },
-                        Param {
-                            name: "x",
-                            ty: Lift(
-                                "u64",
-                            ),
-                        },
-                    ],
-                    ret_ty: Lift(
-                        "u64",
-                    ),
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "f",
-                            ty: Pi {
-                                params: [
-                                    Param {
-                                        name: "_",
-                                        ty: Lift(
-                                            "u64",
-                                        ),
-                                    },
-                                ],
-                                ret_ty: Lift(
-                                    "u64",
-                                ),
-                            },
-                        },
-                        Param {
-                            name: "n",
-                            ty: "u64",
-                        },
-                        Param {
-                            name: "x",
-                            ty: Lift(
-                                "u64",
-                            ),
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: Match {
-                            scrutinee: "n",
-                            arms: [
-                                MatchArm {
-                                    pat: 0,
-                                    body: "x",
-                                },
-                                MatchArm {
-                                    pat: "n",
-                                    body: App {
-                                        func: "repeat",
-                                        args: [
-                                            "f",
-                                            App {
-                                                func: Sub,
-                                                args: [
-                                                    "n",
-                                                    1,
-                                                ],
-                                            },
-                                            App {
-                                                func: "f",
-                                                args: [
-                                                    "x",
-                                                ],
-                                            },
-                                        ],
-                                    },
+        GlobalDef {
+            phase: Meta,
+            name: "repeat",
+            params: Some(
+                [
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: Lift(
+                                        "u64",
+                                    ),
                                 },
                             ],
+                            ret_ty: Lift(
+                                "u64",
+                            ),
                         },
                     },
+                    Param {
+                        name: "n",
+                        ty: "u64",
+                    },
+                    Param {
+                        name: "x",
+                        ty: Lift(
+                            "u64",
+                        ),
+                    },
+                ],
+            ),
+            ret_ty: Lift(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: "n",
+                    arms: [
+                        MatchArm {
+                            pat: 0,
+                            body: "x",
+                        },
+                        MatchArm {
+                            pat: "n",
+                            body: App {
+                                func: "repeat",
+                                args: [
+                                    "f",
+                                    App {
+                                        func: Sub,
+                                        args: [
+                                            "n",
+                                            1,
+                                        ],
+                                    },
+                                    App {
+                                        func: "f",
+                                        args: [
+                                            "x",
+                                        ],
+                                    },
+                                ],
+                            },
+                        },
+                    ],
                 },
             },
-        ),
-        Code(
-            CodeDef {
-                name: "square_twice",
-                params: [
+        },
+        GlobalDef {
+            phase: Object,
+            name: "square_twice",
+            params: Some(
+                [
                     Param {
                         name: "x",
                         ty: "u64",
                     },
                 ],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "repeat",
-                            args: [
-                                Lam {
-                                    params: [
-                                        Param {
-                                            name: "y",
-                                            ty: Lift(
-                                                "u64",
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "repeat",
+                        args: [
+                            Lam {
+                                params: [
+                                    Param {
+                                        name: "y",
+                                        ty: Lift(
+                                            "u64",
+                                        ),
+                                    },
+                                ],
+                                ret_ty: None,
+                                body: Quote(
+                                    App {
+                                        func: Mul,
+                                        args: [
+                                            Splice(
+                                                "y",
                                             ),
-                                        },
-                                    ],
-                                    ret_ty: None,
-                                    body: Quote(
-                                        App {
-                                            func: Mul,
-                                            args: [
-                                                Splice(
-                                                    "y",
-                                                ),
-                                                Splice(
-                                                    "y",
-                                                ),
-                                            ],
-                                        },
-                                    ),
-                                },
-                                2,
-                                Quote(
-                                    "x",
+                                            Splice(
+                                                "y",
+                                            ),
+                                        ],
+                                    },
                                 ),
-                            ],
-                        },
-                    ),
-                },
+                            },
+                            2,
+                            Quote(
+                                "x",
+                            ),
+                        ],
+                    },
+                ),
             },
-        ),
+        },
     ],
 }

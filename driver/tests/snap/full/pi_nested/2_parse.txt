@@ -1,137 +1,101 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "apply_twice",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "f",
-                            ty: Pi {
-                                params: [
-                                    Param {
-                                        name: "_",
-                                        ty: "u64",
-                                    },
-                                ],
-                                ret_ty: "u64",
-                            },
-                        },
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "f",
-                            ty: Pi {
-                                params: [
-                                    Param {
-                                        name: "_",
-                                        ty: "u64",
-                                    },
-                                ],
-                                ret_ty: "u64",
-                            },
-                        },
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: "f",
-                            args: [
-                                App {
-                                    func: "f",
-                                    args: [
-                                        "x",
-                                    ],
+        GlobalDef {
+            phase: Meta,
+            name: "apply_twice",
+            params: Some(
+                [
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "u64",
                                 },
                             ],
+                            ret_ty: "u64",
                         },
                     },
-                },
-            },
-        ),
-        Meta(
-            MetaDef {
-                name: "inc",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: Add,
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "f",
+                    args: [
+                        App {
+                            func: "f",
                             args: [
                                 "x",
-                                1,
                             ],
                         },
+                    ],
+                },
+            },
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "inc",
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
                     },
+                ],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        "x",
+                        1,
+                    ],
                 },
             },
-        ),
-        Meta(
-            MetaDef {
-                name: "test",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u64",
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "test",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "apply_twice",
+                    args: [
+                        "inc",
+                        0,
+                    ],
                 },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: "apply_twice",
-                            args: [
-                                "inc",
-                                0,
-                            ],
-                        },
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "result",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test",
+                        args: [],
                     },
-                },
+                ),
             },
-        ),
-        Code(
-            CodeDef {
-                name: "result",
-                params: [],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "test",
-                            args: [],
-                        },
-                    ),
-                },
-            },
-        ),
+        },
     ],
 }

@@ -1,41 +1,37 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "k",
-                ty: Pi {
-                    params: [],
-                    ret_ty: Lift(
-                        "u64",
-                    ),
-                },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: Quote(
-                            0,
-                        ),
+        GlobalDef {
+            phase: Meta,
+            name: "k",
+            params: Some(
+                [],
+            ),
+            ret_ty: Lift(
+                "u64",
+            ),
+            body: Block {
+                stmts: [],
+                expr: Quote(
+                    0,
+                ),
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "zero",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "k",
+                        args: [],
                     },
-                },
+                ),
             },
-        ),
-        Code(
-            CodeDef {
-                name: "zero",
-                params: [],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "k",
-                            args: [],
-                        },
-                    ),
-                },
-            },
-        ),
+        },
     ],
 }

@@ -1,78 +1,69 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "sum_n",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "n",
-                            ty: "u64",
+        GlobalDef {
+            phase: Meta,
+            name: "sum_n",
+            params: Some(
+                [
+                    Param {
+                        name: "n",
+                        ty: "u64",
+                    },
+                ],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Match {
+                    scrutinee: "n",
+                    arms: [
+                        MatchArm {
+                            pat: 0,
+                            body: 0,
                         },
-                    ],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "n",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: Match {
-                            scrutinee: "n",
-                            arms: [
-                                MatchArm {
-                                    pat: 0,
-                                    body: 0,
-                                },
-                                MatchArm {
-                                    pat: "n",
-                                    body: App {
-                                        func: Add,
+                        MatchArm {
+                            pat: "n",
+                            body: App {
+                                func: Add,
+                                args: [
+                                    App {
+                                        func: "sum_n",
                                         args: [
                                             App {
-                                                func: "sum_n",
+                                                func: Sub,
                                                 args: [
-                                                    App {
-                                                        func: Sub,
-                                                        args: [
-                                                            "n",
-                                                            1,
-                                                        ],
-                                                    },
+                                                    "n",
+                                                    1,
                                                 ],
                                             },
-                                            "n",
                                         ],
                                     },
-                                },
-                            ],
+                                    "n",
+                                ],
+                            },
                         },
+                    ],
+                },
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "sum_to_five",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "sum_n",
+                        args: [
+                            5,
+                        ],
                     },
-                },
+                ),
             },
-        ),
-        Code(
-            CodeDef {
-                name: "sum_to_five",
-                params: [],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "sum_n",
-                            args: [
-                                5,
-                            ],
-                        },
-                    ),
-                },
-            },
-        ),
+        },
     ],
 }

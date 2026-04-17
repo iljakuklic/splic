@@ -1,45 +1,31 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "add",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u32",
-                        },
-                        Param {
-                            name: "y",
-                            ty: "u32",
-                        },
-                    ],
-                    ret_ty: "u32",
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u32",
-                        },
-                        Param {
-                            name: "y",
-                            ty: "u32",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: Add,
-                            args: [
-                                "x",
-                                "y",
-                            ],
-                        },
+        GlobalDef {
+            phase: Meta,
+            name: "add",
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u32",
                     },
+                    Param {
+                        name: "y",
+                        ty: "u32",
+                    },
+                ],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        "x",
+                        "y",
+                    ],
                 },
             },
-        ),
+        },
     ],
 }

@@ -1,79 +1,65 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "make_thunk",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: Pi {
-                        params: [],
-                        ret_ty: "u64",
+        GlobalDef {
+            phase: Meta,
+            name: "make_thunk",
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
                     },
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: Lam {
-                            params: [],
-                            ret_ty: None,
-                            body: "x",
-                        },
-                    },
-                },
-            },
-        ),
-        Meta(
-            MetaDef {
-                name: "test",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: App {
-                                func: "make_thunk",
-                                args: [
-                                    42,
-                                ],
-                            },
-                            args: [],
-                        },
-                    },
-                },
-            },
-        ),
-        Code(
-            CodeDef {
-                name: "result",
+                ],
+            ),
+            ret_ty: Pi {
                 params: [],
                 ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "test",
-                            args: [],
-                        },
-                    ),
+            },
+            body: Block {
+                stmts: [],
+                expr: Lam {
+                    params: [],
+                    ret_ty: None,
+                    body: "x",
                 },
             },
-        ),
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "test",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: App {
+                        func: "make_thunk",
+                        args: [
+                            42,
+                        ],
+                    },
+                    args: [],
+                },
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "result",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test",
+                        args: [],
+                    },
+                ),
+            },
+        },
     ],
 }

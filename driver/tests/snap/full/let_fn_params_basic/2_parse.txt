@@ -1,108 +1,104 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "test",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [
-                            Let {
-                                name: "fst",
-                                ty: None,
-                                expr: Lam {
-                                    params: [
-                                        Param {
-                                            name: "x",
-                                            ty: "u64",
-                                        },
-                                        Param {
-                                            name: "y",
-                                            ty: "u64",
-                                        },
-                                    ],
-                                    ret_ty: None,
-                                    body: "x",
+        GlobalDef {
+            phase: Meta,
+            name: "test",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [
+                    Let {
+                        name: "fst",
+                        ty: None,
+                        expr: Lam {
+                            params: [
+                                Param {
+                                    name: "x",
+                                    ty: "u64",
                                 },
-                            },
-                            Let {
-                                name: "add",
-                                ty: Some(
-                                    Pi {
-                                        params: [
-                                            Param {
-                                                name: "x",
-                                                ty: "u64",
-                                            },
-                                            Param {
-                                                name: "y",
-                                                ty: "u64",
-                                            },
-                                        ],
-                                        ret_ty: "u64",
-                                    },
-                                ),
-                                expr: Lam {
-                                    params: [
-                                        Param {
-                                            name: "x",
-                                            ty: "u64",
-                                        },
-                                        Param {
-                                            name: "y",
-                                            ty: "u64",
-                                        },
-                                    ],
-                                    ret_ty: Some(
-                                        "u64",
-                                    ),
-                                    body: App {
-                                        func: Add,
-                                        args: [
-                                            "x",
-                                            "y",
-                                        ],
-                                    },
+                                Param {
+                                    name: "y",
+                                    ty: "u64",
                                 },
-                            },
-                        ],
-                        expr: App {
-                            func: "add",
-                            args: [
-                                App {
-                                    func: "fst",
-                                    args: [
-                                        10,
-                                        99,
-                                    ],
-                                },
-                                32,
                             ],
+                            ret_ty: None,
+                            body: "x",
                         },
                     },
-                },
-            },
-        ),
-        Code(
-            CodeDef {
-                name: "result",
-                params: [],
-                ret_ty: "u64",
-                body: Block {
-                    stmts: [],
-                    expr: Splice(
-                        App {
-                            func: "test",
-                            args: [],
+                    Let {
+                        name: "add",
+                        ty: Some(
+                            Pi {
+                                params: [
+                                    Param {
+                                        name: "x",
+                                        ty: "u64",
+                                    },
+                                    Param {
+                                        name: "y",
+                                        ty: "u64",
+                                    },
+                                ],
+                                ret_ty: "u64",
+                            },
+                        ),
+                        expr: Lam {
+                            params: [
+                                Param {
+                                    name: "x",
+                                    ty: "u64",
+                                },
+                                Param {
+                                    name: "y",
+                                    ty: "u64",
+                                },
+                            ],
+                            ret_ty: Some(
+                                "u64",
+                            ),
+                            body: App {
+                                func: Add,
+                                args: [
+                                    "x",
+                                    "y",
+                                ],
+                            },
                         },
-                    ),
+                    },
+                ],
+                expr: App {
+                    func: "add",
+                    args: [
+                        App {
+                            func: "fst",
+                            args: [
+                                10,
+                                99,
+                            ],
+                        },
+                        32,
+                    ],
                 },
             },
-        ),
+        },
+        GlobalDef {
+            phase: Object,
+            name: "result",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    App {
+                        func: "test",
+                        args: [],
+                    },
+                ),
+            },
+        },
     ],
 }

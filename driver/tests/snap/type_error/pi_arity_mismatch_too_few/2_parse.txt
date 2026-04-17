@@ -1,67 +1,48 @@
 Program {
     defs: [
-        Meta(
-            MetaDef {
-                name: "add",
-                ty: Pi {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                        Param {
-                            name: "y",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [
-                        Param {
-                            name: "x",
-                            ty: "u64",
-                        },
-                        Param {
-                            name: "y",
-                            ty: "u64",
-                        },
-                    ],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: Add,
-                            args: [
-                                "x",
-                                "y",
-                            ],
-                        },
+        GlobalDef {
+            phase: Meta,
+            name: "add",
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
                     },
+                    Param {
+                        name: "y",
+                        ty: "u64",
+                    },
+                ],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: Add,
+                    args: [
+                        "x",
+                        "y",
+                    ],
                 },
             },
-        ),
-        Meta(
-            MetaDef {
-                name: "test",
-                ty: Pi {
-                    params: [],
-                    ret_ty: "u64",
-                },
-                body: Lam {
-                    params: [],
-                    ret_ty: None,
-                    body: Block {
-                        stmts: [],
-                        expr: App {
-                            func: "add",
-                            args: [
-                                1,
-                            ],
-                        },
-                    },
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "test",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u64",
+            body: Block {
+                stmts: [],
+                expr: App {
+                    func: "add",
+                    args: [
+                        1,
+                    ],
                 },
             },
-        ),
+        },
     ],
 }
