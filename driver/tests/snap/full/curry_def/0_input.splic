@@ -1,0 +1,1 @@
+def apply(A: Type)(B: Type)(f: fn(x: A) -> B)(x: A) -> B = f(x);

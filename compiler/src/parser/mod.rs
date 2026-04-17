@@ -162,23 +162,24 @@ where
         Ok(GlobalDef { phase, def })
     }
 
-    /// Parse the shared `(params)? (-> ret_ty | : ret_ty)? = body ;` syntax
-    /// used by both `def` and `let`.
+    /// Parse the shared `(params)* (-> ret_ty | : ret_ty)? = body ;` syntax
+    /// used by both `def` and `let`. Multiple `(params)` groups are collected
+    /// for curried definitions; zero groups means a simple value binding.
     fn parse_definition_body(&mut self, name: &'names Name) -> Result<Definition<'names, 'ast>> {
-        let (params, ret_ty) = if self.consume_if(Token::LParen) {
-            let params = self.parse_params()?;
+        let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::new();
+        while self.consume_if(Token::LParen) {
+            let ps = self.parse_params()?;
             self.take(Token::RParen).context("expected ')'")?;
-            let ret_ty = self
-                .consume_if(Token::Arrow)
-                .then(|| self.parse_expr().context("expected return type after '->'"))
-                .transpose()?;
-            (Some(params), ret_ty)
-        } else {
-            let ret_ty = self
-                .consume_if(Token::Colon)
+            groups.push(ps);
+        }
+        let ret_ty = if groups.is_empty() {
+            self.consume_if(Token::Colon)
                 .then(|| self.parse_expr().context("expected type after ':'"))
-                .transpose()?;
-            (None, ret_ty)
+                .transpose()?
+        } else {
+            self.consume_if(Token::Arrow)
+                .then(|| self.parse_expr().context("expected return type after '->'"))
+                .transpose()?
         };
 
         self.take(Token::Eq).context("expected '='")?;
@@ -188,6 +189,7 @@ where
         self.take(Token::Semi)
             .context("expected ';' after binding")?;
 
+        let params = self.arena.alloc_slice_fill_iter(groups);
         Ok(Definition {
             name,
             params,
@@ -366,41 +368,57 @@ where
         Ok(Term::Match { scrutinee, arms })
     }
 
-    /// Parse a function type: `fn(params) -> ret_ty`
+    /// Parse a function type: `fn(params)+ -> ret_ty`
     ///
-    /// Called after consuming the `fn` token. Each param is `name: type`.
+    /// Called after consuming the `fn` token. Multiple `(params)` groups are
+    /// desugared to nested `Pi` types at parse time.
     fn parse_fn_type(&mut self) -> Result<Term<'names, 'ast>> {
         self.take(Token::LParen)
             .context("expected '(' in function type")?;
-        let params = self.parse_params()?;
+        let first = self.parse_params()?;
         self.take(Token::RParen)
             .context("expected ')' in function type")?;
+        let mut rest: Vec<&'ast [Param<'names, 'ast>]> = Vec::new();
+        while self.consume_if(Token::LParen) {
+            rest.push(self.parse_params()?);
+            self.take(Token::RParen)
+                .context("expected ')' in function type")?;
+        }
         self.take(Token::Arrow)
             .context("expected '->' in function type")?;
         let ret_ty = self
             .parse_expr()
             .context("expected return type in function type")?;
-        Ok(Term::Pi { params, ret_ty })
+        // Desugar: fn(p1)(p2) -> T  ≡  Pi { p1, Pi { p2, T } }
+        // Allocate inner groups from inside out; outermost is returned as an owned Term.
+        let inner = rest.iter().rev().fold(ret_ty, |acc, &params| {
+            self.alloc(Term::Pi {
+                params,
+                ret_ty: acc,
+            })
+        });
+        Ok(Term::Pi {
+            params: first,
+            ret_ty: inner,
+        })
     }
 
-    /// Parse a lambda expression: `lam(params) (-> ret_ty)? = body`
+    /// Parse a lambda expression: `lam(params)+ (-> ret_ty)? = body`
     ///
-    /// Called after consuming the `lam` token.
+    /// Called after consuming the `lam` token. Multiple `(params)` groups are
+    /// desugared to nested `Lam` terms at parse time; `ret_ty` applies to the innermost.
     fn parse_lambda(&mut self) -> Result<Term<'names, 'ast>> {
         self.take(Token::LParen)
             .context("expected '(' after 'lam'")?;
-        let params_vec = self.parse_separated_list(Token::RParen, |parser| {
-            let name = parser
-                .take_ident()
-                .context("expected parameter name in lambda")?;
-            parser
-                .take(Token::Colon)
-                .context("expected ':' in lambda parameter (type annotations are required)")?;
-            let ty = parser.parse_expr().context("expected parameter type")?;
-            Ok(Param { name, ty })
-        })?;
+        let first = self.parse_params()?;
         self.take(Token::RParen)
             .context("expected ')' after lambda parameters")?;
+        let mut rest: Vec<&'ast [Param<'names, 'ast>]> = Vec::new();
+        while self.consume_if(Token::LParen) {
+            rest.push(self.parse_params()?);
+            self.take(Token::RParen)
+                .context("expected ')' after lambda parameters")?;
+        }
 
         let ret_ty = self
             .consume_if(Token::Arrow)
@@ -410,11 +428,28 @@ where
         self.take(Token::Eq)
             .context("expected '=' after lambda parameters")?;
         let body = self.parse_expr().context("expected lambda body")?;
-        let params = self.arena.alloc_slice_fill_iter(params_vec);
+
+        // Desugar: lam(p1)(p2) -> T = e  ≡  Lam { p1, None, Lam { p2, Some(T), e } }
+        // ret_ty applies to the innermost group. Allocate inner groups from inside out;
+        // the outermost is returned as an owned Term.
+        let has_rest = !rest.is_empty();
+        let inner = rest
+            .iter()
+            .rev()
+            .enumerate()
+            .fold(body, |acc, (i, &params)| {
+                let rt = if i == 0 { ret_ty } else { None };
+                self.alloc(Term::Lam {
+                    params,
+                    ret_ty: rt,
+                    body: acc,
+                })
+            });
+        let outermost_ret_ty = if has_rest { None } else { ret_ty };
         Ok(Term::Lam {
-            params,
-            ret_ty,
-            body,
+            params: first,
+            ret_ty: outermost_ret_ty,
+            body: inner,
         })
     }
 

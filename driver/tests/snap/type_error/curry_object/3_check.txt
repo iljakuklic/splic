@@ -1,0 +1,2 @@
+ERROR
+in `bad`: object-phase functions do not support curried parameter groups

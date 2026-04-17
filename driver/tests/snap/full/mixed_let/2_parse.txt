@@ -4,9 +4,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "foo",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),
@@ -17,7 +17,7 @@ Program {
                             stmts: [
                                 Definition {
                                     name: "y",
-                                    params: None,
+                                    params: [],
                                     ret_ty: Some(
                                         "u32",
                                     ),
@@ -29,7 +29,7 @@ Program {
                                     stmts: [
                                         Definition {
                                             name: "z",
-                                            params: None,
+                                            params: [],
                                             ret_ty: Some(
                                                 "u32",
                                             ),

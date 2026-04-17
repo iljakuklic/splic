@@ -1,0 +1,63 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Meta,
+            def: Definition {
+                name: "test",
+                params: [
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                    ],
+                ],
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Block {
+                    stmts: [
+                        Definition {
+                            name: "add",
+                            params: [
+                                [
+                                    Param {
+                                        name: "a",
+                                        ty: "u32",
+                                    },
+                                ],
+                                [
+                                    Param {
+                                        name: "b",
+                                        ty: "u32",
+                                    },
+                                ],
+                            ],
+                            ret_ty: Some(
+                                "u32",
+                            ),
+                            body: App {
+                                func: Add,
+                                args: [
+                                    "a",
+                                    "b",
+                                ],
+                            },
+                        },
+                    ],
+                    expr: App {
+                        func: App {
+                            func: "add",
+                            args: [
+                                "x",
+                            ],
+                        },
+                        args: [
+                            "x",
+                        ],
+                    },
+                },
+            },
+        },
+    ],
+}

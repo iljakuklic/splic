@@ -1,0 +1,4 @@
+def const: fn(A@0: Type) -> fn(B@1: Type) -> fn(_: A@0) -> fn(_: B@1) -> A@0 {
+    lam(A@0: Type) = lam(B@1: Type) = lam(x@2: A@0) = lam(y@3: B@1) = x@2
+}
+

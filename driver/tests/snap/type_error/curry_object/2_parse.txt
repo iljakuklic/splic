@@ -1,0 +1,34 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "bad",
+                params: [
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                    ],
+                    [
+                        Param {
+                            name: "y",
+                            ty: "u32",
+                        },
+                    ],
+                ],
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: App {
+                    func: Add,
+                    args: [
+                        "x",
+                        "y",
+                    ],
+                },
+            },
+        },
+    ],
+}

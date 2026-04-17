@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "const_",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "A",
@@ -15,7 +15,7 @@ Program {
                             ty: "Type",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     Pi {
                         params: [
@@ -63,9 +63,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "test",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -95,9 +95,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "result",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

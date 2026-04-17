@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "my_int",
-                params: None,
+                params: [],
                 ret_ty: Some(
                     "Type",
                 ),

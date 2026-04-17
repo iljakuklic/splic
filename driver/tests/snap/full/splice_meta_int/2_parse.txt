@@ -4,9 +4,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "val",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),
@@ -20,9 +20,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "use_val",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),

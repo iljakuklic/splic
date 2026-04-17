@@ -454,41 +454,7 @@ where
 {
     let label = || format!("in let binding `{}`", stmt.name.as_str());
 
-    let (core_expr, bind_ty_term) = if let Some(params) = stmt.params {
-        // Parameterized let: `let f(ps) (-> ret_ty)? = body`
-        // Elaborate params in order (each can depend on prior ones), push into scope.
-        let mut ps = Vec::with_capacity(params.len());
-        for p in params {
-            let ty = check_universe(ctx, phase, p.ty).with_context(label)?;
-            ctx.push_local(p.name, ty);
-            ps.push((p.name, ty));
-        }
-        let core_params = ctx.arena.alloc_slice_fill_iter(ps);
-
-        let (core_body, core_ret_ty) = if let Some(ret_ty_ast) = stmt.ret_ty {
-            let ret_ty_core = check_universe(ctx, phase, ret_ty_ast).with_context(label)?;
-            let core_body =
-                check_val(ctx, phase, stmt.body, ctx.eval(ret_ty_core)).with_context(label)?;
-            (core_body, ret_ty_core)
-        } else {
-            let (core_body, body_ty_val) = infer(ctx, phase, stmt.body).with_context(label)?;
-            (core_body, ctx.quote_val(&body_ty_val))
-        };
-
-        for _ in params {
-            ctx.pop_local();
-        }
-
-        let lam = ctx.alloc(core::Term::Lam(core::Lam {
-            params: core_params,
-            body: core_body,
-        }));
-        let pi = ctx.alloc(core::Term::Pi(core::Pi {
-            params: core_params,
-            body_ty: core_ret_ty,
-        }));
-        (lam, pi)
-    } else {
+    let (core_expr, bind_ty_term) = if stmt.params.is_empty() {
         // Simple let: `let x (: ty)? = body`
         let (core_e, bind_ty_val) = if let Some(ann) = stmt.ret_ty {
             let (ty, _) = infer(ctx, phase, ann)?;
@@ -501,6 +467,54 @@ where
         };
         let bind_ty_term = ctx.quote_val(&bind_ty_val);
         (core_e, bind_ty_term)
+    } else {
+        // Parameterized let: `let f(ps)+ (-> ret_ty)? = body`
+        // Elaborate each param group in order (params in later groups can depend on earlier
+        // groups), pushing into scope as we go.
+        let mut all_groups: Vec<&'core [(&'names core::Name, &'core core::Term<'names, 'core>)]> =
+            Vec::with_capacity(stmt.params.len());
+        let mut total_params = 0_usize;
+        for group in stmt.params {
+            let mut ps = Vec::with_capacity(group.len());
+            for p in *group {
+                let ty = check_universe(ctx, phase, p.ty).with_context(label)?;
+                ctx.push_local(p.name, ty);
+                ps.push((p.name, ty));
+            }
+            all_groups.push(ctx.arena.alloc_slice_fill_iter(ps));
+            total_params += group.len();
+        }
+
+        let (core_body, core_ret_ty) = if let Some(ret_ty_ast) = stmt.ret_ty {
+            let ret_ty_core = check_universe(ctx, phase, ret_ty_ast).with_context(label)?;
+            let core_body =
+                check_val(ctx, phase, stmt.body, ctx.eval(ret_ty_core)).with_context(label)?;
+            (core_body, ret_ty_core)
+        } else {
+            let (core_body, body_ty_val) = infer(ctx, phase, stmt.body).with_context(label)?;
+            (core_body, ctx.quote_val(&body_ty_val))
+        };
+
+        for _ in 0..total_params {
+            ctx.pop_local();
+        }
+
+        // Build nested Lam and Pi from inside out.
+        let (lam, pi) = all_groups.iter().rev().fold(
+            (core_body, core_ret_ty),
+            |(inner_body, inner_ret_ty), &group| {
+                let lam = ctx.alloc(core::Term::Lam(core::Lam {
+                    params: group,
+                    body: inner_body,
+                }));
+                let pi = ctx.alloc(core::Term::Pi(core::Pi {
+                    params: group,
+                    body_ty: inner_ret_ty,
+                }));
+                (lam, pi)
+            },
+        );
+        (lam, pi)
     };
 
     // Evaluate the bound expression so dependent references to this binding work correctly.

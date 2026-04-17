@@ -9,11 +9,11 @@ fn collect_signatures_two_functions() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
 
-    let id_params = src_arena.alloc_slice_fill_iter([ast::Param {
+    let id_params: &[ast::Param] = src_arena.alloc_slice_fill_iter([ast::Param {
         name: ast::Name::new("x"),
         ty: src_arena.alloc(ast::Term::Var(ast::Name::new("u32"))),
     }]);
-    let add_params = src_arena.alloc_slice_fill_iter([ast::Param {
+    let add_params: &[ast::Param] = src_arena.alloc_slice_fill_iter([ast::Param {
         name: ast::Name::new("y"),
         ty: src_arena.alloc(ast::Term::Var(ast::Name::new("u64"))),
     }]);
@@ -23,7 +23,7 @@ fn collect_signatures_two_functions() {
             phase: Phase::Meta,
             def: ast::Definition {
                 name: ast::Name::new("id"),
-                params: Some(id_params),
+                params: src_arena.alloc_slice_fill_iter([id_params]),
                 ret_ty: Some(src_arena.alloc(ast::Term::Var(ast::Name::new("u32")))),
                 body: src_arena.alloc(ast::Term::Var(ast::Name::new("x"))),
             },
@@ -32,7 +32,7 @@ fn collect_signatures_two_functions() {
             phase: Phase::Object,
             def: ast::Definition {
                 name: ast::Name::new("add_one"),
-                params: Some(add_params),
+                params: src_arena.alloc_slice_fill_iter([add_params]),
                 ret_ty: Some(src_arena.alloc(ast::Term::Var(ast::Name::new("u64")))),
                 body: src_arena.alloc(ast::Term::Var(ast::Name::new("y"))),
             },
@@ -106,7 +106,8 @@ fn collect_signatures_lift_in_object_fn_fails() {
         phase: Phase::Object,
         def: ast::Definition {
             name: ast::Name::new("bad"),
-            params: Some(&[]),
+            params: src_arena
+                .alloc_slice_fill_iter([src_arena.alloc_slice_fill_iter([]) as &[ast::Param]]),
             ret_ty: Some(src_arena.alloc(ast::Term::Lift(
                 src_arena.alloc(ast::Term::Var(ast::Name::new("u64"))),
             ))),
@@ -128,7 +129,7 @@ fn collect_signatures_type_universe_in_object_fn_fails() {
     let core_arena = bumpalo::Bump::new();
 
     // `code fn bad(x: Type) -> u64` — `Type` is meta-phase, illegal as object-fn param.
-    let params = src_arena.alloc_slice_fill_iter([ast::Param {
+    let params: &[ast::Param] = src_arena.alloc_slice_fill_iter([ast::Param {
         name: ast::Name::new("x"),
         ty: src_arena.alloc(ast::Term::Var(ast::Name::new("Type"))),
     }]);
@@ -136,7 +137,7 @@ fn collect_signatures_type_universe_in_object_fn_fails() {
         phase: Phase::Object,
         def: ast::Definition {
             name: ast::Name::new("bad"),
-            params: Some(params),
+            params: src_arena.alloc_slice_fill_iter([params]),
             ret_ty: Some(src_arena.alloc(ast::Term::Var(ast::Name::new("u64")))),
             body: src_arena.alloc(ast::Term::Lit(0)),
         },
@@ -160,7 +161,8 @@ fn collect_signatures_vmtype_in_meta_fn_fails() {
         phase: Phase::Meta,
         def: ast::Definition {
             name: ast::Name::new("bad"),
-            params: Some(&[]),
+            params: src_arena
+                .alloc_slice_fill_iter([src_arena.alloc_slice_fill_iter([]) as &[ast::Param]]),
             ret_ty: Some(src_arena.alloc(ast::Term::Var(ast::Name::new("VmType")))),
             body: src_arena.alloc(ast::Term::Lit(0)),
         },
@@ -186,7 +188,8 @@ fn collect_signatures_duplicate_name_fails() {
             phase: Phase::Meta,
             def: ast::Definition {
                 name: ast::Name::new("foo"),
-                params: Some(&[]),
+                params: src_arena
+                    .alloc_slice_fill_iter([src_arena.alloc_slice_fill_iter([]) as &[ast::Param]]),
                 ret_ty: Some(ret_ty),
                 body,
             },
@@ -195,7 +198,8 @@ fn collect_signatures_duplicate_name_fails() {
             phase: Phase::Meta,
             def: ast::Definition {
                 name: ast::Name::new("foo"),
-                params: Some(&[]),
+                params: src_arena
+                    .alloc_slice_fill_iter([src_arena.alloc_slice_fill_iter([]) as &[ast::Param]]),
                 ret_ty: Some(ret_ty),
                 body,
             },
@@ -219,7 +223,7 @@ fn elaborate_program_simple_identity_fn() {
     let src_arena = bumpalo::Bump::new();
     let core_arena = bumpalo::Bump::new();
 
-    let param = src_arena.alloc_slice_fill_iter([ast::Param {
+    let param: &[ast::Param] = src_arena.alloc_slice_fill_iter([ast::Param {
         name: ast::Name::new("x"),
         ty: src_arena.alloc(ast::Term::Var(ast::Name::new("u32"))),
     }]);
@@ -227,7 +231,7 @@ fn elaborate_program_simple_identity_fn() {
         phase: Phase::Meta,
         def: ast::Definition {
             name: ast::Name::new("id"),
-            params: Some(param),
+            params: src_arena.alloc_slice_fill_iter([param]),
             ret_ty: Some(src_arena.alloc(ast::Term::Var(ast::Name::new("u32")))),
             body: src_arena.alloc(ast::Term::Var(ast::Name::new("x"))),
         },
@@ -256,7 +260,7 @@ fn elaborate_program_code_fn_with_splice() {
         func: FunName::Term(src_arena.alloc(ast::Term::Var(ast::Name::new("k")))),
         args: &[],
     })));
-    let x_param = src_arena.alloc_slice_fill_iter([ast::Param {
+    let x_param: &[ast::Param] = src_arena.alloc_slice_fill_iter([ast::Param {
         name: ast::Name::new("x"),
         ty: src_arena.alloc(ast::Term::Var(ast::Name::new("u64"))),
     }]);
@@ -266,7 +270,8 @@ fn elaborate_program_code_fn_with_splice() {
             phase: Phase::Meta,
             def: ast::Definition {
                 name: ast::Name::new("k"),
-                params: Some(&[]),
+                params: src_arena
+                    .alloc_slice_fill_iter([src_arena.alloc_slice_fill_iter([]) as &[ast::Param]]),
                 ret_ty: Some(k_ret),
                 body: k_body,
             },
@@ -275,7 +280,7 @@ fn elaborate_program_code_fn_with_splice() {
             phase: Phase::Object,
             def: ast::Definition {
                 name: ast::Name::new("pow0"),
-                params: Some(x_param),
+                params: src_arena.alloc_slice_fill_iter([x_param]),
                 ret_ty: Some(src_arena.alloc(ast::Term::Var(ast::Name::new("u64")))),
                 body: pow0_body,
             },
@@ -303,7 +308,8 @@ fn elaborate_program_forward_reference_succeeds() {
             phase: Phase::Meta,
             def: ast::Definition {
                 name: ast::Name::new("a"),
-                params: Some(&[]),
+                params: src_arena
+                    .alloc_slice_fill_iter([src_arena.alloc_slice_fill_iter([]) as &[ast::Param]]),
                 ret_ty: Some(u32_ty),
                 body: a_body,
             },
@@ -312,7 +318,8 @@ fn elaborate_program_forward_reference_succeeds() {
             phase: Phase::Meta,
             def: ast::Definition {
                 name: ast::Name::new("b"),
-                params: Some(&[]),
+                params: src_arena
+                    .alloc_slice_fill_iter([src_arena.alloc_slice_fill_iter([]) as &[ast::Param]]),
                 ret_ty: Some(u32_ty),
                 body: src_arena.alloc(ast::Term::Lit(42)),
             },
@@ -333,7 +340,7 @@ fn elaborate_program_return_type_mismatch_fails() {
     // The body is a variable of type u64 but the declared return type is u32.
     // We express this by having a parameter `x: u64` and returning `x` when
     // the declared return is `u32`.
-    let param = src_arena.alloc_slice_fill_iter([ast::Param {
+    let param: &[ast::Param] = src_arena.alloc_slice_fill_iter([ast::Param {
         name: ast::Name::new("x"),
         ty: src_arena.alloc(ast::Term::Var(ast::Name::new("u64"))),
     }]);
@@ -341,7 +348,7 @@ fn elaborate_program_return_type_mismatch_fails() {
         phase: Phase::Meta,
         def: ast::Definition {
             name: ast::Name::new("bad"),
-            params: Some(param),
+            params: src_arena.alloc_slice_fill_iter([param]),
             ret_ty: Some(src_arena.alloc(ast::Term::Var(ast::Name::new("u32")))),
             body: src_arena.alloc(ast::Term::Var(ast::Name::new("x"))), // x: u64, but ret says u32
         },

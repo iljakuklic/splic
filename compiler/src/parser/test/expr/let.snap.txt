@@ -2,13 +2,13 @@ Block {
     stmts: [
         Definition {
             name: "x",
-            params: None,
+            params: [],
             ret_ty: None,
             body: 1,
         },
         Definition {
             name: "y",
-            params: None,
+            params: [],
             ret_ty: None,
             body: 2,
         },

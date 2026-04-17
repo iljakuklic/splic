@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "power_acc",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
@@ -23,7 +23,7 @@ Program {
                             ),
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     Lift(
                         "u64",
@@ -44,7 +44,7 @@ Program {
                                     stmts: [
                                         Definition {
                                             name: "odd",
-                                            params: None,
+                                            params: [],
                                             ret_ty: Some(
                                                 "u64",
                                             ),
@@ -62,7 +62,7 @@ Program {
                                             stmts: [
                                                 Definition {
                                                     name: "x1",
-                                                    params: None,
+                                                    params: [],
                                                     ret_ty: Some(
                                                         "u64",
                                                     ),
@@ -164,7 +164,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "power_acc_1",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
@@ -177,7 +177,7 @@ Program {
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     Lift(
                         "u64",
@@ -200,7 +200,7 @@ Program {
                                     stmts: [
                                         Definition {
                                             name: "odd",
-                                            params: None,
+                                            params: [],
                                             ret_ty: Some(
                                                 "u64",
                                             ),
@@ -218,7 +218,7 @@ Program {
                                             stmts: [
                                                 Definition {
                                                     name: "x1",
-                                                    params: None,
+                                                    params: [],
                                                     ret_ty: Some(
                                                         "u64",
                                                     ),
@@ -304,7 +304,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "power",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
@@ -317,7 +317,7 @@ Program {
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     Lift(
                         "u64",
@@ -339,14 +339,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "pow1",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -370,14 +370,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "pow5",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -401,14 +401,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "pow11_inc",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -423,7 +423,7 @@ Program {
                                         stmts: [
                                             Definition {
                                                 name: "y",
-                                                params: None,
+                                                params: [],
                                                 ret_ty: Some(
                                                     "u64",
                                                 ),
@@ -450,14 +450,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "pow15",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -481,14 +481,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "pow16",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -512,14 +512,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "pow17",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

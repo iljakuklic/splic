@@ -2,7 +2,7 @@ Block {
     stmts: [
         Definition {
             name: "x",
-            params: None,
+            params: [],
             ret_ty: Some(
                 "u32",
             ),

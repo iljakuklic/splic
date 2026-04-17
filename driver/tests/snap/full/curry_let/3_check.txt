@@ -1,0 +1,7 @@
+def test: fn(x@0: u32) -> u32 {
+    lam(x@0: u32) = {
+        let add@1: fn(a@1: u32) -> fn(b@2: u32) -> u32 = lam(a@1: u32) = lam(b@2: u32) = @add_u32(a@1, b@2);
+        add@1(x@0)(x@0)
+    }
+}
+

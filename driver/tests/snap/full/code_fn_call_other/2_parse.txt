@@ -4,14 +4,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "double",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -31,14 +31,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "quadruple",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

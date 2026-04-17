@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "repeat",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "f",
@@ -33,7 +33,7 @@ Program {
                             ),
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     Lift(
                         "u64",
@@ -79,14 +79,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "square_twice",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

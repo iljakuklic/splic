@@ -4,14 +4,14 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "double",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -31,14 +31,14 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "to_u8",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u8",
                 ),
@@ -72,9 +72,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "test",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u8",
                 ),
@@ -82,7 +82,7 @@ Program {
                     stmts: [
                         Definition {
                             name: "compose",
-                            params: None,
+                            params: [],
                             ret_ty: None,
                             body: Lam {
                                 params: [
@@ -178,9 +178,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "result",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u8",
                 ),

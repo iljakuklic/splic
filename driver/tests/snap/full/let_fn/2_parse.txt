@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "sub",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
@@ -15,7 +15,7 @@ Program {
                             ty: "u32",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),
@@ -23,7 +23,7 @@ Program {
                     stmts: [
                         Definition {
                             name: "d",
-                            params: None,
+                            params: [],
                             ret_ty: Some(
                                 "u32",
                             ),

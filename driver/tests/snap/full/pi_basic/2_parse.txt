@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "apply",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "f",
@@ -23,7 +23,7 @@ Program {
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -42,14 +42,14 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "inc",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -69,9 +69,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "test",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -91,9 +91,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "result",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

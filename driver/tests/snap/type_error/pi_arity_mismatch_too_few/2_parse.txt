@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "add",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
@@ -15,7 +15,7 @@ Program {
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -35,9 +35,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "test",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

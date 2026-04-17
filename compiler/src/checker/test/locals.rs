@@ -15,7 +15,7 @@ fn infer_let_annotated_infers_body_type() {
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        params: None,
+        params: &[],
         ret_ty: Some(ty_ann),
         body: expr,
     }]);
@@ -42,7 +42,7 @@ fn infer_let_unannotated_uninferrable_expr_fails() {
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        params: None,
+        params: &[],
         ret_ty: None,
         body: expr,
     }]);
@@ -64,7 +64,7 @@ fn infer_let_wrong_phase_annotation_fails() {
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        params: None,
+        params: &[],
         ret_ty: Some(ty_ann),
         body: expr,
     }]);
@@ -88,7 +88,7 @@ fn infer_let_annotation_mismatch_fails() {
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        params: None,
+        params: &[],
         ret_ty: Some(ty_ann),
         body: expr,
     }]);

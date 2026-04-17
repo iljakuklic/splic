@@ -23,39 +23,47 @@ fn elaborate_sig<'names, 'ast, 'core>(
         .ret_ty
         .ok_or_else(|| anyhow::anyhow!("global `def` requires a return type annotation"))?;
 
-    let core_params = d
-        .params
-        .map(|params| {
-            arena.alloc_slice_try_fill_iter(params.iter().map(|p| -> Result<_> {
-                let ty = infer::check(&mut ctx, def.phase, p.ty, universe)?;
-                ctx.push_local(p.name, ty);
-                Ok((p.name, ty))
-            }))
-        })
-        .transpose()?;
+    // Elaborate each param group in order, pushing params into scope so later groups
+    // (and the return type) can depend on earlier ones.
+    let mut all_groups: Vec<&'core [(&'names core::Name, &'core core::Term<'names, 'core>)]> =
+        Vec::with_capacity(d.params.len());
+    for group in d.params {
+        let core_group = arena.alloc_slice_try_fill_iter(group.iter().map(|p| -> Result<_> {
+            let ty = infer::check(&mut ctx, def.phase, p.ty, universe)?;
+            ctx.push_local(p.name, ty);
+            Ok((p.name, ty))
+        }))?;
+        all_groups.push(core_group);
+    }
 
     let core_ret_ty = infer::check(&mut ctx, def.phase, ret_ty_ast, universe)?;
 
     match def.phase {
         Phase::Object => {
-            let core_params = core_params.ok_or_else(|| {
-                anyhow::anyhow!("object-phase constant definitions are not supported")
-            })?;
-            Ok(GlobalEntry::CodeFn {
-                params: core_params,
-                ret_ty: core_ret_ty,
-            })
-        }
-        Phase::Meta => match core_params {
-            Some(core_params) => {
-                let pi = arena.alloc(core::Term::Pi(core::Pi {
-                    params: core_params,
-                    body_ty: core_ret_ty,
-                }));
-                Ok(GlobalEntry::Meta(pi))
+            let mut iter = all_groups.into_iter();
+            match (iter.next(), iter.next()) {
+                (None, _) => Err(anyhow::anyhow!(
+                    "object-phase constant definitions are not supported"
+                )),
+                (Some(params), None) => Ok(GlobalEntry::CodeFn {
+                    params,
+                    ret_ty: core_ret_ty,
+                }),
+                _ => Err(anyhow::anyhow!(
+                    "object-phase functions do not support curried parameter groups"
+                )),
             }
-            None => Ok(GlobalEntry::Meta(core_ret_ty)),
-        },
+        }
+        Phase::Meta => {
+            // Build nested Pi from inside out: fn(g0)(g1) -> T ≡ Pi{g0, Pi{g1, T}}
+            let ty = all_groups.iter().rev().fold(core_ret_ty, |inner, &group| {
+                arena.alloc(core::Term::Pi(core::Pi {
+                    params: group,
+                    body_ty: inner,
+                }))
+            });
+            Ok(GlobalEntry::Meta(ty))
+        }
     }
 }
 
@@ -120,29 +128,52 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                     else {
                         unreachable!("Meta def should have Meta entry")
                     };
-                    // For function definitions (params present → Pi signature), push the Pi
-                    // params into scope and check the body against pi.body_ty.
+                    // For function definitions (1+ param groups → Pi signature), walk the Pi
+                    // chain, push all params into scope, check the body against the innermost
+                    // body_ty, then build nested Lam wrapping from inside out.
                     // This preserves `expected_term` through to match arm refinement —
                     // necessary for dependent return types.
                     // See also issue #74 — once fixed, this can be unified with the
                     // generic path below (no special casing for Pi needed).
-                    let body = match (def.def.params, *ty) {
-                        (Some(_), core::Term::Pi(pi)) => {
-                            let core_body = infer::check_with_params(
-                                &mut ctx,
-                                Phase::Meta,
-                                pi.params,
-                                def.def.body,
-                                pi.body_ty,
-                            )
-                            .with_context(|| format!("in `{name}`"))?;
+                    let body = if def.def.params.is_empty() {
+                        infer::check(&mut ctx, Phase::Meta, def.def.body, ty)
+                            .with_context(|| format!("in `{name}`"))?
+                    } else {
+                        // Walk the Pi chain, collecting one Pi per param group and tracking
+                        // the innermost body type (used to check the definition body).
+                        let mut pi_chain: Vec<&'core core::Pi<'names, 'core>> = Vec::new();
+                        let mut cur: &'core core::Term<'names, 'core> = ty;
+                        let mut innermost_body_ty: &'core core::Term<'names, 'core> = ty;
+                        for _ in def.def.params {
+                            let core::Term::Pi(pi) = cur else {
+                                unreachable!("expected Pi type for each param group")
+                            };
+                            pi_chain.push(pi);
+                            innermost_body_ty = pi.body_ty;
+                            cur = pi.body_ty;
+                        }
+                        // Push all params from all groups into scope.
+                        for pi in &pi_chain {
+                            for (n, t) in pi.params {
+                                ctx.push_local(n, t);
+                            }
+                        }
+                        let core_body =
+                            infer::check(&mut ctx, Phase::Meta, def.def.body, innermost_body_ty)
+                                .with_context(|| format!("in `{name}`"))?;
+                        // Pop all params.
+                        for pi in &pi_chain {
+                            for _ in pi.params {
+                                ctx.pop_local();
+                            }
+                        }
+                        // Build nested Lam from inside out.
+                        pi_chain.iter().rev().fold(core_body, |inner, pi| {
                             arena.alloc(core::Term::Lam(core::Lam {
                                 params: pi.params,
-                                body: core_body,
+                                body: inner,
                             }))
-                        }
-                        _ => infer::check(&mut ctx, Phase::Meta, def.def.body, ty)
-                            .with_context(|| format!("in `{name}`"))?,
+                        })
                     };
                     core::Global::Meta(core::GlobalMeta { ty, body })
                 }

@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "answer",
-                params: None,
+                params: [],
                 ret_ty: Some(
                     "u32",
                 ),
@@ -15,9 +15,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "get_answer",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),

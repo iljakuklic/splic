@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "too_many",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "f",
@@ -23,7 +23,7 @@ Program {
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

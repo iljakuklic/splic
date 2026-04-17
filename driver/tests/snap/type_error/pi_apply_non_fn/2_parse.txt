@@ -4,9 +4,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "test",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -14,7 +14,7 @@ Program {
                     stmts: [
                         Definition {
                             name: "x",
-                            params: None,
+                            params: [],
                             ret_ty: Some(
                                 "u64",
                             ),
