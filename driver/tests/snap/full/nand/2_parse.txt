@@ -1,18 +1,20 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Object,
             name: "nand",
-            params: [
-                Param {
-                    name: "a",
-                    ty: "u1",
-                },
-                Param {
-                    name: "b",
-                    ty: "u1",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "a",
+                        ty: "u1",
+                    },
+                    Param {
+                        name: "b",
+                        ty: "u1",
+                    },
+                ],
+            ),
             ret_ty: "u1",
             body: Block {
                 stmts: [],

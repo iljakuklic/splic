@@ -1,0 +1,2 @@
+def answer: u32 = 42;
+code def get_answer() -> u32 = { $(answer) };

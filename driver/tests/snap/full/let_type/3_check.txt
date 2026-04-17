@@ -1,10 +1,12 @@
-fn let_type() -> u32 {
-    let ty@0: Type = u32;
-    let x@1: u32 = 1337_u32;
-    x@1
+def let_type: fn() -> u32 {
+    lam() = {
+        let ty@0: Type = u32;
+        let x@1: u32 = 1337_u32;
+        x@1
+    }
 }
 
-code fn test() -> u32 {
+code def test() -> u32 {
     $(@embed_u32(let_type()))
 }
 

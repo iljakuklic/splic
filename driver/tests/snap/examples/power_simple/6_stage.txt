@@ -1,8 +1,8 @@
-code fn pow5(x@0: u64) -> u64 {
+code def pow5(x@0: u64) -> u64 {
     @mul_u64(@mul_u64(@mul_u64(@mul_u64(x@0, x@0), x@0), x@0), x@0)
 }
 
-code fn pow11(x@0: u64) -> u64 {
+code def pow11(x@0: u64) -> u64 {
     @mul_u64(@mul_u64(@mul_u64(@mul_u64(@mul_u64(@mul_u64(@mul_u64(@mul_u64(@mul_u64(@mul_u64(x@0, x@0), x@0), x@0), x@0), x@0), x@0), x@0), x@0), x@0), x@0)
 }
 

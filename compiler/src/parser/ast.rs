@@ -38,18 +38,19 @@ pub struct Param<'names, 'ast> {
     pub ty: &'ast Term<'names, 'ast>,
 }
 
+/// A top-level definition.
 #[derive(Debug)]
-pub struct Function<'names, 'ast> {
+pub struct GlobalDef<'names, 'ast> {
     pub phase: Phase,
     pub name: &'names Name,
-    pub params: &'ast [Param<'names, 'ast>],
+    pub params: Option<&'ast [Param<'names, 'ast>]>,
     pub ret_ty: &'ast Term<'names, 'ast>,
     pub body: &'ast Term<'names, 'ast>,
 }
 
 #[derive(Debug)]
 pub struct Program<'names, 'ast> {
-    pub functions: &'ast [Function<'names, 'ast>],
+    pub defs: &'ast [GlobalDef<'names, 'ast>],
 }
 
 #[derive(derive_more::Debug)]

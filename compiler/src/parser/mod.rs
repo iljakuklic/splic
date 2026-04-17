@@ -5,7 +5,7 @@ use anyhow::{Context as _, Result};
 use crate::common::Precedence;
 use crate::lexer::Token;
 use crate::parser::ast::{
-    Assoc, BinOp, FunName, Function, Let, MatchArm, Name, Param, Pat, Phase, Program, Term, UnOp,
+    Assoc, BinOp, FunName, GlobalDef, Let, MatchArm, Name, Param, Pat, Phase, Term, UnOp,
 };
 
 pub mod ast;
@@ -138,17 +138,17 @@ where
         Ok(items)
     }
 
-    pub fn parse_program(&mut self) -> Result<Program<'names, 'ast>> {
-        let mut functions = Vec::new();
+    pub fn parse_program(&mut self) -> Result<ast::Program<'names, 'ast>> {
+        let mut defs = Vec::new();
         while self.peek().is_some() {
             let fun = self.parse_fn_def()?;
-            functions.push(fun);
+            defs.push(fun);
         }
-        let functions = self.arena.alloc_slice_fill_iter(functions);
-        Ok(Program { functions })
+        let defs = self.arena.alloc_slice_fill_iter(defs);
+        Ok(ast::Program { defs })
     }
 
-    fn parse_fn_def(&mut self) -> Result<Function<'names, 'ast>> {
+    fn parse_fn_def(&mut self) -> Result<GlobalDef<'names, 'ast>> {
         let phase = if self.consume_if(Token::Code) {
             Phase::Object
         } else {
@@ -156,39 +156,52 @@ where
         };
 
         self.take(Token::Def).context("expected 'def'")?;
-        let name = self.take_ident().context("expected function name")?;
+        let name = self.take_ident().context("expected definition name")?;
 
-        self.parse_fn_def_after_name(phase, name)
-            .with_context(|| format!("in function `{name}`"))
-    }
+        let def = if self.peek() == Some(Token::LParen) {
+            // `(params) -> ret = body` — shared syntax for both phases
+            self.take(Token::LParen).context("expected '('")?;
+            let params = self.parse_params()?;
+            self.take(Token::RParen).context("expected ')'")?;
+            self.take(Token::Arrow).context("expected '->'")?;
+            let ret_ty = self
+                .parse_expr()
+                .context("expected return type expression")?;
+            self.take(Token::Eq).context("expected '='")?;
+            let body = self.parse_expr().context("expected function body")?;
+            self.take(Token::Semi)
+                .context("expected ';' after function body")?;
+            GlobalDef {
+                phase,
+                name,
+                params: Some(params),
+                ret_ty,
+                body,
+            }
+        } else {
+            // `: ty = body` — meta-phase constant only
+            if phase == Phase::Object {
+                anyhow::bail!(
+                    "`code def` requires parameters; \
+                     object-level constants are not yet supported"
+                );
+            }
+            self.take(Token::Colon).context("expected ':'")?;
+            let ret_ty = self.parse_expr().context("expected type")?;
+            self.take(Token::Eq).context("expected '='")?;
+            let body = self.parse_expr().context("expected body")?;
+            self.take(Token::Semi)
+                .context("expected ';' after constant definition")?;
+            GlobalDef {
+                phase,
+                name,
+                params: None,
+                ret_ty,
+                body,
+            }
+        };
 
-    fn parse_fn_def_after_name(
-        &mut self,
-        phase: Phase,
-        name: &'names Name,
-    ) -> Result<Function<'names, 'ast>> {
-        self.take(Token::LParen).context("expected '('")?;
-        let params = self.parse_params()?;
-        self.take(Token::RParen).context("expected ')'")?;
-
-        self.take(Token::Arrow).context("expected '->'")?;
-
-        let ret_ty = self
-            .parse_expr()
-            .context("expected return type expression")?;
-
-        self.take(Token::Eq).context("expected '='")?;
-        let body = self.parse_expr().context("expected function body")?;
-        self.take(Token::Semi)
-            .context("expected ';' after function body")?;
-
-        Ok(Function {
-            phase,
-            name,
-            params,
-            ret_ty,
-            body,
-        })
+        Ok(def)
     }
 
     fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {

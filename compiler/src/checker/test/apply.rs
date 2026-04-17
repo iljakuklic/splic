@@ -57,7 +57,7 @@ fn infer_global_call_wrong_arity_fails() {
     assert!(infer(&mut ctx, Phase::Meta, term).is_err());
 }
 
-// Calling an object-phase global from a meta-phase context must fail.
+// Calling a code function from a meta-phase context must fail.
 #[test]
 fn infer_global_call_phase_mismatch_fails() {
     let src_arena = bumpalo::Bump::new();
@@ -66,12 +66,13 @@ fn infer_global_call_phase_mismatch_fails() {
     // `code fn f() -> u64` — object-phase function
     let u64_obj = core_arena.alloc(core::Term::Prim(Prim::IntTy(IntType::U64_OBJ)));
     let mut globals = HashMap::new();
-    let f_ty: &core::Pi = core_arena.alloc(Pi {
-        params: &[],
-        body_ty: u64_obj,
-        phase: Phase::Object,
-    });
-    globals.insert(Name::new("f"), f_ty);
+    globals.insert(
+        Name::new("f"),
+        GlobalEntry::CodeFn {
+            params: &[],
+            ret_ty: u64_obj,
+        },
+    );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
 
     // Call `f()` from meta phase — should be rejected.

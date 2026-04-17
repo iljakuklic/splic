@@ -1,11 +1,13 @@
-fn sum_n(n@0: u64) -> u64 {
-    match n@0 {
-        0 => 0_u64,
-        n@1 => @add_u64(sum_n(@sub_u64(n@1, 1_u64)), n@1),
+def sum_n: fn(n@0: u64) -> u64 {
+    lam(n@0: u64) = {
+        match n@0 {
+            0 => 0_u64,
+            n@1 => @add_u64(sum_n(@sub_u64(n@1, 1_u64)), n@1),
+        }
     }
 }
 
-code fn sum_to_five() -> u64 {
+code def sum_to_five() -> u64 {
     $(@embed_u64(sum_n(5_u64)))
 }
 

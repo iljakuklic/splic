@@ -1,4 +1,4 @@
-code fn g() -> u8 {
+code def g() -> u8 {
     44_u8
 }
 

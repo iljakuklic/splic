@@ -1,4 +1,4 @@
-code fn nand(a@0: u1, b@1: u1) -> u1 {
+code def nand(a@0: u1, b@1: u1) -> u1 {
     @not_u1(@and_u1(a@0, b@1))
 }
 

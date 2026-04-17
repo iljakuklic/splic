@@ -1,26 +1,28 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "power_acc",
-            params: [
-                Param {
-                    name: "x",
-                    ty: Lift(
-                        "u64",
-                    ),
-                },
-                Param {
-                    name: "k",
-                    ty: "u64",
-                },
-                Param {
-                    name: "r",
-                    ty: Lift(
-                        "u64",
-                    ),
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: Lift(
+                            "u64",
+                        ),
+                    },
+                    Param {
+                        name: "k",
+                        ty: "u64",
+                    },
+                    Param {
+                        name: "r",
+                        ty: Lift(
+                            "u64",
+                        ),
+                    },
+                ],
+            ),
             ret_ty: Lift(
                 "u64",
             ),
@@ -152,21 +154,23 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "power_acc_1",
-            params: [
-                Param {
-                    name: "x",
-                    ty: Lift(
-                        "u64",
-                    ),
-                },
-                Param {
-                    name: "k",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: Lift(
+                            "u64",
+                        ),
+                    },
+                    Param {
+                        name: "k",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: Lift(
                 "u64",
             ),
@@ -284,21 +288,23 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "power",
-            params: [
-                Param {
-                    name: "x",
-                    ty: Lift(
-                        "u64",
-                    ),
-                },
-                Param {
-                    name: "k",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: Lift(
+                            "u64",
+                        ),
+                    },
+                    Param {
+                        name: "k",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: Lift(
                 "u64",
             ),
@@ -313,15 +319,17 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "pow1",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -338,15 +346,17 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "pow5",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -363,15 +373,17 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "pow11_inc",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -405,15 +417,17 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "pow15",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -430,15 +444,17 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "pow16",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -455,15 +471,17 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "pow17",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],

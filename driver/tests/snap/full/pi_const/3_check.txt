@@ -1,12 +1,12 @@
-fn const_(A@0: Type, B@1: Type) -> fn(_: A@0) -> fn(_: B@1) -> A@0 {
-    lam(a@2: A@0) = lam(b@3: B@1) = a@2
+def const_: fn(A@0: Type, B@1: Type) -> fn(_: A@0) -> fn(_: B@1) -> A@0 {
+    lam(A@0: Type, B@1: Type) = lam(a@2: A@0) = lam(b@3: B@1) = a@2
 }
 
-fn test() -> u64 {
-    const_(u64, u8)(42_u64)(7_u8)
+def test: fn() -> u64 {
+    lam() = const_(u64, u8)(42_u64)(7_u8)
 }
 
-code fn result() -> u64 {
+code def result() -> u64 {
     $(@embed_u64(test()))
 }
 

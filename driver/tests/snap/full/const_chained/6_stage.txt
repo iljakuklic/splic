@@ -1,0 +1,4 @@
+code def result() -> u32 {
+    20_u32
+}
+

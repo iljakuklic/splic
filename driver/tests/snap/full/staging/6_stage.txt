@@ -1,4 +1,4 @@
-code fn zero() -> u64 {
+code def zero() -> u64 {
     0_u64
 }
 

@@ -1,9 +1,11 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [

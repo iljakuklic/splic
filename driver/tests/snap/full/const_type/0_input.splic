@@ -1,0 +1,1 @@
+def my_int: Type = u32;

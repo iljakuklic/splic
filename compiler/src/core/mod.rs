@@ -32,26 +32,48 @@ pub struct Arm<'names, 'a> {
     pub body: &'a Term<'names, 'a>,
 }
 
-/// Elaborated top-level function definition.
+/// Elaborated meta-phase top-level definition (function or constant).
 #[derive(Debug)]
-pub struct Function<'names, 'a> {
-    pub name: &'names Name,
-    /// Function type: phase, params, and return type.
-    pub ty: &'a Pi<'names, 'a>,
+pub struct GlobalMeta<'names, 'a> {
+    pub ty: &'a Term<'names, 'a>,
     pub body: &'a Term<'names, 'a>,
 }
 
-impl<'names, 'a> Function<'names, 'a> {
-    /// Return the function's Pi type.
-    pub const fn pi(&self) -> &Pi<'names, 'a> {
-        self.ty
+/// Global object-level functions
+#[derive(Debug, PartialEq, Eq)]
+pub struct CodeFn<'names, 'a> {
+    pub params: &'a [(&'names Name, &'a Term<'names, 'a>)], // (name, type) pairs
+    pub ret_ty: &'a Term<'names, 'a>,
+    pub body: &'a Term<'names, 'a>,
+}
+
+/// Top-level elaborated item.
+#[derive(Debug)]
+pub enum Global<'names, 'a> {
+    Meta(GlobalMeta<'names, 'a>),
+    CodeFn(CodeFn<'names, 'a>),
+}
+
+impl Global<'_, '_> {
+    pub const fn phase(&self) -> Phase {
+        match self {
+            Global::Meta(_) => Phase::Meta,
+            Global::CodeFn(_) => Phase::Object,
+        }
     }
+}
+
+/// Elaborated top-level definition (function or constant).
+#[derive(Debug)]
+pub struct GlobalDef<'names, 'a> {
+    pub name: &'names Name,
+    pub global: Global<'names, 'a>,
 }
 
 /// Elaborated program: a sequence of top-level function definitions
 #[derive(Debug)]
 pub struct Program<'names, 'a> {
-    pub functions: &'a [Function<'names, 'a>],
+    pub defs: &'a [GlobalDef<'names, 'a>],
 }
 
 /// Function or primitive application: `func(args...)`
@@ -69,16 +91,11 @@ pub struct App<'names, 'a> {
     pub args: &'a [&'a Term<'names, 'a>],
 }
 
-/// Dependent function type: `fn(params...) -> body_ty`
-///
-/// `phase` distinguishes meta-level (`fn`) from object-level (`code fn`) functions.
-/// This allows the globals table to store `&Term` directly, unifying type lookup
-/// for globals and locals.
+/// Dependent function type: `fn(params...) -> body_ty` (meta-level only).
 #[derive(Debug, PartialEq, Eq)]
 pub struct Pi<'names, 'a> {
     pub params: &'a [(&'names Name, &'a Term<'names, 'a>)], // (name, type) pairs
     pub body_ty: &'a Term<'names, 'a>,
-    pub phase: Phase,
 }
 
 /// Lambda abstraction: |params...| body

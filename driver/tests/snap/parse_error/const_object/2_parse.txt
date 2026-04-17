@@ -1,0 +1,2 @@
+ERROR
+`code def` requires parameters; object-level constants are not yet supported

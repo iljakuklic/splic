@@ -1,14 +1,36 @@
 use std::fmt;
 
+use super::{Arm, Global, GlobalDef, Name, Pat, Program, Term};
 use crate::common::env::Env;
-use crate::parser::ast::Phase;
-
-use super::{Arm, Function, Name, Pat, Program, Term};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
     write!(f, "{:width$}", "", width = depth * 4)
+}
+
+/// Write a comma-separated parameter list `name@depth: ty, ...`,
+/// pushing each name onto `env` as it is written.
+/// `_`-named params are printed as `_: ty` (no level index).
+fn fmt_params<'names>(
+    params: &[(&'names Name, &Term<'names, '_>)],
+    env: &mut Env<&'names Name>,
+    indent: usize,
+    f: &mut fmt::Formatter<'_>,
+) -> fmt::Result {
+    for (i, &(name, ty)) in params.iter().enumerate() {
+        if i > 0 {
+            write!(f, ", ")?;
+        }
+        if name.as_str() == "_" {
+            write!(f, "_: ")?;
+        } else {
+            write!(f, "{}@{}: ", name, env.depth())?;
+        }
+        ty.fmt_expr(env, indent, f)?;
+        env.push(name);
+    }
+    Ok(())
 }
 
 // ── Core formatting ───────────────────────────────────────────────────────────
@@ -79,18 +101,7 @@ impl<'names> Term<'names, '_> {
             Term::Pi(pi) => {
                 let depth_before = env.depth();
                 write!(f, "fn(")?;
-                for (i, &(name, ty)) in pi.params.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    if name.as_str() == "_" {
-                        write!(f, "_: ")?;
-                    } else {
-                        write!(f, "{}@{}: ", name, env.depth())?;
-                    }
-                    ty.fmt_expr(env, indent, f)?;
-                    env.push(name);
-                }
+                fmt_params(pi.params, env, indent, f)?;
                 write!(f, ") -> ")?;
                 pi.body_ty.fmt_expr(env, indent, f)?;
                 env.truncate(depth_before);
@@ -101,14 +112,7 @@ impl<'names> Term<'names, '_> {
             Term::Lam(lam) => {
                 let depth_before = env.depth();
                 write!(f, "lam(")?;
-                for (i, &(name, ty)) in lam.params.iter().enumerate() {
-                    if i > 0 {
-                        write!(f, ", ")?;
-                    }
-                    write!(f, "{}@{}: ", name, env.depth())?;
-                    ty.fmt_expr(env, indent, f)?;
-                    env.push(name);
-                }
+                fmt_params(lam.params, env, indent, f)?;
                 write!(f, ") = ")?;
                 lam.body.fmt_expr(env, indent, f)?;
                 env.truncate(depth_before);
@@ -223,47 +227,39 @@ impl<'names> Arm<'names, '_> {
 
 impl fmt::Display for Program<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (i, func) in self.functions.iter().enumerate() {
+        for (i, defn) in self.defs.iter().enumerate() {
             if i > 0 {
                 writeln!(f)?;
             }
-            write!(f, "{func}")?;
+            write!(f, "{defn}")?;
         }
         Ok(())
     }
 }
 
-impl fmt::Display for Function<'_, '_> {
+impl fmt::Display for GlobalDef<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let pi = self.pi();
-
-        // Build the name environment for the body: one entry per parameter.
-        let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
-
-        // Phase prefix.
-        match pi.phase {
-            Phase::Object => write!(f, "code ")?,
-            Phase::Meta => {}
-        }
-        write!(f, "fn {}(", self.name)?;
-
-        // Parameters: types are printed with the env as built so far (dependent
-        // function types: earlier params are in scope for later param types).
-        for (i, (name, ty)) in pi.params.iter().enumerate() {
-            if i > 0 {
-                write!(f, ", ")?;
+        match &self.global {
+            Global::Meta(meta) => {
+                // Meta constant: `def name: ty { body }`
+                let mut env: Env<&Name> = Env::new();
+                write!(f, "def {}: ", self.name)?;
+                meta.ty.fmt_expr(&mut env, 1, f)?;
+                writeln!(f, " {{")?;
+                meta.body.fmt_term(&mut env, 1, f)?;
             }
-            write!(f, "{name}@{i}: ")?;
-            ty.fmt_expr(&mut env, 1, f)?;
-            env.push(*name);
+            Global::CodeFn(codefn) => {
+                // Object function: `code fn name(params) -> ret { body }`
+                let mut env: Env<&Name> = Env::with_capacity(codefn.params.len());
+                write!(f, "code def {}(", self.name)?;
+                fmt_params(codefn.params, &mut env, 1, f)?;
+                write!(f, ") -> ")?;
+                codefn.ret_ty.fmt_expr(&mut env, 1, f)?;
+                writeln!(f, " {{")?;
+                codefn.body.fmt_term(&mut env, 1, f)?;
+            }
         }
 
-        write!(f, ") -> ")?;
-        pi.body_ty.fmt_expr(&mut env, 1, f)?;
-        writeln!(f, " {{")?;
-
-        // Body in statement position at indent depth 1.
-        self.body.fmt_term(&mut env, 1, f)?;
         writeln!(f)?;
         writeln!(f, "}}")
     }

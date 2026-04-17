@@ -1,8 +1,8 @@
-fn k() -> [[u64]] {
-    #(0_u64)
+def k: fn() -> [[u64]] {
+    lam() = #(0_u64)
 }
 
-code fn zero() -> u64 {
+code def zero() -> u64 {
     $(k())
 }
 

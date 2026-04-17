@@ -1,0 +1,25 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Meta,
+            name: "answer",
+            params: None,
+            ret_ty: "u32",
+            body: 42,
+        },
+        GlobalDef {
+            phase: Object,
+            name: "get_answer",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    "answer",
+                ),
+            },
+        },
+    ],
+}

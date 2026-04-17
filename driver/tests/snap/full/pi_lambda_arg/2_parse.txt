@@ -1,26 +1,28 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "apply",
-            params: [
-                Param {
-                    name: "f",
-                    ty: Pi {
-                        params: [
-                            Param {
-                                name: "_",
-                                ty: "u64",
-                            },
-                        ],
-                        ret_ty: "u64",
+            params: Some(
+                [
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "u64",
+                                },
+                            ],
+                            ret_ty: "u64",
+                        },
                     },
-                },
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -32,10 +34,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -63,10 +67,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],

@@ -1,0 +1,16 @@
+Def
+Ident("answer")
+Colon
+Ident("u32")
+Eq
+LBrace
+Let
+Ident("x")
+Colon
+Ident("u64")
+Eq
+Num(1337)
+Semi
+Ident("x")
+RBrace
+Semi

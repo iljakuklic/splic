@@ -1,9 +1,11 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Object,
             name: "foo",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u32",
             body: Block {
                 stmts: [],

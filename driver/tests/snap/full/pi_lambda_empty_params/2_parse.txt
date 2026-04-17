@@ -1,14 +1,16 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "make_thunk",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: Pi {
                 params: [],
                 ret_ty: "u64",
@@ -22,10 +24,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -40,10 +44,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],

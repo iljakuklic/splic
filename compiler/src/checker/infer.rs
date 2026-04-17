@@ -4,6 +4,7 @@ use crate::common::de_bruijn;
 use crate::core::{self, IntType, IntWidth, Lam, Phase, Pi, Prim, value};
 use crate::parser::ast;
 
+use super::ctx::GlobalEntry;
 use super::{Ctx, builtin_prim_ty};
 
 /// Infer the type of a surface term, returning both the elaborated core term
@@ -46,11 +47,16 @@ pub fn infer<'names, 'ast, 'core>(
                 return Ok((ctx.alloc(core::Term::Var(ix)), ty));
             }
             // Globals — bare reference without call
-            if let Some(pi) = ctx.globals.get(name).copied() {
-                let ty = value::eval_pi(ctx.arena, &value::Env::new(), pi);
-                return Ok((ctx.alloc(core::Term::Global(name)), ty));
+            match ctx.globals.get(name) {
+                Some(GlobalEntry::Meta(ty_term)) => {
+                    let ty = value::eval(ctx.arena, &value::Env::new(), ty_term);
+                    Ok((ctx.alloc(core::Term::Global(name)), ty))
+                }
+                Some(GlobalEntry::CodeFn { .. }) => Err(anyhow!(
+                    "`{name}` is a code function and must be called, not referenced directly"
+                )),
+                None => Err(anyhow!("unbound variable `{name}`")),
             }
-            Err(anyhow!("unbound variable `{name}`"))
         }
 
         // ------------------------------------------------------------------ Lit
@@ -63,23 +69,41 @@ pub fn infer<'names, 'ast, 'core>(
             func: ast::FunName::Term(func_term),
             args,
         } => {
-            let (callee, callee_ty) = infer(ctx, phase, func_term)?;
-
-            // For globals: verify phase from the globals table.
-            if let core::Term::Global(gname) = callee {
-                let pi = ctx
-                    .globals
-                    .get(gname)
-                    .copied()
-                    .ok_or_else(|| anyhow!("unknown global `{gname}`"))?;
+            // Special case: direct call to a code function.
+            // Code functions have no first-class type term, so we handle them before
+            // calling infer on func_term (which would otherwise error on a bare code ref).
+            if let ast::Term::Var(fname) = func_term
+                && let Some(GlobalEntry::CodeFn { params, ret_ty }) = ctx.globals.get(fname)
+            {
                 ensure!(
-                    pi.phase == phase,
-                    "function `{gname}` is a {}-phase function, but called in {phase}-phase context",
-                    pi.phase,
+                    phase.is_object(),
+                    "code function `{fname}` can only be called in object-phase context"
                 );
+                ensure!(
+                    args.len() == params.len(),
+                    "wrong number of arguments: `{fname}` expects {}, got {}",
+                    params.len(),
+                    args.len()
+                );
+                let mut core_args: Vec<&'core core::Term<'names, 'core>> =
+                    Vec::with_capacity(args.len());
+                for (i, (arg, (_, param_ty))) in args.iter().zip(params.iter()).enumerate() {
+                    let param_val = ctx.eval(param_ty);
+                    let core_arg = check_val(ctx, phase, arg, param_val)
+                        .with_context(|| format!("in argument {i} of call to `{fname}`"))?;
+                    core_args.push(core_arg);
+                }
+                let callee = ctx.alloc(core::Term::Global(fname));
+                let args_slice = ctx.alloc_slice(core_args);
+                let result_ty = ctx.eval(ret_ty);
+                return Ok((
+                    ctx.alloc(core::Term::new_app(callee, args_slice)),
+                    result_ty,
+                ));
             }
 
-            // Universal arity check: callee must be a Pi type with matching param count.
+            // General case: meta function or higher-order call via Pi type.
+            let (callee, callee_ty) = infer(ctx, phase, func_term)?;
             let vpi = match &callee_ty {
                 value::Value::Pi(vpi) => vpi.clone(),
                 _ => bail!("callee is not a function"),
@@ -200,7 +224,6 @@ pub fn infer<'names, 'ast, 'core>(
                 ctx.alloc(core::Term::Pi(Pi {
                     params: params_slice,
                     body_ty: core_ret_ty,
-                    phase: Phase::Meta,
                 })),
                 value::Value::Prim(Prim::U(Phase::Meta)),
             ))
@@ -260,7 +283,6 @@ pub fn infer<'names, 'ast, 'core>(
             let pi_term = ctx.alloc(core::Term::Pi(Pi {
                 params: params_slice,
                 body_ty: body_ty_term,
-                phase: Phase::Meta,
             }));
             let pi_val = ctx.eval(pi_term);
 

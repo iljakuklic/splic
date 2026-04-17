@@ -51,10 +51,11 @@ fn parse_simple_fn() {
     let lexer = Lexer::new("def add(x: u32, y: u32) -> u32 = { x + y };", &arena);
     let mut parser = Parser::new(lexer, &arena);
     let program = parser.parse_program().unwrap();
-    assert_eq!(program.functions.len(), 1);
-    let f = &program.functions[0];
+    assert_eq!(program.defs.len(), 1);
+    let f = &program.defs[0];
     assert_eq!(f.name.as_str(), "add");
-    assert_eq!(f.params.len(), 2);
+    assert!(f.phase.is_meta());
+    assert_eq!(f.params.map(<[_]>::len), Some(2));
 }
 
 #[test]

@@ -1,2 +1,2 @@
 ERROR
-in function `too_many`: wrong number of arguments: callee expects 1, got 2
+in `too_many`: wrong number of arguments: callee expects 1, got 2

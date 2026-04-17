@@ -1,9 +1,11 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "test_id",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [
@@ -59,10 +61,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "test_id_u8",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u8",
             body: Block {
                 stmts: [
@@ -108,10 +112,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result_u64",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -123,10 +129,12 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result_u8",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u8",
             body: Block {
                 stmts: [],

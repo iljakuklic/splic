@@ -1,0 +1,38 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Meta,
+            name: "x",
+            params: None,
+            ret_ty: "u32",
+            body: 10,
+        },
+        GlobalDef {
+            phase: Meta,
+            name: "y",
+            params: None,
+            ret_ty: "u32",
+            body: App {
+                func: Add,
+                args: [
+                    "x",
+                    "x",
+                ],
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            name: "result",
+            params: Some(
+                [],
+            ),
+            ret_ty: "u32",
+            body: Block {
+                stmts: [],
+                expr: Splice(
+                    "y",
+                ),
+            },
+        },
+    ],
+}

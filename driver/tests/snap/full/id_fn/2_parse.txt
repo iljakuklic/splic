@@ -1,14 +1,16 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "id",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u32",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u32",
+                    },
+                ],
+            ),
             ret_ty: "u32",
             body: Block {
                 stmts: [],

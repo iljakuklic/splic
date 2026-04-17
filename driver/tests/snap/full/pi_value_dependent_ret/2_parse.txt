@@ -1,14 +1,16 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "get_value",
-            params: [
-                Param {
-                    name: "b",
-                    ty: "u1",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "b",
+                        ty: "u1",
+                    },
+                ],
+            ),
             ret_ty: Match {
                 scrutinee: "b",
                 arms: [
@@ -39,10 +41,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result_0",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u0",
             body: Block {
                 stmts: [],
@@ -56,10 +60,12 @@ Program {
                 ),
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result_1",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u16",
             body: Block {
                 stmts: [],

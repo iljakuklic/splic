@@ -1,46 +1,48 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "compose",
-            params: [
-                Param {
-                    name: "A",
-                    ty: "Type",
-                },
-                Param {
-                    name: "B",
-                    ty: "Type",
-                },
-                Param {
-                    name: "C",
-                    ty: "Type",
-                },
-                Param {
-                    name: "f",
-                    ty: Pi {
-                        params: [
-                            Param {
-                                name: "_",
-                                ty: "B",
-                            },
-                        ],
-                        ret_ty: "C",
+            params: Some(
+                [
+                    Param {
+                        name: "A",
+                        ty: "Type",
                     },
-                },
-                Param {
-                    name: "g",
-                    ty: Pi {
-                        params: [
-                            Param {
-                                name: "_",
-                                ty: "A",
-                            },
-                        ],
-                        ret_ty: "B",
+                    Param {
+                        name: "B",
+                        ty: "Type",
                     },
-                },
-            ],
+                    Param {
+                        name: "C",
+                        ty: "Type",
+                    },
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "B",
+                                },
+                            ],
+                            ret_ty: "C",
+                        },
+                    },
+                    Param {
+                        name: "g",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "A",
+                                },
+                            ],
+                            ret_ty: "B",
+                        },
+                    },
+                ],
+            ),
             ret_ty: Pi {
                 params: [
                     Param {
@@ -74,15 +76,17 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "double",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -95,15 +99,17 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "to_u8",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u8",
             body: Block {
                 stmts: [],
@@ -130,10 +136,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u8",
             body: Block {
                 stmts: [],
@@ -154,10 +162,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u8",
             body: Block {
                 stmts: [],

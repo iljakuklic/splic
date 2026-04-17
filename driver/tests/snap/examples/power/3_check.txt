@@ -1,26 +1,28 @@
-fn power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
-    match exp@1 {
-        0 => #(1_u64),
-        1 => x@0,
-        exp@2 => {
-            let exp2@3: [[u64]] = #({
-                let x2@3: u64 = $(power(x@0, @div_u64(exp@2, 2_u64)));
-                @mul_u64(x2@3, x2@3)
-            });
-            let odd@4: u64 = @and_u64(exp@2, 1_u64);
-            match @eq_u64(odd@4, 1_u64) {
-                0 => exp2@3,
-                1 => #(@mul_u64($(exp2@3), $(x@0))),
-            }
-        },
+def power: fn(x@0: [[u64]], exp@1: u64) -> [[u64]] {
+    lam(x@0: [[u64]], exp@1: u64) = {
+        match exp@1 {
+            0 => #(1_u64),
+            1 => x@0,
+            exp@2 => {
+                let exp2@3: [[u64]] = #({
+                    let x2@3: u64 = $(power(x@0, @div_u64(exp@2, 2_u64)));
+                    @mul_u64(x2@3, x2@3)
+                });
+                let odd@4: u64 = @and_u64(exp@2, 1_u64);
+                match @eq_u64(odd@4, 1_u64) {
+                    0 => exp2@3,
+                    1 => #(@mul_u64($(exp2@3), $(x@0))),
+                }
+            },
+        }
     }
 }
 
-code fn pow5(x@0: u64) -> u64 {
+code def pow5(x@0: u64) -> u64 {
     $(power(#(x@0), 5_u64))
 }
 
-code fn pow11(x@0: u64) -> u64 {
+code def pow11(x@0: u64) -> u64 {
     $(power(#(x@0), 11_u64))
 }
 

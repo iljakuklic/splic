@@ -1,30 +1,32 @@
 Program {
-    functions: [
-        Function {
+    defs: [
+        GlobalDef {
             phase: Meta,
             name: "apply_twice",
-            params: [
-                Param {
-                    name: "A",
-                    ty: "Type",
-                },
-                Param {
-                    name: "f",
-                    ty: Pi {
-                        params: [
-                            Param {
-                                name: "_",
-                                ty: "A",
-                            },
-                        ],
-                        ret_ty: "A",
+            params: Some(
+                [
+                    Param {
+                        name: "A",
+                        ty: "Type",
                     },
-                },
-                Param {
-                    name: "x",
-                    ty: "A",
-                },
-            ],
+                    Param {
+                        name: "f",
+                        ty: Pi {
+                            params: [
+                                Param {
+                                    name: "_",
+                                    ty: "A",
+                                },
+                            ],
+                            ret_ty: "A",
+                        },
+                    },
+                    Param {
+                        name: "x",
+                        ty: "A",
+                    },
+                ],
+            ),
             ret_ty: "A",
             body: Block {
                 stmts: [],
@@ -41,15 +43,17 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "inc",
-            params: [
-                Param {
-                    name: "x",
-                    ty: "u64",
-                },
-            ],
+            params: Some(
+                [
+                    Param {
+                        name: "x",
+                        ty: "u64",
+                    },
+                ],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -62,10 +66,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Meta,
             name: "test",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
@@ -79,10 +85,12 @@ Program {
                 },
             },
         },
-        Function {
+        GlobalDef {
             phase: Object,
             name: "result",
-            params: [],
+            params: Some(
+                [],
+            ),
             ret_ty: "u64",
             body: Block {
                 stmts: [],
