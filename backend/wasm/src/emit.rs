@@ -23,8 +23,11 @@ impl<'names> FuncRegistry<'names> {
             let name = df.name.as_str();
             let idx = u32::try_from(i).map_err(|_| anyhow!("too many functions (> u32::MAX)"))?;
             func_indices.insert(name, idx);
-            let splic_compiler::core::Global::CodeFn(codefn) = &df.global else {
-                unreachable!("non-CodeFn def `{name}` in staged wasm program")
+            let codefn = match &df.global {
+                splic_compiler::core::Global::CodeFn(codefn) => codefn,
+                splic_compiler::core::Global::Meta(_) => {
+                    unreachable!("meta-level def `{name}` reached WASM backend")
+                }
             };
             func_return_types.insert(name, term_to_valtype(codefn.ret_ty));
         }

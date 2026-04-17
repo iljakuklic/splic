@@ -121,7 +121,8 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                     // params into scope and check the body against pi.body_ty.
                     // This preserves `expected_term` through to match arm refinement —
                     // necessary for dependent return types.
-                    // See also issue #74
+                    // See also issue #74 — once fixed, this can be unified with the
+                    // generic path below (no special casing for Pi needed).
                     let body = match (def.params, *ty) {
                         (Some(_), core::Term::Pi(pi)) => {
                             for (param_name, param_ty) in pi.params {

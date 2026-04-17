@@ -21,8 +21,11 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
     let mut code = CodeSection::new();
 
     for (func_idx, func) in program.defs.iter().enumerate() {
-        let splic_compiler::core::Global::CodeFn(codefn) = &func.global else {
-            unreachable!("non-CodeFn def `{}` in staged wasm program", func.name)
+        let codefn = match &func.global {
+            splic_compiler::core::Global::CodeFn(codefn) => codefn,
+            splic_compiler::core::Global::Meta(_) => {
+                unreachable!("meta-level def `{}` reached WASM backend", func.name)
+            }
         };
         let param_valtypes: Vec<_> = codefn
             .params

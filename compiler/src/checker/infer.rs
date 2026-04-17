@@ -50,16 +50,13 @@ pub fn infer<'names, 'ast, 'core>(
             match ctx.globals.get(name) {
                 Some(GlobalEntry::Meta(ty_term)) => {
                     let ty = value::eval(ctx.arena, &value::Env::new(), ty_term);
-                    return Ok((ctx.alloc(core::Term::Global(name)), ty));
+                    Ok((ctx.alloc(core::Term::Global(name)), ty))
                 }
-                Some(GlobalEntry::CodeFn { .. }) => {
-                    return Err(anyhow!(
-                        "`{name}` is a code function and must be called, not referenced directly"
-                    ));
-                }
-                None => {}
+                Some(GlobalEntry::CodeFn { .. }) => Err(anyhow!(
+                    "`{name}` is a code function and must be called, not referenced directly"
+                )),
+                None => Err(anyhow!("unbound variable `{name}`")),
             }
-            Err(anyhow!("unbound variable `{name}`"))
         }
 
         // ------------------------------------------------------------------ Lit
@@ -79,7 +76,7 @@ pub fn infer<'names, 'ast, 'core>(
                 && let Some(GlobalEntry::CodeFn { params, ret_ty }) = ctx.globals.get(fname)
             {
                 ensure!(
-                    phase == Phase::Object,
+                    phase.is_object(),
                     "code function `{fname}` can only be called in object-phase context"
                 );
                 ensure!(
