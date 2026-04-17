@@ -1,0 +1,2 @@
+code def double(x: u64) -> u64 = { x + x };
+code def quadruple(x: u64) -> u64 = { double(double(x)) };
