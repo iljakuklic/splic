@@ -215,7 +215,12 @@ where
         let body = self.parse_expr().context("expected body")?;
         self.take(Token::Semi)
             .context("expected ';' after constant definition")?;
-        Ok(GlobalDef { phase, name, ty, body })
+        Ok(GlobalDef {
+            phase,
+            name,
+            ty,
+            body,
+        })
     }
 
     fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {
