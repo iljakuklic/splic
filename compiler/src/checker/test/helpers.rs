@@ -5,9 +5,8 @@ use crate::checker::ctx::GlobalEntry;
 
 /// Helper to create a test context with empty globals
 pub fn test_ctx(arena: &bumpalo::Bump) -> Ctx<'_, '_, '_> {
-    static EMPTY: std::sync::OnceLock<
-        HashMap<&'static Name, GlobalEntry<'static, 'static>>,
-    > = std::sync::OnceLock::new();
+    static EMPTY: std::sync::OnceLock<HashMap<&'static Name, GlobalEntry<'static, 'static>>> =
+        std::sync::OnceLock::new();
     let globals = EMPTY.get_or_init(HashMap::new);
     Ctx::new(arena, globals)
 }

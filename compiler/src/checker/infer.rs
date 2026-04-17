@@ -4,8 +4,8 @@ use crate::common::de_bruijn;
 use crate::core::{self, IntType, IntWidth, Lam, Phase, Pi, Prim, value};
 use crate::parser::ast;
 
-use super::{Ctx, builtin_prim_ty};
 use super::ctx::GlobalEntry;
+use super::{Ctx, builtin_prim_ty};
 
 /// Infer the type of a surface term, returning both the elaborated core term
 /// and its type as a semantic value.
@@ -98,7 +98,10 @@ pub fn infer<'names, 'ast, 'core>(
                     let callee = ctx.alloc(core::Term::Global(fname));
                     let args_slice = ctx.alloc_slice(core_args);
                     let result_ty = ctx.eval(ret_ty);
-                    return Ok((ctx.alloc(core::Term::new_app(callee, args_slice)), result_ty));
+                    return Ok((
+                        ctx.alloc(core::Term::new_app(callee, args_slice)),
+                        result_ty,
+                    ));
                 }
             }
 

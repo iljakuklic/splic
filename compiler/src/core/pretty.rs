@@ -1,7 +1,7 @@
 use std::fmt;
 
-use crate::common::env::Env;
 use super::{Arm, Global, GlobalDef, Name, Pat, Program, Term};
+use crate::common::env::Env;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
