@@ -18,8 +18,6 @@ fn elaborate_sig<'names, 'ast, 'core>(
     let mut ctx = Ctx::new(arena, &empty_globals);
     let universe = core::Term::universe(def.phase);
 
-    ensure!(def.phase.is_meta() || def.params.is_some(),);
-
     let core_params = def
         .params
         .map(|params| {
