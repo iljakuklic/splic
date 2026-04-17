@@ -75,34 +75,34 @@ pub fn infer<'names, 'ast, 'core>(
             // Special case: direct call to a code function.
             // Code functions have no first-class type term, so we handle them before
             // calling infer on func_term (which would otherwise error on a bare code ref).
-            if let ast::Term::Var(fname) = func_term {
-                if let Some(GlobalEntry::CodeFn { params, ret_ty }) = ctx.globals.get(fname) {
-                    ensure!(
-                        phase == Phase::Object,
-                        "code function `{fname}` can only be called in object-phase context"
-                    );
-                    ensure!(
-                        args.len() == params.len(),
-                        "wrong number of arguments: `{fname}` expects {}, got {}",
-                        params.len(),
-                        args.len()
-                    );
-                    let mut core_args: Vec<&'core core::Term<'names, 'core>> =
-                        Vec::with_capacity(args.len());
-                    for (i, (arg, (_, param_ty))) in args.iter().zip(params.iter()).enumerate() {
-                        let param_val = ctx.eval(param_ty);
-                        let core_arg = check_val(ctx, phase, arg, param_val)
-                            .with_context(|| format!("in argument {i} of call to `{fname}`"))?;
-                        core_args.push(core_arg);
-                    }
-                    let callee = ctx.alloc(core::Term::Global(fname));
-                    let args_slice = ctx.alloc_slice(core_args);
-                    let result_ty = ctx.eval(ret_ty);
-                    return Ok((
-                        ctx.alloc(core::Term::new_app(callee, args_slice)),
-                        result_ty,
-                    ));
+            if let ast::Term::Var(fname) = func_term
+                && let Some(GlobalEntry::CodeFn { params, ret_ty }) = ctx.globals.get(fname)
+            {
+                ensure!(
+                    phase == Phase::Object,
+                    "code function `{fname}` can only be called in object-phase context"
+                );
+                ensure!(
+                    args.len() == params.len(),
+                    "wrong number of arguments: `{fname}` expects {}, got {}",
+                    params.len(),
+                    args.len()
+                );
+                let mut core_args: Vec<&'core core::Term<'names, 'core>> =
+                    Vec::with_capacity(args.len());
+                for (i, (arg, (_, param_ty))) in args.iter().zip(params.iter()).enumerate() {
+                    let param_val = ctx.eval(param_ty);
+                    let core_arg = check_val(ctx, phase, arg, param_val)
+                        .with_context(|| format!("in argument {i} of call to `{fname}`"))?;
+                    core_args.push(core_arg);
                 }
+                let callee = ctx.alloc(core::Term::Global(fname));
+                let args_slice = ctx.alloc_slice(core_args);
+                let result_ty = ctx.eval(ret_ty);
+                return Ok((
+                    ctx.alloc(core::Term::new_app(callee, args_slice)),
+                    result_ty,
+                ));
             }
 
             // General case: meta function or higher-order call via Pi type.

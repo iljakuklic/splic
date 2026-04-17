@@ -54,8 +54,8 @@ pub enum Global<'names, 'a> {
     CodeFn(CodeFn<'names, 'a>),
 }
 
-impl<'names, 'a> Global<'names, 'a> {
-    pub fn phase(&self) -> Phase {
+impl Global<'_, '_> {
+    pub const fn phase(&self) -> Phase {
         match self {
             Global::Meta(_) => Phase::Meta,
             Global::CodeFn(_) => Phase::Object,
