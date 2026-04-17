@@ -2,81 +2,93 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "get_value",
-            params: Some(
-                [
-                    Param {
-                        name: "b",
-                        ty: "u1",
-                    },
-                ],
-            ),
-            ret_ty: Match {
-                scrutinee: "b",
-                arms: [
-                    MatchArm {
-                        pat: 0,
-                        body: "u0",
-                    },
-                    MatchArm {
-                        pat: 1,
-                        body: "u16",
-                    },
-                ],
-            },
-            body: Block {
-                stmts: [],
-                expr: Match {
-                    scrutinee: "b",
-                    arms: [
-                        MatchArm {
-                            pat: 0,
-                            body: 0,
-                        },
-                        MatchArm {
-                            pat: 1,
-                            body: 42,
+            def: Definition {
+                name: "get_value",
+                params: Some(
+                    [
+                        Param {
+                            name: "b",
+                            ty: "u1",
                         },
                     ],
+                ),
+                ret_ty: Some(
+                    Match {
+                        scrutinee: "b",
+                        arms: [
+                            MatchArm {
+                                pat: 0,
+                                body: "u0",
+                            },
+                            MatchArm {
+                                pat: 1,
+                                body: "u16",
+                            },
+                        ],
+                    },
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Match {
+                        scrutinee: "b",
+                        arms: [
+                            MatchArm {
+                                pat: 0,
+                                body: 0,
+                            },
+                            MatchArm {
+                                pat: 1,
+                                body: 42,
+                            },
+                        ],
+                    },
                 },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "result_0",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u0",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "get_value",
-                        args: [
-                            0,
-                        ],
-                    },
+            def: Definition {
+                name: "result_0",
+                params: Some(
+                    [],
                 ),
+                ret_ty: Some(
+                    "u0",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "get_value",
+                            args: [
+                                0,
+                            ],
+                        },
+                    ),
+                },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "result_1",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u16",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "get_value",
-                        args: [
-                            1,
-                        ],
-                    },
+            def: Definition {
+                name: "result_1",
+                params: Some(
+                    [],
                 ),
+                ret_ty: Some(
+                    "u16",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "get_value",
+                            args: [
+                                1,
+                            ],
+                        },
+                    ),
+                },
             },
         },
     ],

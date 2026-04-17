@@ -419,11 +419,30 @@ fn elaborate_pat<'names>(pat: &ast::Pat<'names>) -> core::Pat<'names> {
     }
 }
 
-/// Elaborate a single `let` binding.
+/// Check `body` against `expected` with already-elaborated `params` pushed into scope.
+/// Pops params before returning. Used by both global def elaboration and parameterized lets.
+pub fn check_with_params<'names, 'ast, 'core>(
+    ctx: &mut Ctx<'names, 'core, '_>,
+    phase: Phase,
+    params: &[(&'names core::Name, &'core core::Term<'names, 'core>)],
+    body: &'ast ast::Term<'names, 'ast>,
+    expected: &'core core::Term<'names, 'core>,
+) -> Result<&'core core::Term<'names, 'core>> {
+    for (name, ty) in params {
+        ctx.push_local(name, ty);
+    }
+    let result = check(ctx, phase, body, expected)?;
+    for _ in params {
+        ctx.pop_local();
+    }
+    Ok(result)
+}
+
+/// Elaborate a single `let` / `def` binding (represented uniformly as `Definition`).
 fn elaborate_let<'names, 'ast, 'core, T, F, G, W>(
     ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmt: &'ast ast::Let<'names, 'ast>,
+    stmt: &'ast ast::Definition<'names, 'ast>,
     cont: F,
     body_of: G,
     wrap: W,
@@ -433,21 +452,60 @@ where
     G: FnOnce(&T) -> &'core core::Term<'names, 'core>,
     W: FnOnce(&'core core::Term<'names, 'core>, T) -> T,
 {
-    let (core_expr, bind_ty_val) = if let Some(ann) = stmt.ty {
-        let (ty, _) = infer(ctx, phase, ann)?;
-        let ty_val = ctx.eval(ty);
-        let core_e = check_val(ctx, phase, stmt.expr, ty_val.clone())
-            .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?;
-        (core_e, ty_val)
+    let label = || format!("in let binding `{}`", stmt.name.as_str());
+
+    let (core_expr, bind_ty_term) = if let Some(params) = stmt.params {
+        // Parameterized let: `let f(ps) (-> ret_ty)? = body`
+        // Elaborate params in order (each can depend on prior ones), push into scope.
+        let mut ps = Vec::with_capacity(params.len());
+        for p in params {
+            let ty = check_universe(ctx, phase, p.ty).with_context(label)?;
+            ctx.push_local(p.name, ty);
+            ps.push((p.name, ty));
+        }
+        let core_params = ctx.arena.alloc_slice_fill_iter(ps);
+
+        let (core_body, core_ret_ty) = if let Some(ret_ty_ast) = stmt.ret_ty {
+            let ret_ty_core = check_universe(ctx, phase, ret_ty_ast).with_context(label)?;
+            let core_body =
+                check_val(ctx, phase, stmt.body, ctx.eval(ret_ty_core)).with_context(label)?;
+            (core_body, ret_ty_core)
+        } else {
+            let (core_body, body_ty_val) = infer(ctx, phase, stmt.body).with_context(label)?;
+            (core_body, ctx.quote_val(&body_ty_val))
+        };
+
+        for _ in params {
+            ctx.pop_local();
+        }
+
+        let lam = ctx.alloc(core::Term::Lam(core::Lam {
+            params: core_params,
+            body: core_body,
+        }));
+        let pi = ctx.alloc(core::Term::Pi(core::Pi {
+            params: core_params,
+            body_ty: core_ret_ty,
+        }));
+        (lam, pi)
     } else {
-        let (core_e, bind_ty) = infer(ctx, phase, stmt.expr)
-            .with_context(|| format!("in let binding `{}`", stmt.name.as_str()))?;
-        (core_e, bind_ty)
+        // Simple let: `let x (: ty)? = body`
+        let (core_e, bind_ty_val) = if let Some(ann) = stmt.ret_ty {
+            let (ty, _) = infer(ctx, phase, ann)?;
+            let ty_val = ctx.eval(ty);
+            let core_e = check_val(ctx, phase, stmt.body, ty_val).with_context(label)?;
+            (core_e, ctx.eval(ty))
+        } else {
+            let (core_e, bind_ty) = infer(ctx, phase, stmt.body).with_context(label)?;
+            (core_e, bind_ty)
+        };
+        let bind_ty_term = ctx.quote_val(&bind_ty_val);
+        (core_e, bind_ty_term)
     };
 
-    let bind_ty_term = ctx.quote_val(&bind_ty_val);
     // Evaluate the bound expression so dependent references to this binding work correctly.
     let expr_val = ctx.eval(core_expr);
+    let bind_ty_val = ctx.eval(bind_ty_term);
     let bind_name = stmt.name;
     ctx.push_let_binding(bind_name, bind_ty_val, expr_val);
     let cont_result = cont(ctx);
@@ -464,11 +522,11 @@ where
     Ok(wrap(let_term, cont_result))
 }
 
-/// Elaborate a sequence of `let` bindings followed by a trailing expression (infer mode).
+/// Elaborate a sequence of let bindings followed by a trailing expression (infer mode).
 fn infer_block<'names, 'ast, 'core>(
     ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmts: &'ast [ast::Let<'names, 'ast>],
+    stmts: &'ast [ast::Definition<'names, 'ast>],
     expr: &'ast ast::Term<'names, 'ast>,
 ) -> Result<(
     &'core core::Term<'names, 'core>,
@@ -487,11 +545,11 @@ fn infer_block<'names, 'ast, 'core>(
     }
 }
 
-/// Elaborate a sequence of `let` bindings followed by a trailing expression (check mode).
+/// Elaborate a sequence of let bindings followed by a trailing expression (check mode).
 fn check_block_val<'names, 'ast, 'core>(
     ctx: &mut Ctx<'names, 'core, '_>,
     phase: Phase,
-    stmts: &'ast [ast::Let<'names, 'ast>],
+    stmts: &'ast [ast::Definition<'names, 'ast>],
     expr: &'ast ast::Term<'names, 'ast>,
     expected: value::Value<'names, 'core>,
     expected_term: Option<&'core core::Term<'names, 'core>>,

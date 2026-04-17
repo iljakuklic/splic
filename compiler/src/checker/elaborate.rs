@@ -17,8 +17,13 @@ fn elaborate_sig<'names, 'ast, 'core>(
     let empty_globals: HashMap<&'names core::Name, GlobalEntry<'names, 'core>> = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
     let universe = core::Term::universe(def.phase);
+    let d = &def.def;
 
-    let core_params = def
+    let ret_ty_ast = d
+        .ret_ty
+        .ok_or_else(|| anyhow::anyhow!("global `def` requires a return type annotation"))?;
+
+    let core_params = d
         .params
         .map(|params| {
             arena.alloc_slice_try_fill_iter(params.iter().map(|p| -> Result<_> {
@@ -29,7 +34,7 @@ fn elaborate_sig<'names, 'ast, 'core>(
         })
         .transpose()?;
 
-    let core_ret_ty = infer::check(&mut ctx, def.phase, def.ret_ty, universe)?;
+    let core_ret_ty = infer::check(&mut ctx, def.phase, ret_ty_ast, universe)?;
 
     match def.phase {
         Phase::Object => {
@@ -62,7 +67,7 @@ pub fn collect_signatures<'names, 'ast, 'core>(
     let mut globals: HashMap<&'names core::Name, GlobalEntry<'names, 'core>> = HashMap::new();
 
     for def in program.defs {
-        let name = def.name;
+        let name = def.def.name;
 
         ensure!(
             !globals.contains_key(&name),
@@ -85,7 +90,7 @@ fn elaborate_bodies<'names, 'ast, 'core>(
 ) -> Result<core::Program<'names, 'core>> {
     let defs: &'core [core::GlobalDef<'names, 'core>] =
         arena.alloc_slice_try_fill_iter(program.defs.iter().map(|def| -> Result<_> {
-            let name = def.name;
+            let name = def.def.name;
             let mut ctx = Ctx::new(arena, globals);
 
             let global = match def.phase {
@@ -95,14 +100,14 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                     else {
                         unreachable!("Code def should have CodeFn entry")
                     };
-                    for (param_name, param_ty) in *params {
-                        ctx.push_local(param_name, param_ty);
-                    }
-                    let core_body = infer::check(&mut ctx, Phase::Object, def.body, ret_ty)
-                        .with_context(|| format!("in `{name}`"))?;
-                    for _ in *params {
-                        ctx.pop_local();
-                    }
+                    let core_body = infer::check_with_params(
+                        &mut ctx,
+                        Phase::Object,
+                        params,
+                        def.def.body,
+                        ret_ty,
+                    )
+                    .with_context(|| format!("in `{name}`"))?;
                     core::Global::CodeFn(core::CodeFn {
                         params,
                         ret_ty,
@@ -121,23 +126,22 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                     // necessary for dependent return types.
                     // See also issue #74 — once fixed, this can be unified with the
                     // generic path below (no special casing for Pi needed).
-                    let body = match (def.params, *ty) {
+                    let body = match (def.def.params, *ty) {
                         (Some(_), core::Term::Pi(pi)) => {
-                            for (param_name, param_ty) in pi.params {
-                                ctx.push_local(param_name, param_ty);
-                            }
-                            let core_body =
-                                infer::check(&mut ctx, Phase::Meta, def.body, pi.body_ty)
-                                    .with_context(|| format!("in `{name}`"))?;
-                            for _ in pi.params {
-                                ctx.pop_local();
-                            }
+                            let core_body = infer::check_with_params(
+                                &mut ctx,
+                                Phase::Meta,
+                                pi.params,
+                                def.def.body,
+                                pi.body_ty,
+                            )
+                            .with_context(|| format!("in `{name}`"))?;
                             arena.alloc(core::Term::Lam(core::Lam {
                                 params: pi.params,
                                 body: core_body,
                             }))
                         }
-                        _ => infer::check(&mut ctx, Phase::Meta, def.body, ty)
+                        _ => infer::check(&mut ctx, Phase::Meta, def.def.body, ty)
                             .with_context(|| format!("in `{name}`"))?,
                     };
                     core::Global::Meta(core::GlobalMeta { ty, body })

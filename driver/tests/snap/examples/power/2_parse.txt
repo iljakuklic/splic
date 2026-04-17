@@ -2,186 +2,201 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "power",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: Lift(
-                            "u64",
-                        ),
-                    },
-                    Param {
-                        name: "exp",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: Lift(
-                "u64",
-            ),
-            body: Block {
-                stmts: [],
-                expr: Match {
-                    scrutinee: "exp",
-                    arms: [
-                        MatchArm {
-                            pat: 0,
-                            body: Quote(
-                                1,
+            def: Definition {
+                name: "power",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: Lift(
+                                "u64",
                             ),
                         },
-                        MatchArm {
-                            pat: 1,
-                            body: "x",
+                        Param {
+                            name: "exp",
+                            ty: "u64",
                         },
-                        MatchArm {
-                            pat: "exp",
-                            body: Block {
-                                stmts: [
-                                    Let {
-                                        name: "exp2",
-                                        ty: Some(
-                                            Lift(
+                    ],
+                ),
+                ret_ty: Some(
+                    Lift(
+                        "u64",
+                    ),
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Match {
+                        scrutinee: "exp",
+                        arms: [
+                            MatchArm {
+                                pat: 0,
+                                body: Quote(
+                                    1,
+                                ),
+                            },
+                            MatchArm {
+                                pat: 1,
+                                body: "x",
+                            },
+                            MatchArm {
+                                pat: "exp",
+                                body: Block {
+                                    stmts: [
+                                        Definition {
+                                            name: "exp2",
+                                            params: None,
+                                            ret_ty: Some(
+                                                Lift(
+                                                    "u64",
+                                                ),
+                                            ),
+                                            body: Quote(
+                                                Block {
+                                                    stmts: [
+                                                        Definition {
+                                                            name: "x2",
+                                                            params: None,
+                                                            ret_ty: None,
+                                                            body: Splice(
+                                                                App {
+                                                                    func: "power",
+                                                                    args: [
+                                                                        "x",
+                                                                        App {
+                                                                            func: Div,
+                                                                            args: [
+                                                                                "exp",
+                                                                                2,
+                                                                            ],
+                                                                        },
+                                                                    ],
+                                                                },
+                                                            ),
+                                                        },
+                                                    ],
+                                                    expr: App {
+                                                        func: Mul,
+                                                        args: [
+                                                            "x2",
+                                                            "x2",
+                                                        ],
+                                                    },
+                                                },
+                                            ),
+                                        },
+                                        Definition {
+                                            name: "odd",
+                                            params: None,
+                                            ret_ty: Some(
                                                 "u64",
                                             ),
-                                        ),
-                                        expr: Quote(
-                                            Block {
-                                                stmts: [
-                                                    Let {
-                                                        name: "x2",
-                                                        ty: None,
-                                                        expr: Splice(
-                                                            App {
-                                                                func: "power",
-                                                                args: [
-                                                                    "x",
-                                                                    App {
-                                                                        func: Div,
-                                                                        args: [
-                                                                            "exp",
-                                                                            2,
-                                                                        ],
-                                                                    },
-                                                                ],
-                                                            },
-                                                        ),
-                                                    },
+                                            body: App {
+                                                func: BitAnd,
+                                                args: [
+                                                    "exp",
+                                                    1,
                                                 ],
-                                                expr: App {
-                                                    func: Mul,
-                                                    args: [
-                                                        "x2",
-                                                        "x2",
-                                                    ],
-                                                },
                                             },
-                                        ),
-                                    },
-                                    Let {
-                                        name: "odd",
-                                        ty: Some(
-                                            "u64",
-                                        ),
-                                        expr: App {
-                                            func: BitAnd,
+                                        },
+                                    ],
+                                    expr: Match {
+                                        scrutinee: App {
+                                            func: Eq,
                                             args: [
-                                                "exp",
+                                                "odd",
                                                 1,
                                             ],
                                         },
-                                    },
-                                ],
-                                expr: Match {
-                                    scrutinee: App {
-                                        func: Eq,
-                                        args: [
-                                            "odd",
-                                            1,
+                                        arms: [
+                                            MatchArm {
+                                                pat: 0,
+                                                body: "exp2",
+                                            },
+                                            MatchArm {
+                                                pat: 1,
+                                                body: Quote(
+                                                    App {
+                                                        func: Mul,
+                                                        args: [
+                                                            Splice(
+                                                                "exp2",
+                                                            ),
+                                                            Splice(
+                                                                "x",
+                                                            ),
+                                                        ],
+                                                    },
+                                                ),
+                                            },
                                         ],
                                     },
-                                    arms: [
-                                        MatchArm {
-                                            pat: 0,
-                                            body: "exp2",
-                                        },
-                                        MatchArm {
-                                            pat: 1,
-                                            body: Quote(
-                                                App {
-                                                    func: Mul,
-                                                    args: [
-                                                        Splice(
-                                                            "exp2",
-                                                        ),
-                                                        Splice(
-                                                            "x",
-                                                        ),
-                                                    ],
-                                                },
-                                            ),
-                                        },
-                                    ],
                                 },
                             },
-                        },
-                    ],
+                        ],
+                    },
                 },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "pow5",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "power",
-                        args: [
-                            Quote(
-                                "x",
-                            ),
-                            5,
-                        ],
-                    },
+            def: Definition {
+                name: "pow5",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
+                    ],
                 ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "power",
+                            args: [
+                                Quote(
+                                    "x",
+                                ),
+                                5,
+                            ],
+                        },
+                    ),
+                },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "pow11",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "power",
-                        args: [
-                            Quote(
-                                "x",
-                            ),
-                            11,
-                        ],
-                    },
+            def: Definition {
+                name: "pow11",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
+                    ],
                 ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "power",
+                            args: [
+                                Quote(
+                                    "x",
+                                ),
+                                11,
+                            ],
+                        },
+                    ),
+                },
             },
         },
     ],

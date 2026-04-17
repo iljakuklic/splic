@@ -1,11 +1,12 @@
 Block {
     stmts: [
-        Let {
+        Definition {
             name: "x",
-            ty: Some(
+            params: None,
+            ret_ty: Some(
                 "u32",
             ),
-            expr: 1,
+            body: 1,
         },
     ],
     expr: "x",

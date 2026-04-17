@@ -2,21 +2,25 @@ Program {
     defs: [
         GlobalDef {
             phase: Object,
-            name: "bad",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    "x",
+            def: Definition {
+                name: "bad",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
+                    ],
                 ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        "x",
+                    ),
+                },
             },
         },
     ],

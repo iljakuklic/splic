@@ -2,58 +2,70 @@ Program {
     defs: [
         GlobalDef {
             phase: Object,
-            name: "min_signed",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: 9223372036854775808,
+            def: Definition {
+                name: "min_signed",
+                params: Some(
+                    [],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: 9223372036854775808,
+                },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "max_u64",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: 18446744073709551615,
+            def: Definition {
+                name: "max_u64",
+                params: Some(
+                    [],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: 18446744073709551615,
+                },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "clamp_large",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: Match {
-                    scrutinee: "x",
-                    arms: [
-                        MatchArm {
-                            pat: 9223372036854775808,
-                            body: 0,
-                        },
-                        MatchArm {
-                            pat: 18446744073709551615,
-                            body: 1,
-                        },
-                        MatchArm {
-                            pat: "n",
-                            body: "n",
+            def: Definition {
+                name: "clamp_large",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u64",
                         },
                     ],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Match {
+                        scrutinee: "x",
+                        arms: [
+                            MatchArm {
+                                pat: 9223372036854775808,
+                                body: 0,
+                            },
+                            MatchArm {
+                                pat: 18446744073709551615,
+                                body: 1,
+                            },
+                            MatchArm {
+                                pat: "n",
+                                body: "n",
+                            },
+                        ],
+                    },
                 },
             },
         },

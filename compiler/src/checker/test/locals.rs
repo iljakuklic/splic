@@ -13,10 +13,11 @@ fn infer_let_annotated_infers_body_type() {
     let ty_ann = src_arena.alloc(ast::Term::Var(ast::Name::new("u32"))); // type annotation in surface AST
     let expr = src_arena.alloc(ast::Term::Lit(42));
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let stmts = src_arena.alloc_slice_fill_iter([ast::Let {
+    let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        ty: Some(ty_ann),
-        expr,
+        params: None,
+        ret_ty: Some(ty_ann),
+        body: expr,
     }]);
     let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
 
@@ -39,10 +40,11 @@ fn infer_let_unannotated_uninferrable_expr_fails() {
 
     let expr = src_arena.alloc(ast::Term::Lit(42)); // no type, can't infer
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let stmts = src_arena.alloc_slice_fill_iter([ast::Let {
+    let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        ty: None,
-        expr,
+        params: None,
+        ret_ty: None,
+        body: expr,
     }]);
     let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
 
@@ -60,10 +62,11 @@ fn infer_let_wrong_phase_annotation_fails() {
     let ty_ann = src_arena.alloc(ast::Term::Var(ast::Name::new("VmType")));
     let expr = src_arena.alloc(ast::Term::Lit(0));
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let stmts = src_arena.alloc_slice_fill_iter([ast::Let {
+    let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        ty: Some(ty_ann),
-        expr,
+        params: None,
+        ret_ty: Some(ty_ann),
+        body: expr,
     }]);
     let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
 
@@ -83,10 +86,11 @@ fn infer_let_annotation_mismatch_fails() {
     let ty_ann = src_arena.alloc(ast::Term::Var(ast::Name::new("u32")));
     let expr = src_arena.alloc(ast::Term::Var(ast::Name::new("y")));
     let body = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
-    let stmts = src_arena.alloc_slice_fill_iter([ast::Let {
+    let stmts = src_arena.alloc_slice_fill_iter([ast::Definition {
         name: ast::Name::new("x"),
-        ty: Some(ty_ann),
-        expr,
+        params: None,
+        ret_ty: Some(ty_ann),
+        body: expr,
     }]);
     let block = src_arena.alloc(ast::Term::Block { stmts, expr: body });
 

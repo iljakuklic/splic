@@ -2,104 +2,120 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "apply_twice",
-            params: Some(
-                [
-                    Param {
-                        name: "A",
-                        ty: "Type",
-                    },
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: "A",
-                                },
-                            ],
-                            ret_ty: "A",
+            def: Definition {
+                name: "apply_twice",
+                params: Some(
+                    [
+                        Param {
+                            name: "A",
+                            ty: "Type",
                         },
-                    },
-                    Param {
-                        name: "x",
-                        ty: "A",
-                    },
-                ],
-            ),
-            ret_ty: "A",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: "f",
-                    args: [
-                        App {
-                            func: "f",
-                            args: [
-                                "x",
-                            ],
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "_",
+                                        ty: "A",
+                                    },
+                                ],
+                                ret_ty: "A",
+                            },
+                        },
+                        Param {
+                            name: "x",
+                            ty: "A",
                         },
                     ],
+                ),
+                ret_ty: Some(
+                    "A",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: "f",
+                        args: [
+                            App {
+                                func: "f",
+                                args: [
+                                    "x",
+                                ],
+                            },
+                        ],
+                    },
                 },
             },
         },
         GlobalDef {
             phase: Meta,
-            name: "inc",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: Add,
-                    args: [
-                        "x",
-                        1,
+            def: Definition {
+                name: "inc",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
                     ],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Add,
+                        args: [
+                            "x",
+                            1,
+                        ],
+                    },
                 },
             },
         },
         GlobalDef {
             phase: Meta,
-            name: "test",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: "apply_twice",
-                    args: [
-                        "u64",
-                        "inc",
-                        0,
-                    ],
+            def: Definition {
+                name: "test",
+                params: Some(
+                    [],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: "apply_twice",
+                        args: [
+                            "u64",
+                            "inc",
+                            0,
+                        ],
+                    },
                 },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "result",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "test",
-                        args: [],
-                    },
+            def: Definition {
+                name: "result",
+                params: Some(
+                    [],
                 ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "test",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

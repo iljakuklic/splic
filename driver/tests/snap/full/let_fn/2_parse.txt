@@ -2,37 +2,42 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "sub",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                    Param {
-                        name: "y",
-                        ty: "u32",
-                    },
-                ],
-            ),
-            ret_ty: "u32",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "d",
-                        ty: Some(
-                            "u32",
-                        ),
-                        expr: App {
-                            func: Sub,
-                            args: [
-                                "x",
-                                "y",
-                            ],
+            def: Definition {
+                name: "sub",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u32",
                         },
-                    },
-                ],
-                expr: "d",
+                        Param {
+                            name: "y",
+                            ty: "u32",
+                        },
+                    ],
+                ),
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Block {
+                    stmts: [
+                        Definition {
+                            name: "d",
+                            params: None,
+                            ret_ty: Some(
+                                "u32",
+                            ),
+                            body: App {
+                                func: Sub,
+                                args: [
+                                    "x",
+                                    "y",
+                                ],
+                            },
+                        },
+                    ],
+                    expr: "d",
+                },
             },
         },
     ],

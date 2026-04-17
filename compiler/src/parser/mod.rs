@@ -5,7 +5,7 @@ use anyhow::{Context as _, Result};
 use crate::common::Precedence;
 use crate::lexer::Token;
 use crate::parser::ast::{
-    Assoc, BinOp, FunName, GlobalDef, Let, MatchArm, Name, Param, Pat, Phase, Term, UnOp,
+    Assoc, BinOp, Definition, FunName, GlobalDef, MatchArm, Name, Param, Pat, Phase, Term, UnOp,
 };
 
 pub mod ast;
@@ -157,51 +157,43 @@ where
 
         self.take(Token::Def).context("expected 'def'")?;
         let name = self.take_ident().context("expected definition name")?;
+        let def = self.parse_definition_body(name)?;
 
-        let def = if self.peek() == Some(Token::LParen) {
-            // `(params) -> ret = body` — shared syntax for both phases
-            self.take(Token::LParen).context("expected '('")?;
+        Ok(GlobalDef { phase, def })
+    }
+
+    /// Parse the shared `(params)? (-> ret_ty | : ret_ty)? = body ;` syntax
+    /// used by both `def` and `let`.
+    fn parse_definition_body(&mut self, name: &'names Name) -> Result<Definition<'names, 'ast>> {
+        let (params, ret_ty) = if self.consume_if(Token::LParen) {
             let params = self.parse_params()?;
             self.take(Token::RParen).context("expected ')'")?;
-            self.take(Token::Arrow).context("expected '->'")?;
             let ret_ty = self
-                .parse_expr()
-                .context("expected return type expression")?;
-            self.take(Token::Eq).context("expected '='")?;
-            let body = self.parse_expr().context("expected function body")?;
-            self.take(Token::Semi)
-                .context("expected ';' after function body")?;
-            GlobalDef {
-                phase,
-                name,
-                params: Some(params),
-                ret_ty,
-                body,
-            }
+                .consume_if(Token::Arrow)
+                .then(|| self.parse_expr().context("expected return type after '->'"))
+                .transpose()?;
+            (Some(params), ret_ty)
         } else {
-            // `: ty = body` — meta-phase constant only
-            if phase == Phase::Object {
-                anyhow::bail!(
-                    "`code def` requires parameters; \
-                     object-level constants are not yet supported"
-                );
-            }
-            self.take(Token::Colon).context("expected ':'")?;
-            let ret_ty = self.parse_expr().context("expected type")?;
-            self.take(Token::Eq).context("expected '='")?;
-            let body = self.parse_expr().context("expected body")?;
-            self.take(Token::Semi)
-                .context("expected ';' after constant definition")?;
-            GlobalDef {
-                phase,
-                name,
-                params: None,
-                ret_ty,
-                body,
-            }
+            let ret_ty = self
+                .consume_if(Token::Colon)
+                .then(|| self.parse_expr().context("expected type after ':'"))
+                .transpose()?;
+            (None, ret_ty)
         };
 
-        Ok(def)
+        self.take(Token::Eq).context("expected '='")?;
+        let body = self
+            .parse_expr()
+            .with_context(|| format!("in binding `{name}`"))?;
+        self.take(Token::Semi)
+            .context("expected ';' after binding")?;
+
+        Ok(Definition {
+            name,
+            params,
+            ret_ty,
+            body,
+        })
     }
 
     fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {
@@ -219,12 +211,16 @@ where
 
     fn parse_block_inner(
         &mut self,
-    ) -> Result<(&'ast [Let<'names, 'ast>], &'ast Term<'names, 'ast>)> {
+    ) -> Result<(&'ast [Definition<'names, 'ast>], &'ast Term<'names, 'ast>)> {
         let mut stmts = Vec::new();
 
         while self.peek() == Some(Token::Let) {
-            let let_stmt = self.parse_let_stmt().context("parsing let statement")?;
-            stmts.push(let_stmt);
+            self.take(Token::Let).context("expected 'let'")?;
+            let name = self.take_ident().context("expected variable name")?;
+            let def = self
+                .parse_definition_body(name)
+                .context("parsing let statement")?;
+            stmts.push(def);
         }
 
         let expr = self.parse_expr().context("parsing expression in block")?;
@@ -232,56 +228,6 @@ where
 
         let stmts = self.arena.alloc_slice_fill_iter(stmts);
         Ok((stmts, expr))
-    }
-
-    fn parse_let_stmt(&mut self) -> Result<Let<'names, 'ast>> {
-        self.take(Token::Let).context("expected 'let'")?;
-        let name = self.take_ident().context("expected variable name")?;
-
-        // `let f(params) (-> ret_ty)? = expr;` — desugar to
-        // `let f: fn(params) -> ret_ty = lam(params) -> ret_ty = expr;`
-        if self.consume_if(Token::LParen) {
-            let params = self.parse_params()?;
-            self.take(Token::RParen).context("expected ')'")?;
-            let ret_ty = self
-                .consume_if(Token::Arrow)
-                .then(|| self.parse_expr().context("expected return type after '->'"))
-                .transpose()?;
-            self.take(Token::Eq)
-                .context("expected '=' in let binding")?;
-            let body = self
-                .parse_expr()
-                .with_context(|| format!("in let binding `{name}`"))?;
-            self.take(Token::Semi)
-                .context("expected ';' after let binding")?;
-
-            let ty = ret_ty.map(|ret| {
-                self.alloc(Term::Pi {
-                    params,
-                    ret_ty: ret,
-                })
-            });
-            let expr = self.arena.alloc(Term::Lam {
-                params,
-                ret_ty,
-                body,
-            });
-            return Ok(Let { name, ty, expr });
-        }
-
-        let ty = if self.consume_if(Token::Colon) {
-            Some(self.parse_expr().context("expected type in let binding")?)
-        } else {
-            None
-        };
-        self.take(Token::Eq)
-            .context("expected '=' in let binding")?;
-        let expr = self
-            .parse_expr()
-            .with_context(|| format!("in let binding `{name}`"))?;
-        self.take(Token::Semi)
-            .context("expected ';' after let binding")?;
-        Ok(Let { name, ty, expr })
     }
 
     fn parse_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {

@@ -2,36 +2,20 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "test",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "fst",
-                        ty: None,
-                        expr: Lam {
-                            params: [
-                                Param {
-                                    name: "x",
-                                    ty: "u64",
-                                },
-                                Param {
-                                    name: "y",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: None,
-                            body: "x",
-                        },
-                    },
-                    Let {
-                        name: "add",
-                        ty: Some(
-                            Pi {
-                                params: [
+            def: Definition {
+                name: "test",
+                params: Some(
+                    [],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [
+                        Definition {
+                            name: "fst",
+                            params: Some(
+                                [
                                     Param {
                                         name: "x",
                                         ty: "u64",
@@ -41,20 +25,24 @@ Program {
                                         ty: "u64",
                                     },
                                 ],
-                                ret_ty: "u64",
-                            },
-                        ),
-                        expr: Lam {
-                            params: [
-                                Param {
-                                    name: "x",
-                                    ty: "u64",
-                                },
-                                Param {
-                                    name: "y",
-                                    ty: "u64",
-                                },
-                            ],
+                            ),
+                            ret_ty: None,
+                            body: "x",
+                        },
+                        Definition {
+                            name: "add",
+                            params: Some(
+                                [
+                                    Param {
+                                        name: "x",
+                                        ty: "u64",
+                                    },
+                                    Param {
+                                        name: "y",
+                                        ty: "u64",
+                                    },
+                                ],
+                            ),
                             ret_ty: Some(
                                 "u64",
                             ),
@@ -66,38 +54,42 @@ Program {
                                 ],
                             },
                         },
-                    },
-                ],
-                expr: App {
-                    func: "add",
-                    args: [
-                        App {
-                            func: "fst",
-                            args: [
-                                10,
-                                99,
-                            ],
-                        },
-                        32,
                     ],
+                    expr: App {
+                        func: "add",
+                        args: [
+                            App {
+                                func: "fst",
+                                args: [
+                                    10,
+                                    99,
+                                ],
+                            },
+                            32,
+                        ],
+                    },
                 },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "result",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "test",
-                        args: [],
-                    },
+            def: Definition {
+                name: "result",
+                params: Some(
+                    [],
                 ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "test",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

@@ -2,19 +2,23 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "id",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                ],
-            ),
-            ret_ty: "u32",
-            body: Block {
-                stmts: [],
-                expr: "x",
+            def: Definition {
+                name: "id",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                    ],
+                ),
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: "x",
+                },
             },
         },
     ],

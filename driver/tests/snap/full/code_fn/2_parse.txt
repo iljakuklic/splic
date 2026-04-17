@@ -2,24 +2,28 @@ Program {
     defs: [
         GlobalDef {
             phase: Object,
-            name: "double",
-            params: Some(
-                [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: Add,
-                    args: [
-                        "x",
-                        "x",
+            def: Definition {
+                name: "double",
+                params: Some(
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
                     ],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Add,
+                        args: [
+                            "x",
+                            "x",
+                        ],
+                    },
                 },
             },
         },
