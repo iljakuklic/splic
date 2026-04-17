@@ -23,11 +23,10 @@ impl<'names> FuncRegistry<'names> {
             let name = df.name.as_str();
             let idx = u32::try_from(i).map_err(|_| anyhow!("too many functions (> u32::MAX)"))?;
             func_indices.insert(name, idx);
-            // TODO: support emitting top-level constants (non-Pi defs) in wasm.
-            let Term::Pi(pi) = df.ty else {
-                unreachable!("non-function def `{name}` in wasm backend (not yet supported)")
+            let splic_compiler::core::Global::CodeFn(codefn) = &df.global else {
+                unreachable!("non-CodeFn def `{name}` in staged wasm program")
             };
-            func_return_types.insert(name, term_to_valtype(pi.body_ty));
+            func_return_types.insert(name, term_to_valtype(codefn.ret_ty));
         }
         Ok(Self {
             func_indices,

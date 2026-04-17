@@ -5,7 +5,7 @@ use bumpalo::Bump;
 
 use crate::common::de_bruijn;
 use crate::common::env::Env as LevelEnv;
-use crate::core::{self, Arm, IntType, IntWidth, Name, Pat, Pi, Prim, Program, Term};
+use crate::core::{self, Arm, IntType, IntWidth, Name, Pat, Prim, Program, Term};
 use crate::parser::ast::Phase;
 
 // ── Object-level semantic values ──────────────────────────────────────────────
@@ -607,68 +607,53 @@ pub fn unstage_program<'names, 'out, 'core>(
     out_arena: &'out Bump,
     program: &'core Program<'names, 'core>,
 ) -> Result<Program<'names, 'out>> {
-    let globals: Globals<'names, '_> = program.defs.iter().map(|f| (f.name, f.body)).collect();
+    // Build meta globals table: only meta-level definitions are unfolded during staging.
+    let globals: Globals<'names, '_> = program
+        .defs
+        .iter()
+        .filter_map(|f| match &f.global {
+            core::Global::Meta(meta) => Some((f.name, meta.body)),
+            core::Global::CodeFn(_) => None,
+        })
+        .collect();
 
     let staged_defs: Vec<core::GlobalDef<'names, 'out>> = program
         .defs
         .iter()
-        .filter(|f| f.phase.is_object())
-        .map(|f| -> Result<_> {
+        .filter_map(|f| match &f.global {
+            core::Global::CodeFn(codefn) => Some((f.name, codefn)),
+            core::Global::Meta(_) => None,
+        })
+        .map(|(name, codefn)| -> Result<_> {
             // Per-definition eval arena: all intermediate `ObjVal` nodes are
             // allocated here and freed automatically when this closure returns.
             let eval_arena = Bump::new();
             let mut env = Env::new(de_bruijn::Depth::ZERO);
 
-            match f.ty {
-                Term::Pi(pi) => {
-                    // Function: the body is a Lam; stage params, return type, and inner body.
-                    let Term::Lam(lam) = f.body else {
-                        unreachable!("Pi-typed def has non-Lam body (typechecker invariant)")
-                    };
+            let staged_params =
+                out_arena.alloc_slice_try_fill_iter(codefn.params.iter().map(
+                    |(n, ty)| -> Result<(&'names Name, &'out Term<'names, 'out>)> {
+                        let ty_val = eval_obj(&eval_arena, &globals, &mut env, ty)?;
+                        let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
+                        env.push_obj();
+                        Ok((n, staged_ty))
+                    },
+                ))?;
 
-                    let staged_params =
-                        out_arena.alloc_slice_try_fill_iter(pi.params.iter().map(
-                            |(n, ty)| -> Result<(&'names Name, &'out Term<'names, 'out>)> {
-                                let ty_val = eval_obj(&eval_arena, &globals, &mut env, ty)?;
-                                let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
-                                env.push_obj();
-                                Ok((n, staged_ty))
-                            },
-                        ))?;
+            let ret_ty_val = eval_obj(&eval_arena, &globals, &mut env, codefn.ret_ty)?;
+            let staged_ret_ty = quote_obj(out_arena, env.obj_depth, ret_ty_val);
 
-                    let ret_ty_val = eval_obj(&eval_arena, &globals, &mut env, pi.body_ty)?;
-                    let staged_ret_ty = quote_obj(out_arena, env.obj_depth, ret_ty_val);
+            let body_val = eval_obj(&eval_arena, &globals, &mut env, codefn.body)?;
+            let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
 
-                    let body_val = eval_obj(&eval_arena, &globals, &mut env, lam.body)?;
-                    let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
-
-                    Ok(core::GlobalDef {
-                        name: f.name,
-                        phase: Phase::Object,
-                        ty: out_arena.alloc(Term::Pi(Pi {
-                            params: staged_params,
-                            body_ty: staged_ret_ty,
-                            phase: Phase::Object,
-                        })),
-                        body: staged_body,
-                    })
-                }
-                _ => {
-                    // Constant: stage the type and body directly.
-                    let ty_val = eval_obj(&eval_arena, &globals, &mut env, f.ty)?;
-                    let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
-
-                    let body_val = eval_obj(&eval_arena, &globals, &mut env, f.body)?;
-                    let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
-
-                    Ok(core::GlobalDef {
-                        name: f.name,
-                        phase: Phase::Object,
-                        ty: staged_ty,
-                        body: staged_body,
-                    })
-                }
-            }
+            Ok(core::GlobalDef {
+                name,
+                global: core::Global::CodeFn(core::CodeFn {
+                    params: staged_params,
+                    ret_ty: staged_ret_ty,
+                    body: staged_body,
+                }),
+            })
         })
         .collect::<Result<Vec<_>>>()?;
 

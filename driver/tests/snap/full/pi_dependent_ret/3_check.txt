@@ -11,10 +11,10 @@ fn test_u8() -> u8 {
 }
 
 code fn result_u64() -> u64 {
-    lam() = $(@embed_u64(test_u64()))
+    $(@embed_u64(test_u64()))
 }
 
 code fn result_u8() -> u8 {
-    lam() = $(@embed_u8(test_u8()))
+    $(@embed_u8(test_u8()))
 }
 

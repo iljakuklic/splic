@@ -3,6 +3,6 @@ def answer: u32 {
 }
 
 code fn get_answer() -> u32 {
-    lam() = $(@embed_u32(answer))
+    $(@embed_u32(answer))
 }
 

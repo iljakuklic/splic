@@ -7,6 +7,6 @@ def y: u32 {
 }
 
 code fn result() -> u32 {
-    lam() = $(@embed_u32(y))
+    $(@embed_u32(y))
 }
 

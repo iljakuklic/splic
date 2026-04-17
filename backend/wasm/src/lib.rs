@@ -2,7 +2,7 @@ mod emit;
 mod types;
 
 use anyhow::{Result, anyhow};
-use splic_compiler::core::{Program, Term};
+use splic_compiler::core::Program;
 use wasm_encoder::{
     CodeSection, ExportKind, ExportSection, Function as WasmFunction, FunctionSection, Instruction,
     Module, TypeSection,
@@ -21,20 +21,15 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
     let mut code = CodeSection::new();
 
     for (func_idx, func) in program.defs.iter().enumerate() {
-        // Extract Wasm signature from the Pi type.
-        // TODO: support emitting top-level constants (non-Pi defs) in wasm.
-        let Term::Pi(pi) = func.ty else {
-            unreachable!(
-                "non-function def `{}` in wasm backend (not yet supported)",
-                func.name
-            )
+        let splic_compiler::core::Global::CodeFn(codefn) = &func.global else {
+            unreachable!("non-CodeFn def `{}` in staged wasm program", func.name)
         };
-        let param_valtypes: Vec<_> = pi
+        let param_valtypes: Vec<_> = codefn
             .params
             .iter()
             .map(|(_, ty)| term_to_valtype(ty))
             .collect();
-        let result_valtype = term_to_valtype(pi.body_ty);
+        let result_valtype = term_to_valtype(codefn.ret_ty);
 
         let type_idx =
             u32::try_from(func_idx).map_err(|_| anyhow!("too many functions (> u32::MAX)"))?;
@@ -46,7 +41,7 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
 
         // Emit the function body.
         let mut emitter = Emitter::new(&cg, &param_valtypes)?;
-        emitter.emit_term(func.body);
+        emitter.emit_term(codefn.body);
         emitter.push(Instruction::End);
 
         // Declare extra locals (let-binding and scrutinee temporaries).

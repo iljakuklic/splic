@@ -4,6 +4,19 @@ use crate::common::de_bruijn;
 use crate::common::env::Env;
 use crate::core::{self, value};
 
+/// How a global name is bound: either a meta-level definition (constant or function)
+/// whose type is a `Term`, or a code function whose calling convention is stored directly.
+#[derive(Debug, Clone)]
+pub enum GlobalEntry<'names, 'core> {
+    /// Meta-level definition. The stored term is the type (Pi for functions, any type for constants).
+    Meta(&'core core::Term<'names, 'core>),
+    /// Object-level function. Params and return type are stored directly; no first-class type term.
+    CodeFn {
+        params: &'core [(&'names core::Name, &'core core::Term<'names, 'core>)],
+        ret_ty: &'core core::Term<'names, 'core>,
+    },
+}
+
 /// A single entry in the elaboration context.
 #[derive(Clone, Debug)]
 pub struct CtxEntry<'names, 'core> {
@@ -33,15 +46,15 @@ pub struct Ctx<'names, 'core, 'globals> {
     /// Local variable bindings (oldest first), each carrying name, type, and value.
     pub locals: Env<CtxEntry<'names, 'core>>,
 
-    /// Global definition types: name -> type term.
+    /// Global definitions: name -> how it was bound.
     /// Borrowed independently of the arena so the map can live on the stack.
-    pub globals: &'globals HashMap<&'names core::Name, &'core core::Term<'names, 'core>>,
+    pub globals: &'globals HashMap<&'names core::Name, GlobalEntry<'names, 'core>>,
 }
 
 impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
     pub const fn new(
         arena: &'core bumpalo::Bump,
-        globals: &'globals HashMap<&'names core::Name, &'core core::Term<'names, 'core>>,
+        globals: &'globals HashMap<&'names core::Name, GlobalEntry<'names, 'core>>,
     ) -> Self {
         Ctx {
             arena,

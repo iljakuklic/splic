@@ -15,6 +15,6 @@ fn test() -> u64 {
 }
 
 code fn result() -> u64 {
-    lam() = $(@embed_u64(test()))
+    $(@embed_u64(test()))
 }
 

@@ -8,6 +8,6 @@ fn sum_n(n@0: u64) -> u64 {
 }
 
 code fn sum_to_five() -> u64 {
-    lam() = $(@embed_u64(sum_n(5_u64)))
+    $(@embed_u64(sum_n(5_u64)))
 }
 

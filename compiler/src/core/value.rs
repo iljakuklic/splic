@@ -59,7 +59,6 @@ pub struct VLam<'names, 'a> {
 pub struct VPi<'names, 'a> {
     pub params: &'a [(&'names Name, Closure<'names, 'a>)],
     pub ret_closure: Closure<'names, 'a>,
-    pub phase: Phase,
 }
 
 /// A closure: snapshot of the environment at creation time, plus an unevaluated body.
@@ -189,7 +188,6 @@ pub fn eval_pi<'names, 'a>(
             env: env_snapshot,
             body: pi.body_ty,
         },
-        phase: pi.phase,
     })
 }
 
@@ -338,7 +336,6 @@ pub fn quote<'names, 'a>(
             arena.alloc(Term::Pi(Pi {
                 params: params_slice,
                 body_ty: ret_term,
-                phase: vpi.phase,
             }))
         }
         Value::Lift(inner) => {

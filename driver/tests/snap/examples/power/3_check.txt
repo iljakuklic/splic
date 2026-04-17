@@ -19,10 +19,10 @@ fn power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
 }
 
 code fn pow5(x@0: u64) -> u64 {
-    lam(x@1: u64) = $(power(#(x@1), 5_u64))
+    $(power(#(x@0), 5_u64))
 }
 
 code fn pow11(x@0: u64) -> u64 {
-    lam(x@1: u64) = $(power(#(x@1), 11_u64))
+    $(power(#(x@0), 11_u64))
 }
 

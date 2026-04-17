@@ -66,13 +66,15 @@ fn collect_signatures_two_functions() {
 
     assert_eq!(globals.len(), 2);
 
-    let id_ty = *globals
+    let GlobalEntry::Meta(id_ty) = globals
         .get(&Name::new("id"))
-        .expect("id should be in globals");
+        .expect("id should be in globals")
+    else {
+        panic!("id should be a meta entry")
+    };
     let core::Term::Pi(pi) = id_ty else {
         panic!("id should have Pi type")
     };
-    assert_eq!(pi.phase, Phase::Meta);
     assert_eq!(pi.params.len(), 1);
     assert_eq!(pi.params[0].0.as_str(), "x");
     assert!(matches!(
@@ -90,24 +92,23 @@ fn collect_signatures_two_functions() {
         }))
     ));
 
-    let add_ty = *globals
+    let GlobalEntry::CodeFn { params, ret_ty } = globals
         .get(&Name::new("add_one"))
-        .expect("add_one should be in globals");
-    let core::Term::Pi(pi) = add_ty else {
-        panic!("add_one should have Pi type")
+        .expect("add_one should be in globals")
+    else {
+        panic!("add_one should be a CodeFn entry")
     };
-    assert_eq!(pi.phase, Phase::Object);
-    assert_eq!(pi.params.len(), 1);
-    assert_eq!(pi.params[0].0.as_str(), "y");
+    assert_eq!(params.len(), 1);
+    assert_eq!(params[0].0.as_str(), "y");
     assert!(matches!(
-        pi.params[0].1,
+        params[0].1,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..
         }))
     ));
     assert!(matches!(
-        pi.body_ty,
+        ret_ty,
         core::Term::Prim(Prim::IntTy(IntType {
             width: IntWidth::U64,
             ..

@@ -13,10 +13,10 @@ fn get_value(b@0: u1) -> {
 }
 
 code fn result_0() -> u0 {
-    lam() = $(@embed_u0(get_value(0_u1)))
+    $(@embed_u0(get_value(0_u1)))
 }
 
 code fn result_1() -> u16 {
-    lam() = $(@embed_u16(get_value(1_u1)))
+    $(@embed_u16(get_value(1_u1)))
 }
 

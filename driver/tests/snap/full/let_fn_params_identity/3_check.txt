@@ -18,10 +18,10 @@ fn test_id_u8() -> u8 {
 }
 
 code fn result_u64() -> u64 {
-    lam() = $(@embed_u64(test_id()))
+    $(@embed_u64(test_id()))
 }
 
 code fn result_u8() -> u8 {
-    lam() = $(@embed_u8(test_id_u8()))
+    $(@embed_u8(test_id_u8()))
 }
 

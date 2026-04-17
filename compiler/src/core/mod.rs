@@ -32,14 +32,42 @@ pub struct Arm<'names, 'a> {
     pub body: &'a Term<'names, 'a>,
 }
 
+/// Elaborated meta-phase top-level definition (function or constant).
+#[derive(Debug)]
+pub struct GlobalMeta<'names, 'a> {
+    pub ty: &'a Term<'names, 'a>,
+    pub body: &'a Term<'names, 'a>,
+}
+
+/// Global object-level functions
+#[derive(Debug, PartialEq, Eq)]
+pub struct CodeFn<'names, 'a> {
+    pub params: &'a [(&'names Name, &'a Term<'names, 'a>)], // (name, type) pairs
+    pub ret_ty: &'a Term<'names, 'a>,
+    pub body: &'a Term<'names, 'a>,
+}
+
+/// Top-level elaborated item.
+#[derive(Debug)]
+pub enum Global<'names, 'a> {
+    Meta(GlobalMeta<'names, 'a>),
+    CodeFn(CodeFn<'names, 'a>),
+}
+
+impl<'names, 'a> Global<'names, 'a> {
+    pub fn phase(&self) -> Phase {
+        match self {
+            Global::Meta(_) => Phase::Meta,
+            Global::CodeFn(_) => Phase::Object,
+        }
+    }
+}
+
 /// Elaborated top-level definition (function or constant).
 #[derive(Debug)]
 pub struct GlobalDef<'names, 'a> {
     pub name: &'names Name,
-    pub phase: Phase,
-    /// Type of the definition. Functions have a `Pi` type; constants have any type.
-    pub ty: &'a Term<'names, 'a>,
-    pub body: &'a Term<'names, 'a>,
+    pub global: Global<'names, 'a>,
 }
 
 /// Elaborated program: a sequence of top-level function definitions
@@ -63,16 +91,11 @@ pub struct App<'names, 'a> {
     pub args: &'a [&'a Term<'names, 'a>],
 }
 
-/// Dependent function type: `fn(params...) -> body_ty`
-///
-/// `phase` distinguishes meta-level (`fn`) from object-level (`code fn`) functions.
-/// This allows the globals table to store `&Term` directly, unifying type lookup
-/// for globals and locals.
+/// Dependent function type: `fn(params...) -> body_ty` (meta-level only).
 #[derive(Debug, PartialEq, Eq)]
 pub struct Pi<'names, 'a> {
     pub params: &'a [(&'names Name, &'a Term<'names, 'a>)], // (name, type) pairs
     pub body_ty: &'a Term<'names, 'a>,
-    pub phase: Phase,
 }
 
 /// Lambda abstraction: |params...| body

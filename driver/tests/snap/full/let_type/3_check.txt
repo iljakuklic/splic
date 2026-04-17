@@ -7,6 +7,6 @@ fn let_type() -> u32 {
 }
 
 code fn test() -> u32 {
-    lam() = $(@embed_u32(let_type()))
+    $(@embed_u32(let_type()))
 }
 

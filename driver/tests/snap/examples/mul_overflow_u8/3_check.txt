@@ -3,6 +3,6 @@ fn f() -> u8 {
 }
 
 code fn g() -> u8 {
-    lam() = $(@embed_u8(f()))
+    $(@embed_u8(f()))
 }
 

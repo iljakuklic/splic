@@ -21,8 +21,7 @@ pub fn alpha_eq(a: &Term<'_, '_>, b: &Term<'_, '_>) -> bool {
                     .all(|(x, y)| alpha_eq(x, y))
         }
         (Term::Pi(p1), Term::Pi(p2)) => {
-            p1.phase == p2.phase
-                && p1.params.len() == p2.params.len()
+            p1.params.len() == p2.params.len()
                 && p1
                     .params
                     .iter()

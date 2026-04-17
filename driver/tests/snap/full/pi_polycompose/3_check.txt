@@ -22,6 +22,6 @@ fn test() -> u8 {
 }
 
 code fn result() -> u8 {
-    lam() = $(@embed_u8(test()))
+    $(@embed_u8(test()))
 }
 
