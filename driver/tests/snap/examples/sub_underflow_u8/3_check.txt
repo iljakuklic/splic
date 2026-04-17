@@ -1,8 +1,8 @@
-fn f() -> u8 {
+def f() -> u8 {
     lam() = @sub_u8(5_u8, 10_u8)
 }
 
-code fn g() -> u8 {
+code def g() -> u8 {
     $(@embed_u8(f()))
 }
 

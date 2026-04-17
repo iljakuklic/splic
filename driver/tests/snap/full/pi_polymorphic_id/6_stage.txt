@@ -1,8 +1,8 @@
-code fn result_u64() -> u64 {
+code def result_u64() -> u64 {
     42_u64
 }
 
-code fn result_u8() -> u8 {
+code def result_u8() -> u8 {
     7_u8
 }
 

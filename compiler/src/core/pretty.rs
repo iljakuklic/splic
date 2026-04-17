@@ -244,7 +244,7 @@ impl fmt::Display for GlobalDef<'_, '_> {
                 if let Term::Pi(pi) = meta.ty {
                     // Meta function: `fn name(params) -> ret { body }`
                     let mut env: Env<&Name> = Env::with_capacity(pi.params.len());
-                    write!(f, "fn {}(", self.name)?;
+                    write!(f, "def {}(", self.name)?;
                     fmt_params(pi.params, &mut env, 1, f)?;
                     write!(f, ") -> ")?;
                     pi.body_ty.fmt_expr(&mut env, 1, f)?;
@@ -262,7 +262,7 @@ impl fmt::Display for GlobalDef<'_, '_> {
             Global::CodeFn(codefn) => {
                 // Object function: `code fn name(params) -> ret { body }`
                 let mut env: Env<&Name> = Env::with_capacity(codefn.params.len());
-                write!(f, "code fn {}(", self.name)?;
+                write!(f, "code def {}(", self.name)?;
                 fmt_params(codefn.params, &mut env, 1, f)?;
                 write!(f, ") -> ")?;
                 codefn.ret_ty.fmt_expr(&mut env, 1, f)?;

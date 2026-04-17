@@ -1,4 +1,4 @@
-fn power_acc(x@0: [[u64]], k@1: u64, r@2: [[u64]]) -> [[u64]] {
+def power_acc(x@0: [[u64]], k@1: u64, r@2: [[u64]]) -> [[u64]] {
     lam(x@3: [[u64]], k@4: u64, r@5: [[u64]]) = {
         match k@4 {
             0 => r@5,
@@ -18,7 +18,7 @@ fn power_acc(x@0: [[u64]], k@1: u64, r@2: [[u64]]) -> [[u64]] {
     }
 }
 
-fn power_acc_1(x@0: [[u64]], k@1: u64) -> [[u64]] {
+def power_acc_1(x@0: [[u64]], k@1: u64) -> [[u64]] {
     lam(x@2: [[u64]], k@3: u64) = {
         match k@3 {
             0 => #(1_u64),
@@ -38,34 +38,34 @@ fn power_acc_1(x@0: [[u64]], k@1: u64) -> [[u64]] {
     }
 }
 
-fn power(x@0: [[u64]], k@1: u64) -> [[u64]] {
+def power(x@0: [[u64]], k@1: u64) -> [[u64]] {
     lam(x@2: [[u64]], k@3: u64) = power_acc_1(x@2, k@3)
 }
 
-code fn pow1(x@0: u64) -> u64 {
+code def pow1(x@0: u64) -> u64 {
     $(power(#(x@0), 1_u64))
 }
 
-code fn pow5(x@0: u64) -> u64 {
+code def pow5(x@0: u64) -> u64 {
     $(power(#(x@0), 5_u64))
 }
 
-code fn pow11_inc(x@0: u64) -> u64 {
+code def pow11_inc(x@0: u64) -> u64 {
     $(power(#({
         let y@1: u64 = @add_u64(x@0, 1_u64);
         y@1
     }), 11_u64))
 }
 
-code fn pow15(x@0: u64) -> u64 {
+code def pow15(x@0: u64) -> u64 {
     $(power(#(x@0), 15_u64))
 }
 
-code fn pow16(x@0: u64) -> u64 {
+code def pow16(x@0: u64) -> u64 {
     $(power(#(x@0), 16_u64))
 }
 
-code fn pow17(x@0: u64) -> u64 {
+code def pow17(x@0: u64) -> u64 {
     $(power(#(x@0), 17_u64))
 }
 

@@ -1,12 +1,12 @@
-fn compose(A@0: Type, B@1: Type, C@2: Type, f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) -> fn(_: A@0) -> C@2 {
+def compose(A@0: Type, B@1: Type, C@2: Type, f@3: fn(_: B@1) -> C@2, g@4: fn(_: A@0) -> B@1) -> fn(_: A@0) -> C@2 {
     lam(A@5: Type, B@6: Type, C@7: Type, f@8: fn(_: B@6) -> C@7, g@9: fn(_: A@5) -> B@6) = lam(x@10: A@5) = f@8(g@9(x@10))
 }
 
-fn double(x@0: u64) -> u64 {
+def double(x@0: u64) -> u64 {
     lam(x@1: u64) = @add_u64(x@1, x@1)
 }
 
-fn to_u8(x@0: u64) -> u8 {
+def to_u8(x@0: u64) -> u8 {
     lam(x@1: u64) = {
         match x@1 {
             0 => 0_u8,
@@ -17,11 +17,11 @@ fn to_u8(x@0: u64) -> u8 {
     }
 }
 
-fn test() -> u8 {
+def test() -> u8 {
     lam() = compose(u64, u64, u8, to_u8, double)(5_u64)
 }
 
-code fn result() -> u8 {
+code def result() -> u8 {
     $(@embed_u8(test()))
 }
 

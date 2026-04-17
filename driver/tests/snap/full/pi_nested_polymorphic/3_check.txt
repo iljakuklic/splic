@@ -1,16 +1,16 @@
-fn apply_twice(A@0: Type, f@1: fn(_: A@0) -> A@0, x@2: A@0) -> A@0 {
+def apply_twice(A@0: Type, f@1: fn(_: A@0) -> A@0, x@2: A@0) -> A@0 {
     lam(A@3: Type, f@4: fn(_: A@3) -> A@3, x@5: A@3) = f@4(f@4(x@5))
 }
 
-fn inc(x@0: u64) -> u64 {
+def inc(x@0: u64) -> u64 {
     lam(x@1: u64) = @add_u64(x@1, 1_u64)
 }
 
-fn test() -> u64 {
+def test() -> u64 {
     lam() = apply_twice(u64, inc, 0_u64)
 }
 
-code fn result() -> u64 {
+code def result() -> u64 {
     $(@embed_u64(test()))
 }
 

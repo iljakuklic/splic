@@ -1,16 +1,16 @@
-code fn pow1(x@0: u64) -> u64 {
+code def pow1(x@0: u64) -> u64 {
     let x1@1: u64 = x@0;
     x1@1
 }
 
-code fn pow5(x@0: u64) -> u64 {
+code def pow5(x@0: u64) -> u64 {
     let x1@1: u64 = x@0;
     let x1@2: u64 = @mul_u64(x1@1, x1@1);
     let x1@3: u64 = @mul_u64(x1@2, x1@2);
     @mul_u64(x1@1, x1@3)
 }
 
-code fn pow11_inc(x@0: u64) -> u64 {
+code def pow11_inc(x@0: u64) -> u64 {
     let x1@1: u64 = {
         let y@1: u64 = @add_u64(x@0, 1_u64);
         y@1
@@ -21,7 +21,7 @@ code fn pow11_inc(x@0: u64) -> u64 {
     @mul_u64(@mul_u64(x1@1, x1@2), x1@4)
 }
 
-code fn pow15(x@0: u64) -> u64 {
+code def pow15(x@0: u64) -> u64 {
     let x1@1: u64 = x@0;
     let x1@2: u64 = @mul_u64(x1@1, x1@1);
     let x1@3: u64 = @mul_u64(x1@2, x1@2);
@@ -29,7 +29,7 @@ code fn pow15(x@0: u64) -> u64 {
     @mul_u64(@mul_u64(@mul_u64(x1@1, x1@2), x1@3), x1@4)
 }
 
-code fn pow16(x@0: u64) -> u64 {
+code def pow16(x@0: u64) -> u64 {
     let x1@1: u64 = x@0;
     let x1@2: u64 = @mul_u64(x1@1, x1@1);
     let x1@3: u64 = @mul_u64(x1@2, x1@2);
@@ -38,7 +38,7 @@ code fn pow16(x@0: u64) -> u64 {
     x1@5
 }
 
-code fn pow17(x@0: u64) -> u64 {
+code def pow17(x@0: u64) -> u64 {
     let x1@1: u64 = x@0;
     let x1@2: u64 = @mul_u64(x1@1, x1@1);
     let x1@3: u64 = @mul_u64(x1@2, x1@2);

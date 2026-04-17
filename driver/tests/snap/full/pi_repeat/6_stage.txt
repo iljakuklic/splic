@@ -1,4 +1,4 @@
-code fn square_twice(x@0: u64) -> u64 {
+code def square_twice(x@0: u64) -> u64 {
     @mul_u64(@mul_u64(x@0, x@0), @mul_u64(x@0, x@0))
 }
 

@@ -1,20 +1,20 @@
-fn compose(f@0: fn(_: u64) -> u64, g@1: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
+def compose(f@0: fn(_: u64) -> u64, g@1: fn(_: u64) -> u64) -> fn(_: u64) -> u64 {
     lam(f@2: fn(_: u64) -> u64, g@3: fn(_: u64) -> u64) = lam(x@4: u64) = f@2(g@3(x@4))
 }
 
-fn double(x@0: u64) -> u64 {
+def double(x@0: u64) -> u64 {
     lam(x@1: u64) = @add_u64(x@1, x@1)
 }
 
-fn inc(x@0: u64) -> u64 {
+def inc(x@0: u64) -> u64 {
     lam(x@1: u64) = @add_u64(x@1, 1_u64)
 }
 
-fn test() -> u64 {
+def test() -> u64 {
     lam() = compose(double, inc)(5_u64)
 }
 
-code fn result() -> u64 {
+code def result() -> u64 {
     $(@embed_u64(test()))
 }
 

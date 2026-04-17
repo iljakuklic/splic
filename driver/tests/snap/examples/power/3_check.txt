@@ -1,4 +1,4 @@
-fn power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
+def power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
     lam(x@2: [[u64]], exp@3: u64) = {
         match exp@3 {
             0 => #(1_u64),
@@ -18,11 +18,11 @@ fn power(x@0: [[u64]], exp@1: u64) -> [[u64]] {
     }
 }
 
-code fn pow5(x@0: u64) -> u64 {
+code def pow5(x@0: u64) -> u64 {
     $(power(#(x@0), 5_u64))
 }
 
-code fn pow11(x@0: u64) -> u64 {
+code def pow11(x@0: u64) -> u64 {
     $(power(#(x@0), 11_u64))
 }
 

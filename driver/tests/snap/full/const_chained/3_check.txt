@@ -6,7 +6,7 @@ def y: u32 {
     @add_u32(x, x)
 }
 
-code fn result() -> u32 {
+code def result() -> u32 {
     $(@embed_u32(y))
 }
 

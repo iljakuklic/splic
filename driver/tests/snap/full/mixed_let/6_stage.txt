@@ -1,4 +1,4 @@
-code fn foo() -> u32 {
+code def foo() -> u32 {
     let z@0: u32 = 42_u32;
     z@0
 }
