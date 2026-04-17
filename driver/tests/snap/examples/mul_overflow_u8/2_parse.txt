@@ -2,37 +2,45 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "f",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u8",
-            body: Block {
-                stmts: [],
-                expr: App {
-                    func: Mul,
-                    args: [
-                        16,
-                        16,
-                    ],
+            def: Definition {
+                name: "f",
+                params: Some(
+                    [],
+                ),
+                ret_ty: Some(
+                    "u8",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Mul,
+                        args: [
+                            16,
+                            16,
+                        ],
+                    },
                 },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "g",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u8",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "f",
-                        args: [],
-                    },
+            def: Definition {
+                name: "g",
+                params: Some(
+                    [],
                 ),
+                ret_ty: Some(
+                    "u8",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "f",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

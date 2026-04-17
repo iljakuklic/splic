@@ -1,14 +1,16 @@
 Block {
     stmts: [
-        Let {
+        Definition {
             name: "x",
-            ty: None,
-            expr: 1,
+            params: None,
+            ret_ty: None,
+            body: 1,
         },
-        Let {
+        Definition {
             name: "y",
-            ty: None,
-            expr: 2,
+            params: None,
+            ret_ty: None,
+            body: 2,
         },
     ],
     expr: App {

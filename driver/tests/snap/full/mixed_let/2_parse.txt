@@ -2,40 +2,46 @@ Program {
     defs: [
         GlobalDef {
             phase: Object,
-            name: "foo",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u32",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    Block {
-                        stmts: [
-                            Let {
-                                name: "y",
-                                ty: Some(
-                                    "u32",
-                                ),
-                                expr: 1337,
-                            },
-                        ],
-                        expr: Quote(
-                            Block {
-                                stmts: [
-                                    Let {
-                                        name: "z",
-                                        ty: Some(
-                                            "u32",
-                                        ),
-                                        expr: 42,
-                                    },
-                                ],
-                                expr: "z",
-                            },
-                        ),
-                    },
+            def: Definition {
+                name: "foo",
+                params: Some(
+                    [],
                 ),
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        Block {
+                            stmts: [
+                                Definition {
+                                    name: "y",
+                                    params: None,
+                                    ret_ty: Some(
+                                        "u32",
+                                    ),
+                                    body: 1337,
+                                },
+                            ],
+                            expr: Quote(
+                                Block {
+                                    stmts: [
+                                        Definition {
+                                            name: "z",
+                                            params: None,
+                                            ret_ty: Some(
+                                                "u32",
+                                            ),
+                                            body: 42,
+                                        },
+                                    ],
+                                    expr: "z",
+                                },
+                            ),
+                        },
+                    ),
+                },
             },
         },
     ],

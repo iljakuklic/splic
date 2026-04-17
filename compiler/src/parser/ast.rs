@@ -26,10 +26,11 @@ pub struct MatchArm<'names, 'ast> {
 }
 
 #[derive(Debug)]
-pub struct Let<'names, 'ast> {
+pub struct Definition<'names, 'ast> {
     pub name: &'names Name,
-    pub ty: Option<&'ast Term<'names, 'ast>>,
-    pub expr: &'ast Term<'names, 'ast>,
+    pub params: Option<&'ast [Param<'names, 'ast>]>,
+    pub ret_ty: Option<&'ast Term<'names, 'ast>>,
+    pub body: &'ast Term<'names, 'ast>,
 }
 
 #[derive(Debug)]
@@ -42,10 +43,7 @@ pub struct Param<'names, 'ast> {
 #[derive(Debug)]
 pub struct GlobalDef<'names, 'ast> {
     pub phase: Phase,
-    pub name: &'names Name,
-    pub params: Option<&'ast [Param<'names, 'ast>]>,
-    pub ret_ty: &'ast Term<'names, 'ast>,
-    pub body: &'ast Term<'names, 'ast>,
+    pub def: Definition<'names, 'ast>,
 }
 
 #[derive(Debug)]
@@ -91,7 +89,7 @@ pub enum Term<'names, 'ast> {
     },
 
     Block {
-        stmts: &'ast [Let<'names, 'ast>],
+        stmts: &'ast [Definition<'names, 'ast>],
         expr: &'ast Self,
     },
 }

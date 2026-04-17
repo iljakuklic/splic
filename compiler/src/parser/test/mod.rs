@@ -53,9 +53,9 @@ fn parse_simple_fn() {
     let program = parser.parse_program().unwrap();
     assert_eq!(program.defs.len(), 1);
     let f = &program.defs[0];
-    assert_eq!(f.name.as_str(), "add");
+    assert_eq!(f.def.name.as_str(), "add");
     assert!(f.phase.is_meta());
-    assert_eq!(f.params.map(<[_]>::len), Some(2));
+    assert_eq!(f.def.params.map(<[_]>::len), Some(2));
 }
 
 #[test]

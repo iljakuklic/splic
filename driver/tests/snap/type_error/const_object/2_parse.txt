@@ -1,14 +1,14 @@
 Program {
     defs: [
         GlobalDef {
-            phase: Meta,
+            phase: Object,
             def: Definition {
-                name: "my_int",
+                name: "answer",
                 params: None,
                 ret_ty: Some(
-                    "Type",
+                    "u32",
                 ),
-                body: "u32",
+                body: 42,
             },
         },
     ],

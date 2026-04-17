@@ -2,46 +2,56 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "let_type",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u32",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "ty",
-                        ty: Some(
-                            "Type",
-                        ),
-                        expr: "u32",
-                    },
-                    Let {
-                        name: "x",
-                        ty: Some(
-                            "ty",
-                        ),
-                        expr: 1337,
-                    },
-                ],
-                expr: "x",
+            def: Definition {
+                name: "let_type",
+                params: Some(
+                    [],
+                ),
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Block {
+                    stmts: [
+                        Definition {
+                            name: "ty",
+                            params: None,
+                            ret_ty: Some(
+                                "Type",
+                            ),
+                            body: "u32",
+                        },
+                        Definition {
+                            name: "x",
+                            params: None,
+                            ret_ty: Some(
+                                "ty",
+                            ),
+                            body: 1337,
+                        },
+                    ],
+                    expr: "x",
+                },
             },
         },
         GlobalDef {
             phase: Object,
-            name: "test",
-            params: Some(
-                [],
-            ),
-            ret_ty: "u32",
-            body: Block {
-                stmts: [],
-                expr: Splice(
-                    App {
-                        func: "let_type",
-                        args: [],
-                    },
+            def: Definition {
+                name: "test",
+                params: Some(
+                    [],
                 ),
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "let_type",
+                            args: [],
+                        },
+                    ),
+                },
             },
         },
     ],

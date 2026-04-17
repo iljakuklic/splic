@@ -2,46 +2,51 @@ Program {
     defs: [
         GlobalDef {
             phase: Meta,
-            name: "too_few",
-            params: Some(
-                [
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: "u64",
+            def: Definition {
+                name: "too_few",
+                params: Some(
+                    [
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "_",
+                                        ty: "u64",
+                                    },
+                                    Param {
+                                        name: "_",
+                                        ty: "u64",
+                                    },
+                                ],
+                                ret_ty: "u64",
+                            },
                         },
-                    },
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-            ),
-            ret_ty: "u64",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "foo",
-                        ty: None,
-                        expr: App {
-                            func: "f",
-                            args: [
-                                "x",
-                            ],
+                        Param {
+                            name: "x",
+                            ty: "u64",
                         },
-                    },
-                ],
-                expr: 1337,
+                    ],
+                ),
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [
+                        Definition {
+                            name: "foo",
+                            params: None,
+                            ret_ty: None,
+                            body: App {
+                                func: "f",
+                                args: [
+                                    "x",
+                                ],
+                            },
+                        },
+                    ],
+                    expr: 1337,
+                },
             },
         },
     ],
