@@ -1,65 +1,61 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "get_value",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "b",
-                        ty: "u1",
-                    },
-                ],
-                ret_ty: Match {
-                    scrutinee: "b",
-                    arms: [
-                        MatchArm {
-                            pat: 0,
-                            body: "u0",
-                        },
-                        MatchArm {
-                            pat: 1,
-                            body: "u16",
+        Meta(
+            MetaDef {
+                name: "get_value",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "b",
+                            ty: "u1",
                         },
                     ],
-                },
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "b",
-                        ty: "u1",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: Match {
+                    ret_ty: Match {
                         scrutinee: "b",
                         arms: [
                             MatchArm {
                                 pat: 0,
-                                body: 0,
+                                body: "u0",
                             },
                             MatchArm {
                                 pat: 1,
-                                body: 42,
+                                body: "u16",
                             },
                         ],
                     },
                 },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "b",
+                            ty: "u1",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: Match {
+                            scrutinee: "b",
+                            arms: [
+                                MatchArm {
+                                    pat: 0,
+                                    body: 0,
+                                },
+                                MatchArm {
+                                    pat: 1,
+                                    body: 42,
+                                },
+                            ],
+                        },
+                    },
+                },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "result_0",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "result_0",
                 params: [],
                 ret_ty: "u0",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -72,17 +68,12 @@ Program {
                     ),
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "result_1",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "result_1",
                 params: [],
                 ret_ty: "u16",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -95,6 +86,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

@@ -1,21 +1,22 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "answer",
-            ty: "u32",
-            body: Block {
-                stmts: [
-                    Let {
-                        name: "x",
-                        ty: Some(
-                            "u64",
-                        ),
-                        expr: 1337,
-                    },
-                ],
-                expr: "x",
+        Meta(
+            MetaDef {
+                name: "answer",
+                ty: "u32",
+                body: Block {
+                    stmts: [
+                        Let {
+                            name: "x",
+                            ty: Some(
+                                "u64",
+                            ),
+                            expr: 1337,
+                        },
+                    ],
+                    expr: "x",
+                },
             },
-        },
+        ),
     ],
 }

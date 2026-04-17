@@ -1,107 +1,104 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "apply",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: "u64",
-                        },
-                    },
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: "u64",
-                        },
-                    },
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: App {
-                        func: "f",
-                        args: [
-                            "x",
-                        ],
-                    },
-                },
-            },
-        },
-        GlobalDef {
-            phase: Meta,
-            name: "test",
-            ty: Pi {
-                params: [],
-                ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: App {
-                        func: "apply",
-                        args: [
-                            Lam {
+        Meta(
+            MetaDef {
+                name: "apply",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "f",
+                            ty: Pi {
                                 params: [
                                     Param {
-                                        name: "x",
+                                        name: "_",
                                         ty: "u64",
                                     },
                                 ],
-                                ret_ty: None,
-                                body: App {
-                                    func: Add,
-                                    args: [
-                                        "x",
-                                        1,
-                                    ],
-                                },
+                                ret_ty: "u64",
                             },
-                            42,
-                        ],
+                        },
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: "u64",
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "_",
+                                        ty: "u64",
+                                    },
+                                ],
+                                ret_ty: "u64",
+                            },
+                        },
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: App {
+                            func: "f",
+                            args: [
+                                "x",
+                            ],
+                        },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "result",
-            ty: Pi {
+        ),
+        Meta(
+            MetaDef {
+                name: "test",
+                ty: Pi {
+                    params: [],
+                    ret_ty: "u64",
+                },
+                body: Lam {
+                    params: [],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: App {
+                            func: "apply",
+                            args: [
+                                Lam {
+                                    params: [
+                                        Param {
+                                            name: "x",
+                                            ty: "u64",
+                                        },
+                                    ],
+                                    ret_ty: None,
+                                    body: App {
+                                        func: Add,
+                                        args: [
+                                            "x",
+                                            1,
+                                        ],
+                                    },
+                                },
+                                42,
+                            ],
+                        },
+                    },
+                },
+            },
+        ),
+        Code(
+            CodeDef {
+                name: "result",
                 params: [],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -112,6 +109,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

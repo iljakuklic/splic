@@ -1,41 +1,30 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Object,
-            name: "min_signed",
-            ty: Pi {
+        Code(
+            CodeDef {
+                name: "min_signed",
                 params: [],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: 9223372036854775808,
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "max_u64",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "max_u64",
                 params: [],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: 18446744073709551615,
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "clamp_large",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "clamp_large",
                 params: [
                     Param {
                         name: "x",
@@ -43,15 +32,6 @@ Program {
                     },
                 ],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Match {
@@ -73,6 +53,6 @@ Program {
                     },
                 },
             },
-        },
+        ),
     ],
 }

@@ -1,10 +1,11 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "my_int",
-            ty: "Type",
-            body: "u32",
-        },
+        Meta(
+            MetaDef {
+                name: "my_int",
+                ty: "Type",
+                body: "u32",
+            },
+        ),
     ],
 }

@@ -1,46 +1,42 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "let_type",
-            ty: Pi {
-                params: [],
-                ret_ty: "u32",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
-                body: Block {
-                    stmts: [
-                        Let {
-                            name: "ty",
-                            ty: Some(
-                                "Type",
-                            ),
-                            expr: "u32",
-                        },
-                        Let {
-                            name: "x",
-                            ty: Some(
-                                "ty",
-                            ),
-                            expr: 1337,
-                        },
-                    ],
-                    expr: "x",
+        Meta(
+            MetaDef {
+                name: "let_type",
+                ty: Pi {
+                    params: [],
+                    ret_ty: "u32",
+                },
+                body: Lam {
+                    params: [],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [
+                            Let {
+                                name: "ty",
+                                ty: Some(
+                                    "Type",
+                                ),
+                                expr: "u32",
+                            },
+                            Let {
+                                name: "x",
+                                ty: Some(
+                                    "ty",
+                                ),
+                                expr: 1337,
+                            },
+                        ],
+                        expr: "x",
+                    },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "test",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "test",
                 params: [],
                 ret_ty: "u32",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -51,6 +47,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

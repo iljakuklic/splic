@@ -1,31 +1,27 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "val",
-            ty: Pi {
-                params: [],
-                ret_ty: "u32",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: 42,
+        Meta(
+            MetaDef {
+                name: "val",
+                ty: Pi {
+                    params: [],
+                    ret_ty: "u32",
+                },
+                body: Lam {
+                    params: [],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: 42,
+                    },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "use_val",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "use_val",
                 params: [],
                 ret_ty: "u32",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -36,6 +32,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

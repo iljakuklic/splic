@@ -1,9 +1,8 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Object,
-            name: "pow5",
-            ty: Pi {
+        Code(
+            CodeDef {
+                name: "pow5",
                 params: [
                     Param {
                         name: "x",
@@ -11,20 +10,11 @@ Program {
                     },
                 ],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: 15,
                 },
             },
-        },
+        ),
     ],
 }

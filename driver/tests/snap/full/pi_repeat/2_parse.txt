@@ -1,111 +1,111 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "repeat",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: Lift(
-                                        "u64",
-                                    ),
-                                },
-                            ],
-                            ret_ty: Lift(
+        Meta(
+            MetaDef {
+                name: "repeat",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "_",
+                                        ty: Lift(
+                                            "u64",
+                                        ),
+                                    },
+                                ],
+                                ret_ty: Lift(
+                                    "u64",
+                                ),
+                            },
+                        },
+                        Param {
+                            name: "n",
+                            ty: "u64",
+                        },
+                        Param {
+                            name: "x",
+                            ty: Lift(
                                 "u64",
                             ),
                         },
-                    },
-                    Param {
-                        name: "n",
-                        ty: "u64",
-                    },
-                    Param {
-                        name: "x",
-                        ty: Lift(
-                            "u64",
-                        ),
-                    },
-                ],
-                ret_ty: Lift(
-                    "u64",
-                ),
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: Lift(
-                                        "u64",
-                                    ),
-                                },
-                            ],
-                            ret_ty: Lift(
+                    ],
+                    ret_ty: Lift(
+                        "u64",
+                    ),
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "_",
+                                        ty: Lift(
+                                            "u64",
+                                        ),
+                                    },
+                                ],
+                                ret_ty: Lift(
+                                    "u64",
+                                ),
+                            },
+                        },
+                        Param {
+                            name: "n",
+                            ty: "u64",
+                        },
+                        Param {
+                            name: "x",
+                            ty: Lift(
                                 "u64",
                             ),
                         },
-                    },
-                    Param {
-                        name: "n",
-                        ty: "u64",
-                    },
-                    Param {
-                        name: "x",
-                        ty: Lift(
-                            "u64",
-                        ),
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: Match {
-                        scrutinee: "n",
-                        arms: [
-                            MatchArm {
-                                pat: 0,
-                                body: "x",
-                            },
-                            MatchArm {
-                                pat: "n",
-                                body: App {
-                                    func: "repeat",
-                                    args: [
-                                        "f",
-                                        App {
-                                            func: Sub,
-                                            args: [
-                                                "n",
-                                                1,
-                                            ],
-                                        },
-                                        App {
-                                            func: "f",
-                                            args: [
-                                                "x",
-                                            ],
-                                        },
-                                    ],
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: Match {
+                            scrutinee: "n",
+                            arms: [
+                                MatchArm {
+                                    pat: 0,
+                                    body: "x",
                                 },
-                            },
-                        ],
+                                MatchArm {
+                                    pat: "n",
+                                    body: App {
+                                        func: "repeat",
+                                        args: [
+                                            "f",
+                                            App {
+                                                func: Sub,
+                                                args: [
+                                                    "n",
+                                                    1,
+                                                ],
+                                            },
+                                            App {
+                                                func: "f",
+                                                args: [
+                                                    "x",
+                                                ],
+                                            },
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "square_twice",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "square_twice",
                 params: [
                     Param {
                         name: "x",
@@ -113,15 +113,6 @@ Program {
                     },
                 ],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -161,6 +152,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

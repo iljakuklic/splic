@@ -53,8 +53,11 @@ fn parse_simple_fn() {
     let program = parser.parse_program().unwrap();
     assert_eq!(program.defs.len(), 1);
     let f = &program.defs[0];
-    assert_eq!(f.name.as_str(), "add");
-    let ast::Term::Pi { params, .. } = f.ty else {
+    assert_eq!(f.name().as_str(), "add");
+    let ast::GlobalDef::Meta(meta) = f else {
+        panic!("expected Meta def")
+    };
+    let ast::Term::Pi { params, .. } = meta.ty else {
         panic!("expected Pi type")
     };
     assert_eq!(params.len(), 2);

@@ -1,20 +1,15 @@
 use std::collections::HashMap;
 
-use anyhow::{Context as _, Result, bail, ensure};
+use anyhow::{Context as _, Result, ensure};
 
 use crate::core::{self, Phase};
-use crate::parser::ast;
+use crate::parser::ast::{self, GlobalDef};
 
 use super::Ctx;
 use super::ctx::GlobalEntry;
 use super::infer;
 
 /// Elaborate one definition's signature into a `GlobalEntry`.
-///
-/// Meta-phase definitions with a Pi type annotation produce `GlobalEntry::Meta(Pi)`.
-/// Meta-phase constant definitions produce `GlobalEntry::Meta(ty)`.
-/// Object-phase definitions with a Pi annotation produce `GlobalEntry::CodeFn { params, ret_ty }`.
-/// Object-phase non-function definitions are rejected (not yet supported).
 fn elaborate_sig<'names, 'ast, 'core>(
     arena: &'core bumpalo::Bump,
     def: &ast::GlobalDef<'names, 'ast>,
@@ -22,37 +17,43 @@ fn elaborate_sig<'names, 'ast, 'core>(
     let empty_globals: HashMap<&'names core::Name, GlobalEntry<'names, 'core>> = HashMap::new();
     let mut ctx = Ctx::new(arena, &empty_globals);
 
-    match (def.phase, def.ty) {
-        (phase, ast::Term::Pi { params, ret_ty }) => {
-            let universe = arena.alloc(core::Term::universe(phase));
+    match def {
+        GlobalDef::Code(code) => {
+            let universe = arena.alloc(core::Term::universe(Phase::Object));
             let core_params =
-                arena.alloc_slice_try_fill_iter(params.iter().map(|p| -> Result<_> {
-                    let ty = infer::check(&mut ctx, phase, p.ty, universe)?;
+                arena.alloc_slice_try_fill_iter(code.params.iter().map(|p| -> Result<_> {
+                    let ty = infer::check(&mut ctx, Phase::Object, p.ty, universe)?;
                     ctx.push_local(p.name, ty);
                     Ok((p.name, ty))
                 }))?;
-            let core_ret_ty = infer::check(&mut ctx, phase, ret_ty, universe)?;
-            if phase == Phase::Meta {
+            let core_ret_ty = infer::check(&mut ctx, Phase::Object, code.ret_ty, universe)?;
+            Ok(GlobalEntry::CodeFn {
+                params: core_params,
+                ret_ty: core_ret_ty,
+            })
+        }
+        GlobalDef::Meta(meta) => match meta.ty {
+            ast::Term::Pi { params, ret_ty } => {
+                let universe = arena.alloc(core::Term::universe(Phase::Meta));
+                let core_params =
+                    arena.alloc_slice_try_fill_iter(params.iter().map(|p| -> Result<_> {
+                        let ty = infer::check(&mut ctx, Phase::Meta, p.ty, universe)?;
+                        ctx.push_local(p.name, ty);
+                        Ok((p.name, ty))
+                    }))?;
+                let core_ret_ty = infer::check(&mut ctx, Phase::Meta, ret_ty, universe)?;
                 let pi = arena.alloc(core::Term::Pi(core::Pi {
                     params: core_params,
                     body_ty: core_ret_ty,
                 }));
                 Ok(GlobalEntry::Meta(pi))
-            } else {
-                Ok(GlobalEntry::CodeFn {
-                    params: core_params,
-                    ret_ty: core_ret_ty,
-                })
             }
-        }
-        (Phase::Meta, ty) => {
-            let universe = arena.alloc(core::Term::universe(Phase::Meta));
-            let core_ty = infer::check(&mut ctx, Phase::Meta, ty, universe)?;
-            Ok(GlobalEntry::Meta(core_ty))
-        }
-        (Phase::Object, _) => {
-            bail!("object-level constants are not supported")
-        }
+            ty => {
+                let universe = arena.alloc(core::Term::universe(Phase::Meta));
+                let core_ty = infer::check(&mut ctx, Phase::Meta, ty, universe)?;
+                Ok(GlobalEntry::Meta(core_ty))
+            }
+        },
     }
 }
 
@@ -64,7 +65,7 @@ pub fn collect_signatures<'names, 'ast, 'core>(
     let mut globals: HashMap<&'names core::Name, GlobalEntry<'names, 'core>> = HashMap::new();
 
     for def in program.defs {
-        let name = def.name;
+        let name = def.name();
 
         ensure!(
             !globals.contains_key(&name),
@@ -87,16 +88,42 @@ fn elaborate_bodies<'names, 'ast, 'core>(
 ) -> Result<core::Program<'names, 'core>> {
     let defs: &'core [core::GlobalDef<'names, 'core>] =
         arena.alloc_slice_try_fill_iter(program.defs.iter().map(|def| -> Result<_> {
-            let name = def.name;
+            let name = def.name();
             let mut ctx = Ctx::new(arena, globals);
 
-            let global = match globals.get(&name).expect("signature missing from pass 1") {
-                GlobalEntry::Meta(ty) => {
+            let global = match def {
+                GlobalDef::Code(code) => {
+                    let GlobalEntry::CodeFn { params, ret_ty } =
+                        globals.get(&name).expect("signature missing from pass 1")
+                    else {
+                        unreachable!("Code def should have CodeFn entry")
+                    };
+                    for (param_name, param_ty) in *params {
+                        ctx.push_local(param_name, param_ty);
+                    }
+                    let core_body = infer::check(&mut ctx, Phase::Object, code.body, ret_ty)
+                        .with_context(|| format!("in `{name}`"))?;
+                    for _ in *params {
+                        ctx.pop_local();
+                    }
+                    core::Global::CodeFn(core::CodeFn {
+                        params,
+                        ret_ty,
+                        body: core_body,
+                    })
+                }
+                GlobalDef::Meta(meta) => {
+                    let GlobalEntry::Meta(ty) =
+                        globals.get(&name).expect("signature missing from pass 1")
+                    else {
+                        unreachable!("Meta def should have Meta entry")
+                    };
                     // For function definitions (Pi type + Lam body), manually push the Pi
                     // params into scope and check the Lam's inner body against pi.body_ty.
                     // This preserves `expected_term` through to match arm refinement —
                     // necessary for dependent return types.
-                    let body = match (*ty, def.body) {
+                    // TODO(#74): unify this with the non-Pi path once Pi special-casing is removed.
+                    let body = match (*ty, meta.body) {
                         (core::Term::Pi(pi), ast::Term::Lam { body: lam_body, .. }) => {
                             for (param_name, param_ty) in pi.params {
                                 ctx.push_local(param_name, param_ty);
@@ -112,28 +139,10 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                                 body: core_body,
                             }))
                         }
-                        _ => infer::check(&mut ctx, Phase::Meta, def.body, ty)
+                        _ => infer::check(&mut ctx, Phase::Meta, meta.body, ty)
                             .with_context(|| format!("in `{name}`"))?,
                     };
                     core::Global::Meta(core::GlobalMeta { ty, body })
-                }
-                GlobalEntry::CodeFn { params, ret_ty } => {
-                    let ast::Term::Lam { body: lam_body, .. } = def.body else {
-                        bail!("in `{name}`: code function body must be a lambda");
-                    };
-                    for (param_name, param_ty) in *params {
-                        ctx.push_local(param_name, param_ty);
-                    }
-                    let core_body = infer::check(&mut ctx, Phase::Object, lam_body, ret_ty)
-                        .with_context(|| format!("in `{name}`"))?;
-                    for _ in *params {
-                        ctx.pop_local();
-                    }
-                    core::Global::CodeFn(core::CodeFn {
-                        params,
-                        ret_ty,
-                        body: core_body,
-                    })
                 }
             };
 

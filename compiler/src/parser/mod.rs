@@ -5,7 +5,7 @@ use anyhow::{Context as _, Result};
 use crate::common::Precedence;
 use crate::lexer::Token;
 use crate::parser::ast::{
-    Assoc, BinOp, FunName, GlobalDef, Let, MatchArm, Name, Param, Pat, Phase, Term, UnOp,
+    Assoc, BinOp, CodeDef, FunName, GlobalDef, Let, MatchArm, MetaDef, Name, Param, Pat, Term, UnOp,
 };
 
 pub mod ast;
@@ -149,78 +149,91 @@ where
     }
 
     fn parse_fn_def(&mut self) -> Result<GlobalDef<'names, 'ast>> {
-        let phase = if self.consume_if(Token::Code) {
-            Phase::Object
-        } else {
-            Phase::Meta
-        };
+        let is_code = self.consume_if(Token::Code);
 
         self.take(Token::Def).context("expected 'def'")?;
         let name = self.take_ident().context("expected definition name")?;
 
         if self.peek() == Some(Token::LParen) {
-            self.parse_fn_def_after_name(phase, name)
-                .with_context(|| format!("in function `{name}`"))
+            if is_code {
+                self.parse_code_def_after_name(name)
+                    .with_context(|| format!("in `{name}`"))
+            } else {
+                self.parse_meta_fn_def_after_name(name)
+                    .with_context(|| format!("in `{name}`"))
+            }
         } else {
-            self.parse_const_def_after_name(phase, name)
-                .with_context(|| format!("in constant `{name}`"))
+            if is_code {
+                anyhow::bail!(
+                    "`code def` requires parameters; \
+                     object-level constants are not yet supported"
+                );
+            }
+            self.parse_meta_const_def_after_name(name)
+                .with_context(|| format!("in `{name}`"))
         }
     }
 
-    fn parse_fn_def_after_name(
+    /// Parse `code def name(params) -> ret = body;` after consuming `code def name`.
+    fn parse_code_def_after_name(&mut self, name: &'names Name) -> Result<GlobalDef<'names, 'ast>> {
+        self.take(Token::LParen).context("expected '('")?;
+        let params = self.parse_params()?;
+        self.take(Token::RParen).context("expected ')'")?;
+        self.take(Token::Arrow).context("expected '->'")?;
+        let ret_ty = self
+            .parse_expr()
+            .context("expected return type expression")?;
+        self.take(Token::Eq).context("expected '='")?;
+        let body = self.parse_expr().context("expected function body")?;
+        self.take(Token::Semi)
+            .context("expected ';' after function body")?;
+        Ok(GlobalDef::Code(CodeDef {
+            name,
+            params,
+            ret_ty,
+            body,
+        }))
+    }
+
+    /// Parse `def name(params) -> ret = body;` after consuming `def name`.
+    ///
+    /// Desugars to `Meta { ty: fn(params) -> ret, body: lam(params) = body }`.
+    fn parse_meta_fn_def_after_name(
         &mut self,
-        phase: Phase,
         name: &'names Name,
     ) -> Result<GlobalDef<'names, 'ast>> {
         self.take(Token::LParen).context("expected '('")?;
         let params = self.parse_params()?;
         self.take(Token::RParen).context("expected ')'")?;
-
         self.take(Token::Arrow).context("expected '->'")?;
-
         let ret_ty = self
             .parse_expr()
             .context("expected return type expression")?;
-
         self.take(Token::Eq).context("expected '='")?;
         let body_expr = self.parse_expr().context("expected function body")?;
         self.take(Token::Semi)
             .context("expected ';' after function body")?;
-
-        // Desugar: `def f(params) -> ret_ty = body`
-        //       ≡  `def f: fn(params) -> ret_ty = lam(params) = body`
         let ty = self.alloc(Term::Pi { params, ret_ty });
         let body = self.alloc(Term::Lam {
             params,
             ret_ty: None,
             body: body_expr,
         });
-
-        Ok(GlobalDef {
-            phase,
-            name,
-            ty,
-            body,
-        })
+        Ok(GlobalDef::Meta(MetaDef { name, ty, body }))
     }
 
-    fn parse_const_def_after_name(
+    /// Parse `def name: ty = body;` after consuming `def name`.
+    fn parse_meta_const_def_after_name(
         &mut self,
-        phase: Phase,
         name: &'names Name,
     ) -> Result<GlobalDef<'names, 'ast>> {
-        self.take(Token::Colon).context("expected ':' or '('")?;
+        self.take(Token::Colon).context("expected ':'")?;
         let ty = self.parse_expr().context("expected type")?;
         self.take(Token::Eq).context("expected '='")?;
         let body = self.parse_expr().context("expected body")?;
         self.take(Token::Semi)
             .context("expected ';' after constant definition")?;
-        Ok(GlobalDef {
-            phase,
-            name,
-            ty,
-            body,
-        })
+        Ok(GlobalDef::Meta(MetaDef { name, ty, body }))
     }
 
     fn parse_params(&mut self) -> Result<&'ast [Param<'names, 'ast>]> {

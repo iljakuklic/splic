@@ -1,21 +1,17 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "answer",
-            ty: "u32",
-            body: 42,
-        },
-        GlobalDef {
-            phase: Object,
-            name: "get_answer",
-            ty: Pi {
+        Meta(
+            MetaDef {
+                name: "answer",
+                ty: "u32",
+                body: 42,
+            },
+        ),
+        Code(
+            CodeDef {
+                name: "get_answer",
                 params: [],
                 ret_ty: "u32",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -23,6 +19,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

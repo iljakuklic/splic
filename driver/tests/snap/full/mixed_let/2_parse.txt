@@ -1,15 +1,10 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Object,
-            name: "foo",
-            ty: Pi {
+        Code(
+            CodeDef {
+                name: "foo",
                 params: [],
                 ret_ty: "u32",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -41,6 +36,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

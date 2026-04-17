@@ -1,94 +1,94 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "power",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: Lift(
-                            "u64",
-                        ),
-                    },
-                    Param {
-                        name: "exp",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: Lift(
-                    "u64",
-                ),
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: Lift(
-                            "u64",
-                        ),
-                    },
-                    Param {
-                        name: "exp",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: Match {
-                        scrutinee: "exp",
-                        arms: [
-                            MatchArm {
-                                pat: 0,
-                                body: Quote(
-                                    1,
-                                ),
-                            },
-                            MatchArm {
-                                pat: 1,
-                                body: "x",
-                            },
-                            MatchArm {
-                                pat: "exp",
-                                body: Block {
-                                    stmts: [],
-                                    expr: Quote(
-                                        App {
-                                            func: Mul,
-                                            args: [
-                                                Splice(
-                                                    App {
-                                                        func: "power",
-                                                        args: [
-                                                            "x",
-                                                            App {
-                                                                func: Sub,
-                                                                args: [
-                                                                    "exp",
-                                                                    1,
-                                                                ],
-                                                            },
-                                                        ],
-                                                    },
-                                                ),
-                                                Splice(
-                                                    "x",
-                                                ),
-                                            ],
-                                        },
+        Meta(
+            MetaDef {
+                name: "power",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: Lift(
+                                "u64",
+                            ),
+                        },
+                        Param {
+                            name: "exp",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: Lift(
+                        "u64",
+                    ),
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: Lift(
+                                "u64",
+                            ),
+                        },
+                        Param {
+                            name: "exp",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: Match {
+                            scrutinee: "exp",
+                            arms: [
+                                MatchArm {
+                                    pat: 0,
+                                    body: Quote(
+                                        1,
                                     ),
                                 },
-                            },
-                        ],
+                                MatchArm {
+                                    pat: 1,
+                                    body: "x",
+                                },
+                                MatchArm {
+                                    pat: "exp",
+                                    body: Block {
+                                        stmts: [],
+                                        expr: Quote(
+                                            App {
+                                                func: Mul,
+                                                args: [
+                                                    Splice(
+                                                        App {
+                                                            func: "power",
+                                                            args: [
+                                                                "x",
+                                                                App {
+                                                                    func: Sub,
+                                                                    args: [
+                                                                        "exp",
+                                                                        1,
+                                                                    ],
+                                                                },
+                                                            ],
+                                                        },
+                                                    ),
+                                                    Splice(
+                                                        "x",
+                                                    ),
+                                                ],
+                                            },
+                                        ),
+                                    },
+                                },
+                            ],
+                        },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "pow5",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "pow5",
                 params: [
                     Param {
                         name: "x",
@@ -96,15 +96,6 @@ Program {
                     },
                 ],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -120,11 +111,10 @@ Program {
                     ),
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "pow11",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "pow11",
                 params: [
                     Param {
                         name: "x",
@@ -132,15 +122,6 @@ Program {
                     },
                 ],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -156,6 +137,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

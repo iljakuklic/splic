@@ -1,115 +1,112 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "const_",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "A",
-                        ty: "Type",
-                    },
-                    Param {
-                        name: "B",
-                        ty: "Type",
-                    },
-                ],
-                ret_ty: Pi {
+        Meta(
+            MetaDef {
+                name: "const_",
+                ty: Pi {
                     params: [
                         Param {
-                            name: "_",
-                            ty: "A",
+                            name: "A",
+                            ty: "Type",
+                        },
+                        Param {
+                            name: "B",
+                            ty: "Type",
                         },
                     ],
                     ret_ty: Pi {
                         params: [
                             Param {
                                 name: "_",
-                                ty: "B",
-                            },
-                        ],
-                        ret_ty: "A",
-                    },
-                },
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "A",
-                        ty: "Type",
-                    },
-                    Param {
-                        name: "B",
-                        ty: "Type",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: Lam {
-                        params: [
-                            Param {
-                                name: "a",
                                 ty: "A",
                             },
                         ],
-                        ret_ty: None,
-                        body: Lam {
+                        ret_ty: Pi {
                             params: [
                                 Param {
-                                    name: "b",
+                                    name: "_",
                                     ty: "B",
                                 },
                             ],
+                            ret_ty: "A",
+                        },
+                    },
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "A",
+                            ty: "Type",
+                        },
+                        Param {
+                            name: "B",
+                            ty: "Type",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: Lam {
+                            params: [
+                                Param {
+                                    name: "a",
+                                    ty: "A",
+                                },
+                            ],
                             ret_ty: None,
-                            body: "a",
+                            body: Lam {
+                                params: [
+                                    Param {
+                                        name: "b",
+                                        ty: "B",
+                                    },
+                                ],
+                                ret_ty: None,
+                                body: "a",
+                            },
                         },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Meta,
-            name: "test",
-            ty: Pi {
-                params: [],
-                ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: App {
-                        func: App {
+        ),
+        Meta(
+            MetaDef {
+                name: "test",
+                ty: Pi {
+                    params: [],
+                    ret_ty: "u64",
+                },
+                body: Lam {
+                    params: [],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: App {
                             func: App {
-                                func: "const_",
+                                func: App {
+                                    func: "const_",
+                                    args: [
+                                        "u64",
+                                        "u8",
+                                    ],
+                                },
                                 args: [
-                                    "u64",
-                                    "u8",
+                                    42,
                                 ],
                             },
                             args: [
-                                42,
+                                7,
                             ],
                         },
-                        args: [
-                            7,
-                        ],
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "result",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "result",
                 params: [],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -120,6 +117,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

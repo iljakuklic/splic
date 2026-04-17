@@ -1,9 +1,8 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Object,
-            name: "nand",
-            ty: Pi {
+        Code(
+            CodeDef {
+                name: "nand",
                 params: [
                     Param {
                         name: "a",
@@ -15,19 +14,6 @@ Program {
                     },
                 ],
                 ret_ty: "u1",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "a",
-                        ty: "u1",
-                    },
-                    Param {
-                        name: "b",
-                        ty: "u1",
-                    },
-                ],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: App {
@@ -44,6 +30,6 @@ Program {
                     },
                 },
             },
-        },
+        ),
     ],
 }

@@ -1,73 +1,74 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "too_few",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: "u64",
-                        },
-                    },
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "f",
-                        ty: Pi {
-                            params: [
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                                Param {
-                                    name: "_",
-                                    ty: "u64",
-                                },
-                            ],
-                            ret_ty: "u64",
-                        },
-                    },
-                    Param {
-                        name: "x",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [
-                        Let {
-                            name: "foo",
-                            ty: None,
-                            expr: App {
-                                func: "f",
-                                args: [
-                                    "x",
+        Meta(
+            MetaDef {
+                name: "too_few",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "_",
+                                        ty: "u64",
+                                    },
+                                    Param {
+                                        name: "_",
+                                        ty: "u64",
+                                    },
                                 ],
+                                ret_ty: "u64",
                             },
                         },
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
                     ],
-                    expr: 1337,
+                    ret_ty: "u64",
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "_",
+                                        ty: "u64",
+                                    },
+                                    Param {
+                                        name: "_",
+                                        ty: "u64",
+                                    },
+                                ],
+                                ret_ty: "u64",
+                            },
+                        },
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [
+                            Let {
+                                name: "foo",
+                                ty: None,
+                                expr: App {
+                                    func: "f",
+                                    args: [
+                                        "x",
+                                    ],
+                                },
+                            },
+                        ],
+                        expr: 1337,
+                    },
                 },
             },
-        },
+        ),
     ],
 }

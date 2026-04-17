@@ -1,70 +1,66 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "sum_n",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "n",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: "u64",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "n",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: Match {
-                        scrutinee: "n",
-                        arms: [
-                            MatchArm {
-                                pat: 0,
-                                body: 0,
-                            },
-                            MatchArm {
-                                pat: "n",
-                                body: App {
-                                    func: Add,
-                                    args: [
-                                        App {
-                                            func: "sum_n",
-                                            args: [
-                                                App {
-                                                    func: Sub,
-                                                    args: [
-                                                        "n",
-                                                        1,
-                                                    ],
-                                                },
-                                            ],
-                                        },
-                                        "n",
-                                    ],
+        Meta(
+            MetaDef {
+                name: "sum_n",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "n",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: "u64",
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "n",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: Match {
+                            scrutinee: "n",
+                            arms: [
+                                MatchArm {
+                                    pat: 0,
+                                    body: 0,
                                 },
-                            },
-                        ],
+                                MatchArm {
+                                    pat: "n",
+                                    body: App {
+                                        func: Add,
+                                        args: [
+                                            App {
+                                                func: "sum_n",
+                                                args: [
+                                                    App {
+                                                        func: Sub,
+                                                        args: [
+                                                            "n",
+                                                            1,
+                                                        ],
+                                                    },
+                                                ],
+                                            },
+                                            "n",
+                                        ],
+                                    },
+                                },
+                            ],
+                        },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "sum_to_five",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "sum_to_five",
                 params: [],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -77,6 +73,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

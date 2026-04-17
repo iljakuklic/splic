@@ -36,28 +36,18 @@ fn collect_signatures_two_functions() {
         ret_ty: None,
         body: id_body,
     });
-    let add_ty = src_arena.alloc(ast::Term::Pi {
-        params: add_params,
-        ret_ty: add_ret_ty,
-    });
-    let add_body_lam = src_arena.alloc(ast::Term::Lam {
-        params: add_params,
-        ret_ty: None,
-        body: add_body,
-    });
     let defs = src_arena.alloc_slice_fill_iter([
-        ast::GlobalDef {
-            phase: Phase::Meta,
+        ast::GlobalDef::Meta(ast::MetaDef {
             name: ast::Name::new("id"),
             ty: id_ty,
             body: id_body_lam,
-        },
-        ast::GlobalDef {
-            phase: Phase::Object,
+        }),
+        ast::GlobalDef::Code(ast::CodeDef {
             name: ast::Name::new("add_one"),
-            ty: add_ty,
-            body: add_body_lam,
-        },
+            params: add_params,
+            ret_ty: add_ret_ty,
+            body: add_body,
+        }),
     ]);
     let program = ast::Program { defs };
 
@@ -128,21 +118,12 @@ fn collect_signatures_lift_in_object_fn_fails() {
     ));
     let body = src_arena.alloc(ast::Term::Lit(0));
 
-    let ty = src_arena.alloc(ast::Term::Pi {
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef::Code(ast::CodeDef {
+        name: ast::Name::new("bad"),
         params: &[],
         ret_ty: lifted_ret,
-    });
-    let body_lam = src_arena.alloc(ast::Term::Lam {
-        params: &[],
-        ret_ty: None,
         body,
-    });
-    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
-        phase: Phase::Object,
-        name: ast::Name::new("bad"),
-        ty,
-        body: body_lam,
-    }]);
+    })]);
     let program = ast::Program { defs };
 
     assert!(
@@ -166,18 +147,12 @@ fn collect_signatures_type_universe_in_object_fn_fails() {
         ty: type_ann,
     }]);
 
-    let ty = src_arena.alloc(ast::Term::Pi { params, ret_ty });
-    let body_lam = src_arena.alloc(ast::Term::Lam {
-        params,
-        ret_ty: None,
-        body,
-    });
-    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
-        phase: Phase::Object,
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef::Code(ast::CodeDef {
         name: ast::Name::new("bad"),
-        ty,
-        body: body_lam,
-    }]);
+        params,
+        ret_ty,
+        body,
+    })]);
     let program = ast::Program { defs };
 
     assert!(
@@ -205,12 +180,11 @@ fn collect_signatures_vmtype_in_meta_fn_fails() {
         ret_ty: None,
         body,
     });
-    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
-        phase: Phase::Meta,
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef::Meta(ast::MetaDef {
         name: ast::Name::new("bad"),
         ty,
         body: body_lam,
-    }]);
+    })]);
     let program = ast::Program { defs };
 
     assert!(
@@ -238,18 +212,16 @@ fn collect_signatures_duplicate_name_fails() {
         body,
     });
     let defs = src_arena.alloc_slice_fill_iter([
-        ast::GlobalDef {
-            phase: Phase::Meta,
+        ast::GlobalDef::Meta(ast::MetaDef {
             name: ast::Name::new("foo"),
             ty,
             body: body_lam,
-        },
-        ast::GlobalDef {
-            phase: Phase::Meta,
+        }),
+        ast::GlobalDef::Meta(ast::MetaDef {
             name: ast::Name::new("foo"),
             ty,
             body: body_lam,
-        },
+        }),
     ]);
     let program = ast::Program { defs };
 
@@ -285,12 +257,11 @@ fn elaborate_program_simple_identity_fn() {
         ret_ty: None,
         body,
     });
-    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
-        phase: Phase::Meta,
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef::Meta(ast::MetaDef {
         name: ast::Name::new("id"),
         ty,
         body: body_lam,
-    }]);
+    })]);
     let program = ast::Program { defs };
 
     let result = elaborate_program(&core_arena, &program);
@@ -334,28 +305,18 @@ fn elaborate_program_code_fn_with_splice() {
         ret_ty: None,
         body: k_body,
     });
-    let pow0_ty = src_arena.alloc(ast::Term::Pi {
-        params: x_param,
-        ret_ty: pow0_ret,
-    });
-    let pow0_body_lam = src_arena.alloc(ast::Term::Lam {
-        params: x_param,
-        ret_ty: None,
-        body: pow0_body,
-    });
     let defs = src_arena.alloc_slice_fill_iter([
-        ast::GlobalDef {
-            phase: Phase::Meta,
+        ast::GlobalDef::Meta(ast::MetaDef {
             name: ast::Name::new("k"),
             ty: k_ty,
             body: k_body_lam,
-        },
-        ast::GlobalDef {
-            phase: Phase::Object,
+        }),
+        ast::GlobalDef::Code(ast::CodeDef {
             name: ast::Name::new("pow0"),
-            ty: pow0_ty,
-            body: pow0_body_lam,
-        },
+            params: x_param,
+            ret_ty: pow0_ret,
+            body: pow0_body,
+        }),
     ]);
     let program = ast::Program { defs };
 
@@ -397,18 +358,16 @@ fn elaborate_program_forward_reference_succeeds() {
         body: b_body,
     });
     let defs = src_arena.alloc_slice_fill_iter([
-        ast::GlobalDef {
-            phase: Phase::Meta,
+        ast::GlobalDef::Meta(ast::MetaDef {
             name: ast::Name::new("a"),
             ty: a_ty,
             body: a_body_lam,
-        },
-        ast::GlobalDef {
-            phase: Phase::Meta,
+        }),
+        ast::GlobalDef::Meta(ast::MetaDef {
             name: ast::Name::new("b"),
             ty: b_ty,
             body: b_body_lam,
-        },
+        }),
     ]);
     let program = ast::Program { defs };
 
@@ -442,12 +401,11 @@ fn elaborate_program_return_type_mismatch_fails() {
         ret_ty: None,
         body,
     });
-    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef {
-        phase: Phase::Meta,
+    let defs = src_arena.alloc_slice_fill_iter([ast::GlobalDef::Meta(ast::MetaDef {
         name: ast::Name::new("bad"),
         ty,
         body: body_lam,
-    }]);
+    })]);
     let program = ast::Program { defs };
 
     assert!(elaborate_program(&core_arena, &program).is_err());

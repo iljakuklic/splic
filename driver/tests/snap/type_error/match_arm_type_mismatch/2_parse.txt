@@ -1,50 +1,51 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "bad",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                    Param {
-                        name: "y",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: "u32",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                    Param {
-                        name: "y",
-                        ty: "u64",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: Match {
-                        scrutinee: "x",
-                        arms: [
-                            MatchArm {
-                                pat: 0,
-                                body: "x",
-                            },
-                            MatchArm {
-                                pat: "n",
-                                body: "y",
-                            },
-                        ],
+        Meta(
+            MetaDef {
+                name: "bad",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                        Param {
+                            name: "y",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: "u32",
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                        Param {
+                            name: "y",
+                            ty: "u64",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: Match {
+                            scrutinee: "x",
+                            arms: [
+                                MatchArm {
+                                    pat: 0,
+                                    body: "x",
+                                },
+                                MatchArm {
+                                    pat: "n",
+                                    body: "y",
+                                },
+                            ],
+                        },
                     },
                 },
             },
-        },
+        ),
     ],
 }

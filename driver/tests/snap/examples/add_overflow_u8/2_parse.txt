@@ -1,37 +1,33 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "f",
-            ty: Pi {
-                params: [],
-                ret_ty: "u8",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: App {
-                        func: Add,
-                        args: [
-                            200,
-                            100,
-                        ],
+        Meta(
+            MetaDef {
+                name: "f",
+                ty: Pi {
+                    params: [],
+                    ret_ty: "u8",
+                },
+                body: Lam {
+                    params: [],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: App {
+                            func: Add,
+                            args: [
+                                200,
+                                100,
+                            ],
+                        },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "g",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "g",
                 params: [],
                 ret_ty: "u8",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -42,6 +38,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }

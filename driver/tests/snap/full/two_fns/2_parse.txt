@@ -1,84 +1,86 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "mul",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                    Param {
-                        name: "y",
-                        ty: "u32",
-                    },
-                ],
-                ret_ty: "u32",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                    Param {
-                        name: "y",
-                        ty: "u32",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: App {
-                        func: Mul,
-                        args: [
-                            "x",
-                            "y",
-                        ],
+        Meta(
+            MetaDef {
+                name: "mul",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                        Param {
+                            name: "y",
+                            ty: "u32",
+                        },
+                    ],
+                    ret_ty: "u32",
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                        Param {
+                            name: "y",
+                            ty: "u32",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: App {
+                            func: Mul,
+                            args: [
+                                "x",
+                                "y",
+                            ],
+                        },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Meta,
-            name: "add",
-            ty: Pi {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                    Param {
-                        name: "y",
-                        ty: "u32",
-                    },
-                ],
-                ret_ty: "u32",
-            },
-            body: Lam {
-                params: [
-                    Param {
-                        name: "x",
-                        ty: "u32",
-                    },
-                    Param {
-                        name: "y",
-                        ty: "u32",
-                    },
-                ],
-                ret_ty: None,
-                body: Block {
-                    stmts: [],
-                    expr: App {
-                        func: Add,
-                        args: [
-                            "x",
-                            "y",
-                        ],
+        ),
+        Meta(
+            MetaDef {
+                name: "add",
+                ty: Pi {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                        Param {
+                            name: "y",
+                            ty: "u32",
+                        },
+                    ],
+                    ret_ty: "u32",
+                },
+                body: Lam {
+                    params: [
+                        Param {
+                            name: "x",
+                            ty: "u32",
+                        },
+                        Param {
+                            name: "y",
+                            ty: "u32",
+                        },
+                    ],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [],
+                        expr: App {
+                            func: Add,
+                            args: [
+                                "x",
+                                "y",
+                            ],
+                        },
                     },
                 },
             },
-        },
+        ),
     ],
 }

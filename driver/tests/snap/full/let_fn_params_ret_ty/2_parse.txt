@@ -1,69 +1,65 @@
 Program {
     defs: [
-        GlobalDef {
-            phase: Meta,
-            name: "test",
-            ty: Pi {
-                params: [],
-                ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
-                body: Block {
-                    stmts: [
-                        Let {
-                            name: "inc",
-                            ty: Some(
-                                Pi {
+        Meta(
+            MetaDef {
+                name: "test",
+                ty: Pi {
+                    params: [],
+                    ret_ty: "u64",
+                },
+                body: Lam {
+                    params: [],
+                    ret_ty: None,
+                    body: Block {
+                        stmts: [
+                            Let {
+                                name: "inc",
+                                ty: Some(
+                                    Pi {
+                                        params: [
+                                            Param {
+                                                name: "x",
+                                                ty: "u64",
+                                            },
+                                        ],
+                                        ret_ty: "u64",
+                                    },
+                                ),
+                                expr: Lam {
                                     params: [
                                         Param {
                                             name: "x",
                                             ty: "u64",
                                         },
                                     ],
-                                    ret_ty: "u64",
-                                },
-                            ),
-                            expr: Lam {
-                                params: [
-                                    Param {
-                                        name: "x",
-                                        ty: "u64",
+                                    ret_ty: Some(
+                                        "u64",
+                                    ),
+                                    body: App {
+                                        func: Add,
+                                        args: [
+                                            "x",
+                                            1,
+                                        ],
                                     },
-                                ],
-                                ret_ty: Some(
-                                    "u64",
-                                ),
-                                body: App {
-                                    func: Add,
-                                    args: [
-                                        "x",
-                                        1,
-                                    ],
                                 },
                             },
-                        },
-                    ],
-                    expr: App {
-                        func: "inc",
-                        args: [
-                            41,
                         ],
+                        expr: App {
+                            func: "inc",
+                            args: [
+                                41,
+                            ],
+                        },
                     },
                 },
             },
-        },
-        GlobalDef {
-            phase: Object,
-            name: "result",
-            ty: Pi {
+        ),
+        Code(
+            CodeDef {
+                name: "result",
                 params: [],
                 ret_ty: "u64",
-            },
-            body: Lam {
-                params: [],
-                ret_ty: None,
                 body: Block {
                     stmts: [],
                     expr: Splice(
@@ -74,6 +70,6 @@ Program {
                     ),
                 },
             },
-        },
+        ),
     ],
 }
