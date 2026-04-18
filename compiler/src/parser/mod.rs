@@ -81,39 +81,39 @@ where
     }
 
     /// Parse a quoted expression: #(...)
-    fn parse_quoted_expr(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_quoted_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let expr = self.parse_expr().context("parsing quoted expression")?;
         self.take(Token::RParen)
             .context("expected ')' after quotation")?;
-        Ok(Term::Quote(expr))
+        Ok(self.alloc(Term::Quote(expr)))
     }
 
     /// Parse a quoted block: #{...}
-    fn parse_quoted_block(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_quoted_block(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let (stmts, expr) = self.parse_block_inner()?;
-        Ok(Term::Quote(self.alloc(Term::Block { stmts, expr })))
+        Ok(self.alloc(Term::Quote(self.alloc(Term::Block { stmts, expr }))))
     }
 
     /// Parse a spliced expression: $(...)
-    fn parse_spliced_expr(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_spliced_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let expr = self.parse_expr().context("parsing spliced expression")?;
         self.take(Token::RParen)
             .context("expected ')' after splice")?;
-        Ok(Term::Splice(expr))
+        Ok(self.alloc(Term::Splice(expr)))
     }
 
     /// Parse a spliced block: ${...}
-    fn parse_spliced_block(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_spliced_block(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let (stmts, expr) = self.parse_block_inner()?;
-        Ok(Term::Splice(self.alloc(Term::Block { stmts, expr })))
+        Ok(self.alloc(Term::Splice(self.alloc(Term::Block { stmts, expr }))))
     }
 
     /// Parse a lifted expression: [[...]]
-    fn parse_lifted_expr(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_lifted_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let expr = self.parse_expr().context("parsing lifted expression")?;
         self.take(Token::DoubleRBracket)
             .context("expected ']]' after lifted expression")?;
-        Ok(Term::Lift(expr))
+        Ok(self.alloc(Term::Lift(expr)))
     }
 
     /// Parse a comma-separated list of items bounded by a terminator token
@@ -233,26 +233,21 @@ where
     }
 
     fn parse_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
-        Ok(self.arena.alloc(self.parse_expr_owned()?))
-    }
-
-    fn parse_expr_owned(&mut self) -> Result<Term<'names, 'ast>> {
         self.parse_expr_prec(Precedence::MIN)
     }
 
-    fn parse_expr_prec(&mut self, min_prec: Precedence) -> Result<Term<'names, 'ast>> {
+    fn parse_expr_prec(&mut self, min_prec: Precedence) -> Result<&'ast Term<'names, 'ast>> {
         let mut lhs = if let Some(op) = self.match_unop() {
             self.next();
             let expr = self
                 .parse_expr_prec(op.precedence())
                 .context("parsing operand of '!'")?;
-            let expr = self.alloc(expr);
-            Term::App {
+            self.alloc(Term::App {
                 func: FunName::UnOp(op),
                 args: self.arena.alloc_slice_fill_iter([expr]),
-            }
+            })
         } else {
-            self.parse_atom_owned()?
+            self.parse_atom()?
         };
 
         loop {
@@ -264,10 +259,10 @@ where
                 self.take(Token::RParen)
                     .context("expected ')' after function arguments")?;
                 let args = self.arena.alloc_slice_fill_iter(args);
-                lhs = Term::App {
-                    func: FunName::Term(self.arena.alloc(lhs)),
+                lhs = self.alloc(Term::App {
+                    func: FunName::Term(lhs),
                     args,
-                };
+                });
                 continue;
             }
 
@@ -287,12 +282,10 @@ where
             let rhs = self
                 .parse_expr_prec(next_min_prec)
                 .context("parsing right-hand side of binary expression")?;
-            let rhs = self.alloc(rhs);
 
             let func = FunName::BinOp(op);
-            let lhs_ref = self.alloc(lhs);
-            let args = self.arena.alloc_slice_fill_iter([lhs_ref, rhs]);
-            lhs = Term::App { func, args };
+            let args = self.arena.alloc_slice_fill_iter([lhs, rhs]);
+            lhs = self.alloc(Term::App { func, args });
         }
 
         Ok(lhs)
@@ -333,23 +326,23 @@ where
     }
 
     /// Parse a function call with arguments
-    fn parse_function_call(&mut self, name: &'names Name) -> Result<Term<'names, 'ast>> {
+    fn parse_function_call(&mut self, name: &'names Name) -> Result<&'ast Term<'names, 'ast>> {
         let args = self.parse_separated_list(Token::RParen, |parser| {
             parser.parse_expr().context("parsing function argument")
         })?;
         self.take(Token::RParen)
             .context("expected ')' after function arguments")?;
         let args = self.arena.alloc_slice_fill_iter(args);
-        Ok(Term::App {
-            func: FunName::Term(self.arena.alloc(Term::Var(name))),
+        Ok(self.alloc(Term::App {
+            func: FunName::Term(self.alloc(Term::Var(name))),
             args,
-        })
+        }))
     }
 
     /// Parse a parenthesized expression
-    fn parse_paren_expr(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_paren_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let expr = self
-            .parse_expr_owned()
+            .parse_expr()
             .context("parsing expression in parentheses")?;
         self.take(Token::RParen)
             .context("expected ')' after parenthesized expression")?;
@@ -357,7 +350,7 @@ where
     }
 
     /// Parse a match expression
-    fn parse_match_expr(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_match_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let scrutinee = self.parse_expr().context("parsing match scrutinee")?;
         self.take(Token::LBrace)
             .context("expected '{' after match expression")?;
@@ -365,14 +358,14 @@ where
         self.take(Token::RBrace)
             .context("expected '}' after match arms")?;
         let arms = self.arena.alloc_slice_fill_iter(arms);
-        Ok(Term::Match { scrutinee, arms })
+        Ok(self.alloc(Term::Match { scrutinee, arms }))
     }
 
     /// Parse a function type: `fn(params)+ -> ret_ty`
     ///
     /// Called after consuming the `fn` token. Multiple `(params)` groups are
     /// desugared to nested `Pi` types at parse time.
-    fn parse_fn_type(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_fn_type(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::with_capacity(2);
         while self.consume_if(Token::LParen) {
             groups.push(self.parse_params()?);
@@ -384,29 +377,25 @@ where
         let ret_ty = self
             .parse_expr()
             .context("expected return type in function type")?;
+        anyhow::ensure!(
+            !groups.is_empty(),
+            "expected at least one parameter group in function type"
+        );
         // Desugar: fn(p1)(p2) -> T  ≡  Pi { p1, Pi { p2, T } }
-        // Start with the innermost Pi (params from the last group, directly over ret_ty),
-        // then fold outward: each step constructs a new Pi by value, allocating the inner one.
-        let Some((&innermost, outer)) = groups.split_last() else {
-            anyhow::bail!("expected at least one parameter group in function type")
-        };
-        Ok(outer.iter().rev().fold(
-            Term::Pi {
-                params: innermost,
-                ret_ty,
-            },
-            |inner, &params| Term::Pi {
+        // Fold right-to-left starting from ret_ty; every node is arena-allocated.
+        Ok(groups.iter().rev().fold(ret_ty, |inner, &params| {
+            self.alloc(Term::Pi {
                 params,
-                ret_ty: self.alloc(inner),
-            },
-        ))
+                ret_ty: inner,
+            })
+        }))
     }
 
     /// Parse a lambda expression: `lam(params)+ (-> ret_ty)? = body`
     ///
     /// Called after consuming the `lam` token. Multiple `(params)` groups are
     /// desugared to nested `Lam` terms at parse time; `ret_ty` applies to the innermost.
-    fn parse_lambda(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_lambda(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::with_capacity(2);
         while self.consume_if(Token::LParen) {
             groups.push(self.parse_params()?);
@@ -424,38 +413,38 @@ where
         let body = self.parse_expr().context("expected lambda body")?;
 
         // Desugar: lam(p1)(p2) -> T = e  ≡  Lam { p1, None, Lam { p2, Some(T), e } }
-        // ret_ty applies to the innermost group. Start with the innermost Lam by value,
-        // then fold outward: each step constructs a new Lam by value, allocating the inner one.
-        let Some((&innermost, outer)) = groups.split_last() else {
+        // ret_ty applies to the innermost group (the last one). Split it off, build the
+        // innermost Lam, then fold the remaining groups outward; every node is arena-allocated.
+        let Some((&last, init)) = groups.split_last() else {
             anyhow::bail!("expected at least one parameter group after 'lam'")
         };
-        Ok(outer.iter().rev().fold(
-            Term::Lam {
-                params: innermost,
-                ret_ty,
-                body,
-            },
-            |inner, &params| Term::Lam {
+        let innermost = self.alloc(Term::Lam {
+            params: last,
+            ret_ty,
+            body,
+        });
+        Ok(init.iter().rev().fold(innermost, |inner, &params| {
+            self.alloc(Term::Lam {
                 params,
                 ret_ty: None,
-                body: self.alloc(inner),
-            },
-        ))
+                body: inner,
+            })
+        }))
     }
 
     #[expect(
         clippy::wildcard_enum_match_arm,
         reason = "unrecognised tokens are intentionally caught by the wildcard arm"
     )]
-    fn parse_atom_owned(&mut self) -> Result<Term<'names, 'ast>> {
+    fn parse_atom(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let token = self.next().context("expected expression")??;
         match token {
-            Token::Num(n) => Ok(Term::Lit(n)),
+            Token::Num(n) => Ok(self.alloc(Term::Lit(n))),
             Token::Ident(name) => {
                 if self.consume_if(Token::LParen) {
                     self.parse_function_call(name)
                 } else {
-                    Ok(Term::Var(name))
+                    Ok(self.alloc(Term::Var(name)))
                 }
             }
             // `fn` not followed by ident → function type expression
@@ -470,7 +459,7 @@ where
             Token::Match => self.parse_match_expr(),
             Token::LBrace => {
                 let (stmts, expr) = self.parse_block_inner()?;
-                Ok(Term::Block { stmts, expr })
+                Ok(self.alloc(Term::Block { stmts, expr }))
             }
             _ => Err(anyhow::anyhow!("unexpected token in expression: {token:?}")),
         }
