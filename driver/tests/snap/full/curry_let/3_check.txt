@@ -5,3 +5,7 @@ def test: fn(x@0: u32) -> u32 {
     }
 }
 
+code def result() -> u32 {
+    $(@embed_u32(test(5_u32)))
+}
+

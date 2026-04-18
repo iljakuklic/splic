@@ -373,14 +373,9 @@ where
     /// Called after consuming the `fn` token. Multiple `(params)` groups are
     /// desugared to nested `Pi` types at parse time.
     fn parse_fn_type(&mut self) -> Result<Term<'names, 'ast>> {
-        self.take(Token::LParen)
-            .context("expected '(' in function type")?;
-        let first = self.parse_params()?;
-        self.take(Token::RParen)
-            .context("expected ')' in function type")?;
-        let mut rest: Vec<&'ast [Param<'names, 'ast>]> = Vec::new();
+        let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::with_capacity(2);
         while self.consume_if(Token::LParen) {
-            rest.push(self.parse_params()?);
+            groups.push(self.parse_params()?);
             self.take(Token::RParen)
                 .context("expected ')' in function type")?;
         }
@@ -390,17 +385,21 @@ where
             .parse_expr()
             .context("expected return type in function type")?;
         // Desugar: fn(p1)(p2) -> T  ≡  Pi { p1, Pi { p2, T } }
-        // Allocate inner groups from inside out; outermost is returned as an owned Term.
-        let inner = rest.iter().rev().fold(ret_ty, |acc, &params| {
-            self.alloc(Term::Pi {
+        // Start with the innermost Pi (params from the last group, directly over ret_ty),
+        // then fold outward: each step constructs a new Pi by value, allocating the inner one.
+        let Some((&innermost, outer)) = groups.split_last() else {
+            anyhow::bail!("expected at least one parameter group in function type")
+        };
+        Ok(outer.iter().rev().fold(
+            Term::Pi {
+                params: innermost,
+                ret_ty,
+            },
+            |inner, &params| Term::Pi {
                 params,
-                ret_ty: acc,
-            })
-        });
-        Ok(Term::Pi {
-            params: first,
-            ret_ty: inner,
-        })
+                ret_ty: self.alloc(inner),
+            },
+        ))
     }
 
     /// Parse a lambda expression: `lam(params)+ (-> ret_ty)? = body`
@@ -408,14 +407,9 @@ where
     /// Called after consuming the `lam` token. Multiple `(params)` groups are
     /// desugared to nested `Lam` terms at parse time; `ret_ty` applies to the innermost.
     fn parse_lambda(&mut self) -> Result<Term<'names, 'ast>> {
-        self.take(Token::LParen)
-            .context("expected '(' after 'lam'")?;
-        let first = self.parse_params()?;
-        self.take(Token::RParen)
-            .context("expected ')' after lambda parameters")?;
-        let mut rest: Vec<&'ast [Param<'names, 'ast>]> = Vec::new();
+        let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::with_capacity(2);
         while self.consume_if(Token::LParen) {
-            rest.push(self.parse_params()?);
+            groups.push(self.parse_params()?);
             self.take(Token::RParen)
                 .context("expected ')' after lambda parameters")?;
         }
@@ -430,27 +424,23 @@ where
         let body = self.parse_expr().context("expected lambda body")?;
 
         // Desugar: lam(p1)(p2) -> T = e  ≡  Lam { p1, None, Lam { p2, Some(T), e } }
-        // ret_ty applies to the innermost group. Allocate inner groups from inside out;
-        // the outermost is returned as an owned Term.
-        let has_rest = !rest.is_empty();
-        let inner = rest
-            .iter()
-            .rev()
-            .enumerate()
-            .fold(body, |acc, (i, &params)| {
-                let rt = if i == 0 { ret_ty } else { None };
-                self.alloc(Term::Lam {
-                    params,
-                    ret_ty: rt,
-                    body: acc,
-                })
-            });
-        let outermost_ret_ty = if has_rest { None } else { ret_ty };
-        Ok(Term::Lam {
-            params: first,
-            ret_ty: outermost_ret_ty,
-            body: inner,
-        })
+        // ret_ty applies to the innermost group. Start with the innermost Lam by value,
+        // then fold outward: each step constructs a new Lam by value, allocating the inner one.
+        let Some((&innermost, outer)) = groups.split_last() else {
+            anyhow::bail!("expected at least one parameter group after 'lam'")
+        };
+        Ok(outer.iter().rev().fold(
+            Term::Lam {
+                params: innermost,
+                ret_ty,
+                body,
+            },
+            |inner, &params| Term::Lam {
+                params,
+                ret_ty: None,
+                body: self.alloc(inner),
+            },
+        ))
     }
 
     #[expect(

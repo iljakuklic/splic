@@ -59,5 +59,25 @@ Program {
                 },
             },
         },
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "result",
+                params: [
+                    [],
+                ],
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Splice(
+                    App {
+                        func: "test",
+                        args: [
+                            5,
+                        ],
+                    },
+                ),
+            },
+        },
     ],
 }
