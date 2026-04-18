@@ -67,7 +67,9 @@ Stages a Splic source file, printing the object-level code with all meta-level c
 
 ### Fuzzing
 ```bash
-cargo bolero test           # Run bolero fuzz tests
+just fuzz-lexer-lexer       # Fuzz targets: fuzz-lexer-lexer, fuzz-lexer-token,
+just fuzz-parser-expr       #               fuzz-parser-expr, fuzz-parser-program
+just fuzz-lexer-token 5m    # Override default 60s timeout
 ```
 
 ### Reading dependency docs
@@ -87,7 +89,7 @@ Each crate gets a `target/doc-md/<crate>/index.md` with links to submodule files
 - Unit tests located throughout `compiler/src/` in `test` modules (e.g., `compiler/src/lexer/test/`, `compiler/src/parser/test/`)
 - Integration tests in `compiler/tests/`
 - Uses **rstest** for parameterized tests
-- Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `UPDATE_EXPECT=1 cargo test` to regenerate snapshots and verify actual state)
+- Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `just update-snapshots` to regenerate snapshots and verify actual state)
 - Fuzz tests with **bolero** in component `test` modules
 - Note: When adding new test input files, run `cargo clean -p <crate>` for the crate that owns the tests (e.g. `splic-driver` for integration tests, `splic-compiler` for unit tests) to ensure rstest picks them up
 

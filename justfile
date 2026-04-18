@@ -27,6 +27,29 @@ test:
 test-full: test
     git diff --exit-code
 
+# Regenerate expect-test snapshots.
+update-snapshots:
+    cargo clean -p splic-compiler -p splic-driver
+    UPDATE_EXPECT=1 cargo test --locked --workspace
+
+bolero := "cargo +nightly bolero test -p splic-compiler"
+
+# Fuzz the lexer against arbitrary strings.
+fuzz-lexer-lexer timeout="60s":
+    {{bolero}} -T {{timeout}} lexer::test::fuzz::lexer
+
+# Fuzz the lexer against a single token.
+fuzz-lexer-token timeout="60s":
+    {{bolero}} -T {{timeout}} lexer::test::fuzz::token
+
+# Fuzz the parser's expression entrypoint.
+fuzz-parser-expr timeout="60s":
+    {{bolero}} -T {{timeout}} parser::test::fuzz_parse_expr
+
+# Fuzz the parser's program entrypoint.
+fuzz-parser-program timeout="60s":
+    {{bolero}} -T {{timeout}} parser::test::fuzz_parse_program
+
 # Run under Miri to detect undefined behavior and memory leaks.
 miri:
     MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --quiet -p splic-compiler -- --test-threads=1
