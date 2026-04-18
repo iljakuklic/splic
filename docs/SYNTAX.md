@@ -68,6 +68,10 @@ code def f(x: u64) -> u64 = x + 1;     // object-level function
 This desugaring applies at the meta level only; `code def` does not desugar to a lambda —
 the object-level sublanguage does not have first-class functions.
 
+Multiple parameter groups on `def` are supported for curried definitions (see
+[Curried Parameter Groups](#curried-parameter-groups) below). `code def` does not support
+multiple parameter groups.
+
 ## Local Bindings
 
 Local bindings use `let` inside a block. Type annotations are optional:
@@ -81,6 +85,9 @@ let f(x: u64) -> u64 = { x + n };    // local function, block body (may close ov
 ```
 
 `let f(params) (-> T)? = e;` is syntactic sugar for `let f (: fn(params) -> T)? = lam(params) (-> T)? = e;`.
+
+Multiple parameter groups on `let` are supported for curried local functions (see
+[Curried Parameter Groups](#curried-parameter-groups) below).
 
 ## Function Types
 
@@ -103,6 +110,9 @@ fn(A: Type, x: A) -> A   ≡   fn(A: Type) -> fn(x: A) -> A
 
 Function types are meta-level only — they inhabit `Type`, not `VmType`.
 
+Multiple parameter groups `fn(p1)(p2) -> T` are also supported (see
+[Curried Parameter Groups](#curried-parameter-groups) below).
+
 ## Lambda Expressions
 
 Lambdas use the `lam` keyword with mandatory parameter type annotations:
@@ -120,6 +130,53 @@ typechecker can synthesise the full function type from the annotations and the b
 optional `-> T` return type annotation is also supported.
 
 Lambdas are meta-level only — they cannot appear in object-level (`code def`) bodies.
+
+Multiple parameter groups `lam(p1)(p2) = e` are also supported (see
+[Curried Parameter Groups](#curried-parameter-groups) below).
+
+## Curried Parameter Groups
+
+All four constructs (`def`, `let`, `fn`, `lam`) accept multiple parenthesised parameter
+groups. Each group becomes one level of lambda/pi nesting, enabling dependent currying:
+
+```
+// Equivalent ways to write a curried polymorphic identity:
+def id(A: Type)(x: A) -> A = x;
+def id: fn(A: Type)(x: A) -> A = lam(A: Type)(x: A) = x;
+def id: fn(A: Type) -> fn(x: A) -> A = lam(A: Type) = lam(x: A) = x;
+```
+
+The `-> T` return type annotation always applies to the innermost body. All parameters
+from all groups are in scope for the return type and body, enabling dependent currying:
+
+```
+def const(A: Type)(B: Type) -> fn(_: A) -> fn(_: B) -> A =
+    lam(x: A)(y: B) = x;
+```
+
+**Desugaring rules:**
+
+```
+lam(p1)(p2)...(pN) (-> T)? = e
+  ≡  lam(p1) = lam(p2) = ... = lam(pN) (-> T)? = e
+
+let f(p1)(p2)...(pN) (-> T)? = e;
+  ≡  let f = lam(p1)(p2)...(pN) (-> T)? = e;
+
+def f(p1)(p2)...(pN) -> T = e;
+  ≡  def f: fn(p1)(p2)...(pN) -> T = lam(p1)(p2)...(pN) -> T = e;
+
+fn(p1)(p2)...(pN) -> T
+  ≡  fn(p1) -> fn(p2) -> ... -> fn(pN) -> T
+```
+
+Note: within a parameter group, parameters are still declared tuple-style
+(comma-separated), so `lam(x: u64, y: u64)` and `lam(x: u64)(y: u64)` are distinct:
+the former produces a single two-argument lambda; the latter produces two nested
+single-argument lambdas.
+
+`code def` does not support multiple parameter groups — object-level functions always
+have exactly one parameter group.
 
 ## Operators
 
@@ -145,8 +202,10 @@ top_stmt    ::= def_stmt
 
 def_stmt    ::= ("code")? "def" identifier def_sig_req "=" expr ";"
 
-def_sig_req ::= "(" params ")" "->" expr   -- function: params + required return type
-              | ":" expr                    -- value: required type annotation
+def_sig_req ::= param_groups "->" expr   -- function: one or more param groups + required return type
+              | ":" expr                 -- value: required type annotation
+
+param_groups ::= ("(" params ")")+       -- one or more parameter groups
 
 params      ::= (param ("," param)*)?
 param       ::= identifier ":" expr
@@ -156,8 +215,8 @@ stmt        ::= let_stmt
 
 let_stmt    ::= "let" identifier def_sig_opt "=" expr ";"
 
-def_sig_opt ::= "(" params ")" ("->" expr)?   -- function: optional return type
-              | (":" expr)?                    -- value: optional type annotation
+def_sig_opt ::= param_groups ("->" expr)?   -- function: one or more groups, optional return type
+              | (":" expr)?                 -- value: optional type annotation
 
 match_arm   ::= pattern "=>" expr ","
 
@@ -179,11 +238,11 @@ expr        ::= literal
              | "match" expr "{" match_arm* "}"
              | block
 
-fn_type     ::= "fn" "(" fn_params ")" "->" expr
+fn_type     ::= "fn" param_groups "->" expr
 fn_params   ::= (fn_param ("," fn_param)*)?
 fn_param    ::= identifier ":" expr             -- name required; use "_" for non-dependent
 
-lambda      ::= "lam" "(" params ")" ("->" expr)? "=" expr
+lambda      ::= "lam" param_groups ("->" expr)? "=" expr
 
 binary_op   ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&" | "|"
 unary_op    ::= "!"

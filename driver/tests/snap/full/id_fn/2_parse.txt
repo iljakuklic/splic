@@ -4,14 +4,14 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "id",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u32",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),

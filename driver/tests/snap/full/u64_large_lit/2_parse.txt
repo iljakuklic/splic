@@ -4,9 +4,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "min_signed",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -20,9 +20,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "max_u64",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -36,14 +36,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "clamp_large",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

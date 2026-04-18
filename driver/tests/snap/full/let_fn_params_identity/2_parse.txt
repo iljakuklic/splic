@@ -4,9 +4,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "test_id",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -14,14 +14,14 @@ Program {
                     stmts: [
                         Definition {
                             name: "id",
-                            params: Some(
+                            params: [
                                 [
                                     Param {
                                         name: "T",
                                         ty: "Type",
                                     },
                                 ],
-                            ),
+                            ],
                             ret_ty: None,
                             body: Lam {
                                 params: [
@@ -36,7 +36,7 @@ Program {
                         },
                         Definition {
                             name: "_",
-                            params: None,
+                            params: [],
                             ret_ty: None,
                             body: App {
                                 func: App {
@@ -69,9 +69,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "test_id_u8",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u8",
                 ),
@@ -79,27 +79,27 @@ Program {
                     stmts: [
                         Definition {
                             name: "id",
-                            params: Some(
+                            params: [
                                 [
                                     Param {
                                         name: "T",
                                         ty: "Type",
                                     },
                                 ],
-                            ),
+                            ],
                             ret_ty: None,
                             body: Block {
                                 stmts: [
                                     Definition {
                                         name: "id_T",
-                                        params: Some(
+                                        params: [
                                             [
                                                 Param {
                                                     name: "x",
                                                     ty: "T",
                                                 },
                                             ],
-                                        ),
+                                        ],
                                         ret_ty: None,
                                         body: "x",
                                     },
@@ -109,7 +109,7 @@ Program {
                         },
                         Definition {
                             name: "id_u8",
-                            params: None,
+                            params: [],
                             ret_ty: None,
                             body: App {
                                 func: "id",
@@ -132,9 +132,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "result_u64",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),
@@ -153,9 +153,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "result_u8",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u8",
                 ),

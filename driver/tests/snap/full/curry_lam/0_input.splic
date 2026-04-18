@@ -1,0 +1,2 @@
+def const(A: Type)(B: Type) -> fn(_: A) -> fn(_: B) -> A =
+    lam(x: A)(y: B) = x;

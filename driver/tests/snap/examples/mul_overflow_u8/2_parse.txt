@@ -4,9 +4,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "f",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u8",
                 ),
@@ -26,9 +26,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "g",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u8",
                 ),

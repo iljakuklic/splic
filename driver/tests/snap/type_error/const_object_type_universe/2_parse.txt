@@ -4,7 +4,7 @@ Program {
             phase: Object,
             def: Definition {
                 name: "answer",
-                params: None,
+                params: [],
                 ret_ty: Some(
                     "Type",
                 ),

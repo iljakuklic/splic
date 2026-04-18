@@ -123,6 +123,21 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         self.locals.pop();
     }
 
+    /// Truncate the local context back to a previously saved depth.
+    pub fn truncate(&mut self, depth: de_bruijn::Depth) {
+        self.locals.truncate(depth);
+    }
+
+    /// Push multiple local variables in order, each via `push_local`.
+    pub fn extend(
+        &mut self,
+        iter: impl IntoIterator<Item = (&'names core::Name, &'core core::Term<'names, 'core>)>,
+    ) {
+        for (name, ty) in iter {
+            self.push_local(name, ty);
+        }
+    }
+
     /// Look up a variable by name, returning its (index, type as Value).
     /// Searches from the most recently pushed variable inward to handle shadowing.
     pub fn lookup_local(

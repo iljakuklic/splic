@@ -1,0 +1,53 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Meta,
+            def: Definition {
+                name: "apply",
+                params: [
+                    [
+                        Param {
+                            name: "A",
+                            ty: "Type",
+                        },
+                    ],
+                    [
+                        Param {
+                            name: "B",
+                            ty: "Type",
+                        },
+                    ],
+                    [
+                        Param {
+                            name: "f",
+                            ty: Pi {
+                                params: [
+                                    Param {
+                                        name: "x",
+                                        ty: "A",
+                                    },
+                                ],
+                                ret_ty: "B",
+                            },
+                        },
+                    ],
+                    [
+                        Param {
+                            name: "x",
+                            ty: "A",
+                        },
+                    ],
+                ],
+                ret_ty: Some(
+                    "B",
+                ),
+                body: App {
+                    func: "f",
+                    args: [
+                        "x",
+                    ],
+                },
+            },
+        },
+    ],
+}

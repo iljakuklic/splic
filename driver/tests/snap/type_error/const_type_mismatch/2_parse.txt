@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "answer",
-                params: None,
+                params: [],
                 ret_ty: Some(
                     "u32",
                 ),
@@ -12,7 +12,7 @@ Program {
                     stmts: [
                         Definition {
                             name: "x",
-                            params: None,
+                            params: [],
                             ret_ty: Some(
                                 "u64",
                             ),

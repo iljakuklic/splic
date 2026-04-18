@@ -1,0 +1,4 @@
+def flip: fn(A@0: Type) -> fn(B@1: Type) -> fn(C@2: Type) -> fn(f@3: fn(x@3: A@0) -> fn(y@4: B@1) -> C@2) -> fn(x@4: A@0) -> fn(y@5: B@1) -> C@2 {
+    lam(A@0: Type) = lam(B@1: Type) = lam(C@2: Type) = lam(f@3: fn(x@3: A@0) -> fn(y@4: B@1) -> C@2) = lam(x@4: A@0) = lam(y@5: B@1) = f@3(x@4)(y@5)
+}
+

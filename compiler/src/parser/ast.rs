@@ -28,7 +28,7 @@ pub struct MatchArm<'names, 'ast> {
 #[derive(Debug)]
 pub struct Definition<'names, 'ast> {
     pub name: &'names Name,
-    pub params: Option<&'ast [Param<'names, 'ast>]>,
+    pub params: &'ast [&'ast [Param<'names, 'ast>]],
     pub ret_ty: Option<&'ast Term<'names, 'ast>>,
     pub body: &'ast Term<'names, 'ast>,
 }

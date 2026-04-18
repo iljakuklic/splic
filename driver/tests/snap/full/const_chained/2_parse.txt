@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "x",
-                params: None,
+                params: [],
                 ret_ty: Some(
                     "u32",
                 ),
@@ -15,7 +15,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "y",
-                params: None,
+                params: [],
                 ret_ty: Some(
                     "u32",
                 ),
@@ -32,9 +32,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "result",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),

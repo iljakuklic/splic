@@ -1,0 +1,4 @@
+def apply: fn(A@0: Type) -> fn(B@1: Type) -> fn(f@2: fn(x@2: A@0) -> B@1) -> fn(x@3: A@0) -> B@1 {
+    lam(A@0: Type) = lam(B@1: Type) = lam(f@2: fn(x@2: A@0) -> B@1) = lam(x@3: A@0) = f@2(x@3)
+}
+

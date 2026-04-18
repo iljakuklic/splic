@@ -4,7 +4,7 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "map_code",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "f",
@@ -29,7 +29,7 @@ Program {
                             ),
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     Lift(
                         "u64",
@@ -50,14 +50,14 @@ Program {
             phase: Object,
             def: Definition {
                 name: "double",
-                params: Some(
+                params: [
                     [
                         Param {
                             name: "x",
                             ty: "u64",
                         },
                     ],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

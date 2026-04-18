@@ -4,9 +4,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "k",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     Lift(
                         "u64",
@@ -24,9 +24,9 @@ Program {
             phase: Object,
             def: Definition {
                 name: "zero",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u64",
                 ),

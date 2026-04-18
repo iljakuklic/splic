@@ -4,9 +4,9 @@ Program {
             phase: Meta,
             def: Definition {
                 name: "bad",
-                params: Some(
+                params: [
                     [],
-                ),
+                ],
                 ret_ty: Some(
                     "u32",
                 ),

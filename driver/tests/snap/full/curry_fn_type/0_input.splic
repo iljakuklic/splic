@@ -1,0 +1,1 @@
+def flip(A: Type)(B: Type)(C: Type)(f: fn(x: A)(y: B) -> C)(x: A)(y: B) -> C = f(x)(y);

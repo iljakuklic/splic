@@ -1,0 +1,5 @@
+def test(x: u32) -> u32 = {
+    let add(a: u32)(b: u32) -> u32 = a + b;
+    add(x)(x)
+};
+code def result() -> u32 = $(test(5));
