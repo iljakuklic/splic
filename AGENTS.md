@@ -91,7 +91,6 @@ Each crate gets a `target/doc-md/<crate>/index.md` with links to submodule files
 - Uses **rstest** for parameterized tests
 - Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `just update-snapshots` to regenerate snapshots and verify actual state)
 - Fuzz tests with **bolero** in component `test` modules
-- Note: When adding new test input files, run `cargo clean -p <crate>` for the crate that owns the tests (e.g. `splic-driver` for integration tests, `splic-compiler` for unit tests) to ensure rstest picks them up
 
 ### Clippy
 The project enforces a curated set of lints beyond Clippy defaults — see `[workspace.lints]` in `Cargo.toml` for the full list. All lints are `"deny"`. Use `#[expect(...)]` to suppress a lint at a specific site. For test modules it is acceptable to use a broad `#![expect(...)]` at the top of the file rather than per-site annotations.
