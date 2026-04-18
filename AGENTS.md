@@ -58,12 +58,11 @@ cargo check --workspace --all-targets   # Fast syntax + type check (includes tes
 cargo build                             # Build all workspace members
 ```
 
-### Staging a metaprogram
+### Running the compiler
 ```bash
-cargo run -- stage <FILE>
+just stage <FILE>      # Stage a Splic source file, printing the object-level program
+just compile -o <OUTPUT> <FILE>    # Compile a Splic source file to WebAssembly
 ```
-
-Stages a Splic source file, printing the object-level code with all meta-level computation resolved.
 
 ### Fuzzing
 ```bash

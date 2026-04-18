@@ -50,6 +50,14 @@ fuzz-parser-expr timeout="60s":
 fuzz-parser-program timeout="60s":
     {{bolero}} -T {{timeout}} parser::test::fuzz_parse_program
 
+# Stage a Splic source file, printing the object-level program.
+stage *args:
+    cargo run -- stage {{args}}
+
+# Compile a Splic source file to WebAssembly.
+compile *args:
+    cargo run -- compile --target wasm {{args}}
+
 # Run under Miri to detect undefined behavior and memory leaks.
 miri:
     MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --quiet -p splic-compiler -- --test-threads=1
