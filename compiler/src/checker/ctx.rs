@@ -15,6 +15,10 @@ pub enum GlobalEntry<'names, 'core> {
         params: &'core [(&'names core::Name, &'core core::Term<'names, 'core>)],
         ret_ty: &'core core::Term<'names, 'core>,
     },
+    /// Object-level constant (no parameters).
+    CodeConst {
+        ty: &'core core::Term<'names, 'core>,
+    },
 }
 
 /// A single entry in the elaboration context.

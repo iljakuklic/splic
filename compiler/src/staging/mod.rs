@@ -615,47 +615,51 @@ pub fn unstage_program<'names, 'out, 'core>(
         .map(|f| match &f.global {
             core::Global::Meta(meta) => (f.name, meta.body),
             core::Global::CodeFn(codefn) => (f.name, codefn.body),
+            core::Global::CodeConst(c) => (f.name, c.body),
         })
         .collect();
 
-    let staged_defs: Vec<core::GlobalDef<'names, 'out>> = program
-        .defs
-        .iter()
-        .filter_map(|f| match &f.global {
-            core::Global::CodeFn(codefn) => Some((f.name, codefn)),
-            core::Global::Meta(_) => None,
-        })
-        .map(|(name, codefn)| -> Result<_> {
-            // Per-definition eval arena: all intermediate `ObjVal` nodes are
-            // allocated here and freed automatically when this closure returns.
-            let eval_arena = Bump::new();
-            let mut env = Env::new(de_bruijn::Depth::ZERO);
-
-            let staged_params = out_arena.alloc_slice_try_fill_iter(codefn.params.iter().map(
-                |(n, ty)| -> Result<(&'names Name, &'out Term<'names, 'out>)> {
-                    let ty_val = eval_obj(&eval_arena, &globals, &mut env, ty)?;
-                    let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
-                    env.push_obj();
-                    Ok((n, staged_ty))
-                },
-            ))?;
-
-            let ret_ty_val = eval_obj(&eval_arena, &globals, &mut env, codefn.ret_ty)?;
-            let staged_ret_ty = quote_obj(out_arena, env.obj_depth, ret_ty_val);
-
-            let body_val = eval_obj(&eval_arena, &globals, &mut env, codefn.body)?;
-            let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
-
-            Ok(core::GlobalDef {
-                name,
-                global: core::Global::CodeFn(core::CodeFn {
+    let mut staged_defs: Vec<core::GlobalDef<'names, 'out>> = Vec::new();
+    for def in program.defs {
+        let eval_arena = Bump::new();
+        let mut env = Env::new(de_bruijn::Depth::ZERO);
+        let staged_global = match &def.global {
+            core::Global::Meta(_) => continue,
+            core::Global::CodeFn(codefn) => {
+                let staged_params = out_arena.alloc_slice_try_fill_iter(codefn.params.iter().map(
+                    |(n, ty)| -> Result<(&'names Name, &'out Term<'names, 'out>)> {
+                        let ty_val = eval_obj(&eval_arena, &globals, &mut env, ty)?;
+                        let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
+                        env.push_obj();
+                        Ok((n, staged_ty))
+                    },
+                ))?;
+                let ret_ty_val = eval_obj(&eval_arena, &globals, &mut env, codefn.ret_ty)?;
+                let staged_ret_ty = quote_obj(out_arena, env.obj_depth, ret_ty_val);
+                let body_val = eval_obj(&eval_arena, &globals, &mut env, codefn.body)?;
+                let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
+                core::Global::CodeFn(core::CodeFn {
                     params: staged_params,
                     ret_ty: staged_ret_ty,
                     body: staged_body,
-                }),
-            })
-        })
-        .collect::<Result<Vec<_>>>()?;
+                })
+            }
+            core::Global::CodeConst(c) => {
+                let ty_val = eval_obj(&eval_arena, &globals, &mut env, c.ty)?;
+                let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
+                let body_val = eval_obj(&eval_arena, &globals, &mut env, c.body)?;
+                let staged_body = quote_obj(out_arena, env.obj_depth, body_val);
+                core::Global::CodeConst(core::CodeConst {
+                    ty: staged_ty,
+                    body: staged_body,
+                })
+            }
+        };
+        staged_defs.push(core::GlobalDef {
+            name: def.name,
+            global: staged_global,
+        });
+    }
 
     let defs = out_arena.alloc_slice_fill_iter(staged_defs);
     Ok(Program { defs })
