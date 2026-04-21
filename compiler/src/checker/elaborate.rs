@@ -42,9 +42,7 @@ fn elaborate_sig<'names, 'ast, 'core>(
         Phase::Object => {
             let mut iter = all_groups.into_iter();
             match (iter.next(), iter.next()) {
-                (None, _) => Err(anyhow::anyhow!(
-                    "object-phase constant definitions are not supported"
-                )),
+                (None, _) => Ok(GlobalEntry::CodeConst { ty: core_ret_ty }),
                 (Some(params), None) => Ok(GlobalEntry::CodeFn {
                     params,
                     ret_ty: core_ret_ty,
@@ -102,26 +100,34 @@ fn elaborate_bodies<'names, 'ast, 'core>(
             let mut ctx = Ctx::new(arena, globals);
 
             let global = match def.phase {
-                Phase::Object => {
-                    let GlobalEntry::CodeFn { params, ret_ty } =
-                        globals.get(&name).expect("signature missing from pass 1")
-                    else {
-                        unreachable!("Code def should have CodeFn entry")
-                    };
-                    let core_body = infer::check_with_params(
-                        &mut ctx,
-                        Phase::Object,
-                        params,
-                        def.def.body,
-                        ret_ty,
-                    )
-                    .with_context(|| format!("in `{name}`"))?;
-                    core::Global::CodeFn(core::CodeFn {
-                        params,
-                        ret_ty,
-                        body: core_body,
-                    })
-                }
+                Phase::Object => match globals.get(&name).expect("signature missing from pass 1") {
+                    GlobalEntry::CodeFn { params, ret_ty } => {
+                        let core_body = infer::check_with_params(
+                            &mut ctx,
+                            Phase::Object,
+                            params,
+                            def.def.body,
+                            ret_ty,
+                        )
+                        .with_context(|| format!("in `{name}`"))?;
+                        core::Global::CodeFn(core::CodeFn {
+                            params,
+                            ret_ty,
+                            body: core_body,
+                        })
+                    }
+                    GlobalEntry::CodeConst { ty } => {
+                        let core_body = infer::check(&mut ctx, Phase::Object, def.def.body, ty)
+                            .with_context(|| format!("in `{name}`"))?;
+                        core::Global::CodeConst(core::CodeConst {
+                            ty,
+                            body: core_body,
+                        })
+                    }
+                    GlobalEntry::Meta(_) => {
+                        unreachable!("Object phase def should not have Meta entry")
+                    }
+                },
                 Phase::Meta => {
                     let GlobalEntry::Meta(ty) =
                         globals.get(&name).expect("signature missing from pass 1")

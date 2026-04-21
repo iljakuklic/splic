@@ -1,0 +1,15 @@
+Code
+Def
+Ident("answer")
+Colon
+Ident("u32")
+Eq
+Num(42)
+Semi
+Def
+Ident("meta_ref")
+Colon
+Ident("u32")
+Eq
+Ident("answer")
+Semi

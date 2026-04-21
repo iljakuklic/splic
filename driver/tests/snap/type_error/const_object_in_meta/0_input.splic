@@ -1,0 +1,2 @@
+code def answer: u32 = 42;
+def meta_ref: u32 = answer;

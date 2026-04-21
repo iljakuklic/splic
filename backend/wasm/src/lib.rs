@@ -23,6 +23,9 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
     for (func_idx, func) in program.defs.iter().enumerate() {
         let codefn = match &func.global {
             splic_compiler::core::Global::CodeFn(codefn) => codefn,
+            splic_compiler::core::Global::CodeConst(_) => {
+                unimplemented!("WASM codegen for object-level constants")
+            }
             splic_compiler::core::Global::Meta(_) => {
                 unreachable!("meta-level def `{}` reached WASM backend", func.name)
             }

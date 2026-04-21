@@ -55,6 +55,14 @@ pub fn infer<'names, 'ast, 'core>(
                 Some(GlobalEntry::CodeFn { .. }) => Err(anyhow!(
                     "`{name}` is a code function and must be called, not referenced directly"
                 )),
+                Some(GlobalEntry::CodeConst { ty }) => {
+                    ensure!(
+                        phase.is_object(),
+                        "code constant `{name}` can only be referenced in object-phase context"
+                    );
+                    let ty = ctx.eval(ty);
+                    Ok((ctx.alloc(core::Term::Global(name)), ty))
+                }
                 None => Err(anyhow!("unbound variable `{name}`")),
             }
         }

@@ -47,18 +47,26 @@ pub struct CodeFn<'names, 'a> {
     pub body: &'a Term<'names, 'a>,
 }
 
+/// Global object-level constant (no parameters)
+#[derive(Debug, PartialEq, Eq)]
+pub struct CodeConst<'names, 'a> {
+    pub ty: &'a Term<'names, 'a>,
+    pub body: &'a Term<'names, 'a>,
+}
+
 /// Top-level elaborated item.
 #[derive(Debug)]
 pub enum Global<'names, 'a> {
     Meta(GlobalMeta<'names, 'a>),
     CodeFn(CodeFn<'names, 'a>),
+    CodeConst(CodeConst<'names, 'a>),
 }
 
 impl Global<'_, '_> {
     pub const fn phase(&self) -> Phase {
         match self {
             Global::Meta(_) => Phase::Meta,
-            Global::CodeFn(_) => Phase::Object,
+            Global::CodeFn(_) | Global::CodeConst(_) => Phase::Object,
         }
     }
 }

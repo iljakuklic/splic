@@ -1,0 +1,26 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "answer",
+                params: [],
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: 42,
+            },
+        },
+        GlobalDef {
+            phase: Meta,
+            def: Definition {
+                name: "meta_ref",
+                params: [],
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: "answer",
+            },
+        },
+    ],
+}

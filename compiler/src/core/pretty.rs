@@ -249,7 +249,7 @@ impl fmt::Display for GlobalDef<'_, '_> {
                 meta.body.fmt_term(&mut env, 1, f)?;
             }
             Global::CodeFn(codefn) => {
-                // Object function: `code fn name(params) -> ret { body }`
+                // Object function: `code def name(params) -> ret { body }`
                 let mut env: Env<&Name> = Env::with_capacity(codefn.params.len());
                 write!(f, "code def {}(", self.name)?;
                 fmt_params(codefn.params, &mut env, 1, f)?;
@@ -257,6 +257,14 @@ impl fmt::Display for GlobalDef<'_, '_> {
                 codefn.ret_ty.fmt_expr(&mut env, 1, f)?;
                 writeln!(f, " {{")?;
                 codefn.body.fmt_term(&mut env, 1, f)?;
+            }
+            Global::CodeConst(c) => {
+                // Object constant: `code def name: ty { body }`
+                let mut env: Env<&Name> = Env::new();
+                write!(f, "code def {}: ", self.name)?;
+                c.ty.fmt_expr(&mut env, 1, f)?;
+                writeln!(f, " {{")?;
+                c.body.fmt_term(&mut env, 1, f)?;
             }
         }
 

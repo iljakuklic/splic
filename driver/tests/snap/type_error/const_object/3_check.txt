@@ -1,2 +1,0 @@
-ERROR
-in `answer`: object-phase constant definitions are not supported
