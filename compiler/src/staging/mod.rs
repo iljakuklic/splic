@@ -626,14 +626,15 @@ pub fn unstage_program<'names, 'out, 'core>(
         let staged_global = match &def.global {
             core::Global::Meta(_) => continue,
             core::Global::CodeFn(codefn) => {
-                let staged_params = out_arena.alloc_slice_try_fill_iter(codefn.params.iter().map(
-                    |(n, ty)| -> Result<(&'names Name, &'out Term<'names, 'out>)> {
-                        let ty_val = eval_obj(&eval_arena, &globals, &mut env, ty)?;
-                        let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
-                        env.push_obj();
-                        Ok((n, staged_ty))
-                    },
-                ))?;
+                let staged_params =
+                    out_arena.alloc_slice_try_fill_iter(codefn.params.iter().map(
+                        |(n, ty)| -> Result<(&'names Name, &'out Term<'names, 'out>)> {
+                            let ty_val = eval_obj(&eval_arena, &globals, &mut env, ty)?;
+                            let staged_ty = quote_obj(out_arena, env.obj_depth, ty_val);
+                            env.push_obj();
+                            Ok((n, staged_ty))
+                        },
+                    ))?;
                 let ret_ty_val = eval_obj(&eval_arena, &globals, &mut env, codefn.ret_ty)?;
                 let staged_ret_ty = quote_obj(out_arena, env.obj_depth, ret_ty_val);
                 let body_val = eval_obj(&eval_arena, &globals, &mut env, codefn.body)?;
