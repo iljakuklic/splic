@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: taiki-e/install-action@v2.75.15
+      - uses: taiki-e/install-action@v2.75.20
         with:
           tool: just
       - name: Check formatting
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: taiki-e/install-action@v2.75.15
+      - uses: taiki-e/install-action@v2.75.20
         with:
           tool: just
       - uses: Swatinem/rust-cache@v2.9.1
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: taiki-e/install-action@v2.75.15
+      - uses: taiki-e/install-action@v2.75.20
         with:
           tool: just
       - uses: Swatinem/rust-cache@v2.9.1
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: taiki-e/install-action@v2.75.15
+      - uses: taiki-e/install-action@v2.75.20
         with:
           tool: just
       - uses: Swatinem/rust-cache@v2.9.1
