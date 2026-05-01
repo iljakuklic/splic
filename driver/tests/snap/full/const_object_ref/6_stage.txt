@@ -1,0 +1,8 @@
+code def answer: u32 {
+    42_u32
+}
+
+code def double_answer() -> u32 {
+    @add_u32(answer, answer)
+}
+

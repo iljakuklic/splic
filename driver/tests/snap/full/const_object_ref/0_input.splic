@@ -1,0 +1,2 @@
+code def answer: u32 = 42;
+code def double_answer() -> u32 = { answer + answer };

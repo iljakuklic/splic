@@ -1,0 +1,37 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "answer",
+                params: [],
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: 42,
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "double_answer",
+                params: [
+                    [],
+                ],
+                ret_ty: Some(
+                    "u32",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: App {
+                        func: Add,
+                        args: [
+                            "answer",
+                            "answer",
+                        ],
+                    },
+                },
+            },
+        },
+    ],
+}
