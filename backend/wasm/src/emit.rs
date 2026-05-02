@@ -25,9 +25,7 @@ impl<'names> FuncRegistry<'names> {
             func_indices.insert(name, idx);
             let ret_ty = match &df.global {
                 splic_compiler::core::Global::CodeFn(codefn) => codefn.ret_ty,
-                splic_compiler::core::Global::CodeConst(_) => {
-                    unimplemented!("WASM codegen for object-level constants")
-                }
+                splic_compiler::core::Global::CodeConst(c) => c.ty,
                 splic_compiler::core::Global::Meta(_) => {
                     unreachable!("meta-level def `{name}` reached WASM backend")
                 }

@@ -21,21 +21,15 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
     let mut code = CodeSection::new();
 
     for (func_idx, func) in program.defs.iter().enumerate() {
-        let codefn = match &func.global {
-            splic_compiler::core::Global::CodeFn(codefn) => codefn,
-            splic_compiler::core::Global::CodeConst(_) => {
-                unimplemented!("WASM codegen for object-level constants")
-            }
+        let (params, ret_ty, body) = match &func.global {
+            splic_compiler::core::Global::CodeFn(f) => (f.params, f.ret_ty, f.body),
+            splic_compiler::core::Global::CodeConst(c) => (&[][..], c.ty, c.body),
             splic_compiler::core::Global::Meta(_) => {
                 unreachable!("meta-level def `{}` reached WASM backend", func.name)
             }
         };
-        let param_valtypes: Vec<_> = codefn
-            .params
-            .iter()
-            .map(|(_, ty)| term_to_valtype(ty))
-            .collect();
-        let result_valtype = term_to_valtype(codefn.ret_ty);
+        let param_valtypes: Vec<_> = params.iter().map(|(_, ty)| term_to_valtype(ty)).collect();
+        let result_valtype = term_to_valtype(ret_ty);
 
         let type_idx =
             u32::try_from(func_idx).map_err(|_| anyhow!("too many functions (> u32::MAX)"))?;
@@ -47,7 +41,7 @@ pub fn compile_wasm(program: &Program<'_, '_>) -> Result<Vec<u8>> {
 
         // Emit the function body.
         let mut emitter = Emitter::new(&cg, &param_valtypes)?;
-        emitter.emit_term(codefn.body);
+        emitter.emit_term(body);
         emitter.push(Instruction::End);
 
         // Declare extra locals (let-binding and scrutinee temporaries).
