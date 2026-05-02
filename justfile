@@ -1,5 +1,10 @@
+# Documentation generation and checking.
 mod doc 'just/doc.just'
+
+# Fuzz testing via bolero.
 mod fuzz 'just/fuzz.just'
+
+# Run under Miri or sanitizers.
 mod sanitizers 'just/sanitizers.just'
 
 # `default` must remain at the top.
