@@ -34,8 +34,7 @@ All common workflow tasks are available via `just`. Run `just` to list recipes.
 
 ### CI checks (use these before committing)
 ```bash
-just ci          # Full CI: fmt check + clippy + tests (mirrors CI exactly)
-just check-fmt   # Check formatting without modifying files
+just ci::all     # Full CI: fmt check + clippy + doc check + tests (mirrors CI exactly)
 just clippy      # Run Clippy with the full lint set
 just clippy-fix  # Apply Clippy auto-fixes
 just fmt         # Format the codebase

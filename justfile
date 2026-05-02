@@ -1,3 +1,6 @@
+# CI checks (fmt, lint, doc, test).
+mod ci 'just/ci.just'
+
 # Documentation generation and checking.
 mod doc 'just/doc.just'
 
@@ -16,13 +19,8 @@ default:
 fmt:
     cargo fmt --all
 
-# Check formatting without modifying files (used in CI).
-check-fmt:
-    cargo fmt --all --check
-
 # Run Clippy lints.
-clippy:
-    cargo clippy --locked --workspace --all-targets
+clippy: ci::clippy
 
 # Apply Clippy auto-fixes.
 clippy-fix:
@@ -31,10 +29,6 @@ clippy-fix:
 # Run tests.
 test:
     cargo test --locked --workspace
-
-# Run tests and check for snapshot drift (used in CI).
-test-full: test
-    git diff --exit-code
 
 # Regenerate expect-test snapshots.
 update-snapshots:
@@ -47,6 +41,3 @@ stage *args:
 # Compile a Splic source file to WebAssembly.
 compile *args:
     cargo run -- compile --target wasm {{args}}
-
-# Run all CI checks.
-ci: check-fmt clippy doc::check test
