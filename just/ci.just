@@ -1,3 +1,6 @@
+# Run all CI checks.
+all: check-fmt clippy check-doc test
+
 # Check formatting without modifying files.
 check-fmt:
     cargo fmt --all --check
@@ -14,6 +17,3 @@ check-doc:
 test:
     cargo test --locked --workspace
     git diff --exit-code
-
-# Run all CI checks.
-all: check-fmt clippy check-doc test

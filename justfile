@@ -11,7 +11,7 @@ mod fuzz 'just/fuzz.just'
 mod sanitizers 'just/sanitizers.just'
 
 # `default` must remain at the top.
-# List all available recipes.
+[private]
 default:
     just --list
 

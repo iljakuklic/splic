@@ -1,3 +1,7 @@
+[private]
+default:
+    just --list sanitizers
+
 # Run under Miri to detect undefined behavior and memory leaks.
 miri:
     MIRIFLAGS="-Zmiri-disable-isolation" cargo +nightly miri test --quiet -p splic-compiler -- --test-threads=1

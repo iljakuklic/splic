@@ -1,3 +1,7 @@
+[private]
+default:
+    just --list fuzz
+
 bolero := "cargo +nightly bolero test -p splic-compiler"
 
 # Fuzz the lexer against arbitrary strings.

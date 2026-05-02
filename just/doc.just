@@ -1,3 +1,7 @@
+[private]
+default:
+    just --list doc
+
 # Check that cargo-doc-md is installed.
 _require-doc-md:
     @command -v cargo-doc-md > /dev/null 2>&1 || { echo "cargo-doc-md is not installed. Run: cargo install cargo-doc-md"; exit 1; }
