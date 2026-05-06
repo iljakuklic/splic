@@ -24,6 +24,7 @@ splic/
 ├── docs/              # Documentation
 │   ├── README.md      # Language design and user-facing docs
 │   └── bs/            # Implementation notes and proposals
+├── just/              # justfile modules (ci, doc, fuzz, sanitizers)
 ├── Cargo.toml         # Workspace configuration
 └── Cargo.lock         # Dependency lock file
 ```
