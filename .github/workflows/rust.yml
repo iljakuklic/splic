@@ -19,7 +19,7 @@ jobs:
         with:
           tool: just
       - name: Check formatting
-        run: just check-fmt
+        run: just ci::check-fmt
 
   clippy:
     name: Clippy
@@ -43,7 +43,7 @@ jobs:
           tool: just
       - uses: Swatinem/rust-cache@v2.9.1
       - name: Check rustdocs
-        run: just check-doc
+        run: just ci::check-doc
 
   test:
     name: Test
@@ -55,4 +55,4 @@ jobs:
           tool: just
       - uses: Swatinem/rust-cache@v2.9.1
       - name: Run tests
-        run: just test-full
+        run: just ci::test
