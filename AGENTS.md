@@ -24,6 +24,7 @@ splic/
 ├── docs/              # Documentation
 │   ├── README.md      # Language design and user-facing docs
 │   └── bs/            # Implementation notes and proposals
+├── just/              # justfile modules (ci, doc, fuzz, sanitizers)
 ├── Cargo.toml         # Workspace configuration
 └── Cargo.lock         # Dependency lock file
 ```
@@ -34,8 +35,7 @@ All common workflow tasks are available via `just`. Run `just` to list recipes.
 
 ### CI checks (use these before committing)
 ```bash
-just ci          # Full CI: fmt check + clippy + tests (mirrors CI exactly)
-just check-fmt   # Check formatting without modifying files
+just ci::all     # Full CI: fmt check + clippy + doc check + tests (mirrors CI exactly)
 just clippy      # Run Clippy with the full lint set
 just clippy-fix  # Apply Clippy auto-fixes
 just fmt         # Format the codebase
@@ -66,18 +66,18 @@ just compile -o <OUTPUT> <FILE>    # Compile a Splic source file to WebAssembly
 
 ### Fuzzing
 ```bash
-just fuzz-lexer-lexer       # Fuzz targets: fuzz-lexer-lexer, fuzz-lexer-token,
-just fuzz-parser-expr       #               fuzz-parser-expr, fuzz-parser-program
-just fuzz-lexer-token 5m    # Override default 60s timeout
+just fuzz::lexer-lexer       # Fuzz targets: lexer-lexer, lexer-token,
+just fuzz::parser-expr       #               parser-expr, parser-program
+just fuzz::lexer-token 5m    # Override default 60s timeout
 ```
 
 ### Reading dependency docs
 Use `cargo-doc-md` to generate Markdown documentation for workspace dependencies. Output lands in `target/doc-md/<crate>/`.
 
 ```bash
-just crate-docs -p wasm-encoder                        # Single crate
-just crate-docs -p wasm-encoder -p wasmparser          # Multiple crates
-just doc-md-full                                       # Entire workspace + all deps
+just doc::md -p wasm-encoder                        # Single crate
+just doc::md -p wasm-encoder -p wasmparser          # Multiple crates
+just doc::md-full                                   # Entire workspace + all deps
 ```
 
 Each crate gets a `target/doc-md/<crate>/index.md` with links to submodule files (e.g. `core/instructions.md`) — start there to navigate to the relevant module. Requires `cargo install cargo-doc-md`.
@@ -88,7 +88,7 @@ Each crate gets a `target/doc-md/<crate>/index.md` with links to submodule files
 - Unit tests located throughout `compiler/src/` in `test` modules (e.g., `compiler/src/lexer/test/`, `compiler/src/parser/test/`)
 - Integration tests in `compiler/tests/`
 - Uses **rstest** for parameterized tests
-- Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading - if colors appear in the diff, run `just update-snapshots` to regenerate snapshots and verify actual state)
+- Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading — if colors appear in the diff, run `just update-snapshots` to regenerate snapshots and verify actual state)
 - Fuzz tests with **bolero** in component `test` modules
 
 ### Clippy
