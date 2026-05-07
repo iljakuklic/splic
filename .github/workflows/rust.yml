@@ -15,7 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - run: rustup update 1.95 && rustup component add rustfmt --toolchain 1.95
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
@@ -27,7 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - run: rustup update 1.95 && rustup component add clippy --toolchain 1.95
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
@@ -40,7 +38,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - run: rustup update 1.95
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
@@ -53,7 +50,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - run: rustup update 1.95
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
