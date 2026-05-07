@@ -8,6 +8,7 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
+  RUSTUP_TOOLCHAIN: 1.95
 
 jobs:
   fmt:
@@ -15,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
+      - run: rustup component add rustfmt
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
@@ -26,6 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
+      - run: rustup component add clippy
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just

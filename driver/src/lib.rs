@@ -46,10 +46,11 @@ pub fn compile(source: &str, target: Target) -> Result<Vec<u8>> {
 ///
 /// Returns an error if the `backend-wasm` feature is not enabled.
 fn compile_wasm(program: &core::Program<'_, '_>) -> Result<Vec<u8>> {
-    cfg_if::cfg_if! {
-        if #[cfg(feature = "backend-wasm")] {
+    cfg_select! {
+        feature = "backend-wasm" => {
             splic_backend_wasm::compile_wasm(program)
-        } else {
+        }
+        _ => {
             let _ = program;
             anyhow::bail!("Wasm backend not enabled; recompile with --features backend-wasm")
         }

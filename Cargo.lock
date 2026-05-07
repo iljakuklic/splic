@@ -696,7 +696,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bumpalo",
- "cfg-if",
  "expect-test",
  "rstest",
  "splic-backend-wasm",

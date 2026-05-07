@@ -6,6 +6,7 @@ resolver = "3"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
+rust-version = "1.95"
 
 [workspace.dependencies]
 anyhow = { version = "1", default-features = false }
@@ -13,7 +14,6 @@ bumpalo = { version = "3", default-features = false }
 derive_more = { version = "2", default-features = false }
 ref-cast = "1"
 bolero = "0.13"
-cfg-if = "1"
 wasm-encoder = { version = "0.248", default-features = false }
 wasmparser = { version = "0.248", default-features = false, features = ["validate"] }
 clap = { version = "4", features = ["derive"] }

@@ -115,7 +115,7 @@ The project enforces a curated set of lints beyond Clippy defaults — see `[wor
 - Prefer a local `Bump::new()` over accepting an arena parameter when all allocations are scratch temporaries that do not escape the function (e.g. intermediate structures used only for a comparison that returns a non-arena type)
 
 ### Feature Gating
-- Use `cfg_if::cfg_if!` for if/else feature dispatch (not paired `#[cfg]` / `#[cfg(not(...))]` attributes)
+- Use `cfg_select!` for if/else feature dispatch (not paired `#[cfg]` / `#[cfg(not(...))]` attributes)
 - Concentrate feature checks in a dedicated helper function; avoid `#[cfg]` on enum variants or match arms — the scattered approach triggers cascading lint failures (`used_underscore_binding`, `needless_pass_by_value`, `unused_variables`)
 
 ### Trait Implementations
