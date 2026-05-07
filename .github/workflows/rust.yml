@@ -15,9 +15,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: dtolnay/rust-toolchain@1.95
-        with:
-          components: rustfmt
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
@@ -29,9 +26,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: dtolnay/rust-toolchain@1.95
-        with:
-          components: clippy
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
@@ -44,9 +38,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: dtolnay/rust-toolchain@1.95
-        with:
-          components: rust-docs
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
@@ -59,7 +50,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6.0.2
-      - uses: dtolnay/rust-toolchain@1.95
       - uses: taiki-e/install-action@v2.75.28
         with:
           tool: just
