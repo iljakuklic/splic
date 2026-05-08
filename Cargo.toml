@@ -20,6 +20,7 @@ clap = { version = "4", features = ["derive"] }
 
 [workspace.lints.rust]
 warnings = "deny"
+unexpected_cfgs = { level = "deny", check-cfg = ['cfg(fuzzing)'] }
 
 [workspace.lints.clippy]
 # nursery

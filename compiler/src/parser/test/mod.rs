@@ -122,12 +122,13 @@ fn fuzz_parse_expr() {
             let iter = tokens.iter().map(|t| Ok(*t));
             let mut parser = Parser::new(iter, &arena);
             let result = parser.parse_expr();
-            if let Ok(expr) = result {
-                if parser.next().is_some() {
-                    return;
-                }
+            #[cfg(not(fuzzing))]
+            if let Ok(expr) = result
+                && parser.next().is_none()
+            {
                 eprintln!("{tokens:?}: {expr:?}");
             }
+            let _ = result;
         });
 }
 
@@ -140,8 +141,10 @@ fn fuzz_parse_program() {
             let iter = tokens.iter().map(|t| Ok(*t));
             let mut parser = Parser::new(iter, &arena);
             let result = parser.parse_program();
+            #[cfg(not(fuzzing))]
             if let Ok(prog) = result {
                 eprintln!("{tokens:?}: {prog:?}");
             }
+            let _ = result;
         });
 }
