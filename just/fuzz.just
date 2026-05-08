@@ -4,25 +4,22 @@ default:
 
 bolero := "cargo +nightly bolero test -p splic-compiler"
 
+# Fuzz a target by its full test path.
+run target timeout="60s" jobs="1":
+    mkdir -p "{{justfile_directory()}}/target/fuzz-{{replace(target, "::", "-")}}"
+    cd "{{justfile_directory()}}/target/fuzz-{{replace(target, "::", "-")}}" && {{bolero}} -T {{timeout}} -j {{jobs}} {{target}}
+
 # Fuzz the lexer against arbitrary strings.
-lexer-lexer timeout="60s" jobs="1":
-    mkdir -p target/fuzz-lexer-lexer
-    cd target/fuzz-lexer-lexer && {{bolero}} -T {{timeout}} -j {{jobs}} lexer::test::fuzz::lexer
+lexer-lexer timeout="60s" jobs="1": (run "lexer::test::fuzz::lexer" timeout jobs)
 
 # Fuzz the lexer against a single token.
-lexer-token timeout="60s" jobs="1":
-    mkdir -p target/fuzz-lexer-token
-    cd target/fuzz-lexer-token && {{bolero}} -T {{timeout}} -j {{jobs}} lexer::test::fuzz::token
+lexer-token timeout="60s" jobs="1": (run "lexer::test::fuzz::token" timeout jobs)
 
 # Fuzz the parser's expression entrypoint.
-parser-expr timeout="60s" jobs="1":
-    mkdir -p target/fuzz-parser-expr
-    cd target/fuzz-parser-expr && {{bolero}} -T {{timeout}} -j {{jobs}} parser::test::fuzz_parse_expr
+parser-expr timeout="60s" jobs="1": (run "parser::test::fuzz_parse_expr" timeout jobs)
 
 # Fuzz the parser's program entrypoint.
-parser-program timeout="60s" jobs="1":
-    mkdir -p target/fuzz-parser-program
-    cd target/fuzz-parser-program && {{bolero}} -T {{timeout}} -j {{jobs}} parser::test::fuzz_parse_program
+parser-program timeout="60s" jobs="1": (run "parser::test::fuzz_parse_program" timeout jobs)
 
 # Fuzz all four targets in parallel (2 threads for lexer, 4 for parser).
 [parallel]
