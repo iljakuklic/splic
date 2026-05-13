@@ -71,6 +71,8 @@ just fuzz::parser-expr       #               parser-expr, parser-program
 just fuzz::lexer-token 5m    # Override default 60s timeout
 ```
 
+To replay a specific corpus or crash file, copy it into the target's `corpus/` directory and run `cargo test` (not `cargo bolero test`). Bolero's summary line reports `corpus inputs: N` — use this to verify all files were replayed. `slow-unit-*` files in `crashes/` are timing false positives from instrumentation overhead, not algorithmic bugs; resolve by moving them to `corpus/`.
+
 ### Reading dependency docs
 Use `cargo-doc-md` to generate Markdown documentation for workspace dependencies. Output lands in `target/doc-md/<crate>/`.
 
