@@ -1,4 +1,2 @@
-code def zero() -> u64 = {
-    0_u64
-};
+code def zero() -> u64 = 0_u64;
 

@@ -1,12 +1,6 @@
-def x: u32 = {
-    10_u32
-};
+def x: u32 = 10_u32;
 
-def y: u32 = {
-    @add_u32(x, x)
-};
+def y: u32 = @add_u32(x, x);
 
-code def result() -> u32 = {
-    $(@embed_u32(y))
-};
+code def result() -> u32 = $(@embed_u32(y));
 

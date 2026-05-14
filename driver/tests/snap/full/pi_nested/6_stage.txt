@@ -1,4 +1,2 @@
-code def result() -> u64 = {
-    2_u64
-};
+code def result() -> u64 = 2_u64;
 
