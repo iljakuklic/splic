@@ -1,4 +1,4 @@
-def my_int: Type {
+def my_int: Type = {
     u32
-}
+};
 

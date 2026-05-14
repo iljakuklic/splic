@@ -1,8 +1,8 @@
-def val: fn() -> u32 {
+def val: fn() -> u32 = {
     lam() = 42_u32
-}
+};
 
-code def use_val() -> u32 {
+code def use_val() -> u32 = {
     $(@embed_u32(val()))
-}
+};
 
