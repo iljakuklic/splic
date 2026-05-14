@@ -58,22 +58,31 @@ impl<'names> Let<'names, '_> {
         indent: Indent,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-        write!(f, "{indent}let {}@{}: ", self.name, env.depth())?;
-        self.ty.fmt_expr(env, indent, f)?;
-        write!(f, " = ")?;
-        self.expr.fmt_expr(env, indent, f)?;
-        writeln!(f, ";")?;
-        env.push(self.name);
-        let result = match self.body {
-            Term::Let(inner) => inner.fmt_sequence(env, indent, f),
-            tail => {
-                write!(f, "{indent}")?;
-                tail.fmt_expr(env, indent, f)?;
-                writeln!(f)
+        let mut let_ = self;
+        let depth_before = env.depth();
+
+        loop {
+            write!(f, "{indent}let {}@{}: ", let_.name, env.depth())?;
+            let_.ty.fmt_expr(env, indent, f)?;
+            write!(f, " = ")?;
+            let_.expr.fmt_expr(env, indent, f)?;
+            writeln!(f, ";")?;
+            env.push(let_.name);
+            match let_.body {
+                Term::Let(inner) => {
+                    let_ = inner;
+                }
+                tail => {
+                    break {
+                        write!(f, "{indent}")?;
+                        tail.fmt_expr(env, indent, f)?;
+                        writeln!(f)?;
+                        env.truncate(depth_before);
+                        Ok(())
+                    };
+                }
             }
-        };
-        env.pop();
-        result
+        }
     }
 }
 
