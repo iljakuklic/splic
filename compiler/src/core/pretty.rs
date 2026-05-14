@@ -61,7 +61,7 @@ impl<'names> Let<'names, '_> {
         let mut let_ = self;
         let depth_before = env.depth();
 
-        loop {
+        let tail = loop {
             write!(f, "{indent}let {}@{}: ", let_.name, env.depth())?;
             let_.ty.fmt_expr(env, indent, f)?;
             write!(f, " = ")?;
@@ -69,20 +69,17 @@ impl<'names> Let<'names, '_> {
             writeln!(f, ";")?;
             env.push(let_.name);
             match let_.body {
-                Term::Let(inner) => {
-                    let_ = inner;
-                }
-                tail => {
-                    break {
-                        write!(f, "{indent}")?;
-                        tail.fmt_expr(env, indent, f)?;
-                        writeln!(f)?;
-                        env.truncate(depth_before);
-                        Ok(())
-                    };
-                }
+                Term::Let(inner) => let_ = inner,
+                tail => break tail,
             }
-        }
+        };
+
+        write!(f, "{indent}")?;
+        tail.fmt_expr(env, indent, f)?;
+        writeln!(f)?;
+
+        env.truncate(depth_before);
+        Ok(())
     }
 }
 
