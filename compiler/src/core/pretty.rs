@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{Arm, Global, GlobalDef, Name, Pat, Program, Term};
+use super::{Arm, Global, GlobalDef, Let, Name, Pat, Program, Term};
 use crate::common::env::Env;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -35,13 +35,43 @@ fn fmt_params<'names>(
 
 // ── Core formatting ───────────────────────────────────────────────────────────
 
+impl<'names> Let<'names, '_> {
+    /// Write the contents of a `{ }` block for this let-chain, without the
+    /// surrounding braces. Each binding occupies one line; the tail expression
+    /// is written last and followed by a newline.
+    fn fmt_sequence(
+        &self,
+        env: &mut Env<&'names Name>,
+        indent: usize,
+        f: &mut fmt::Formatter<'_>,
+    ) -> fmt::Result {
+        write_indent(f, indent)?;
+        write!(f, "let {}@{}: ", self.name, env.depth())?;
+        self.ty.fmt_expr(env, indent, f)?;
+        write!(f, " = ")?;
+        self.expr.fmt_expr(env, indent, f)?;
+        writeln!(f, ";")?;
+        env.push(self.name);
+        let result = match self.body {
+            Term::Let(inner) => inner.fmt_sequence(env, indent, f),
+            tail => {
+                write_indent(f, indent)?;
+                tail.fmt_expr(env, indent, f)?;
+                writeln!(f)
+            }
+        };
+        env.pop();
+        result
+    }
+}
+
 impl<'names> Term<'names, '_> {
-    /// Print `self` **inline** (no leading indentation). Used when the term
-    /// appears as a sub-expression — inside `#(...)`, as an argument, etc.
+    /// Print `self` in **expression position** (no leading indentation).
     ///
-    /// `indent` is the current block depth, used only when this term itself
-    /// opens a new indented block (e.g. `Let` / `Match`).
-    fn fmt_term_inline(
+    /// - `Let` is wrapped in `{ }` (block expression; `let` is only valid inside blocks).
+    /// - `Match` is wrapped in `( )` (parenthesised expression).
+    /// - Everything else is printed inline.
+    fn fmt_expr(
         &self,
         env: &mut Env<&'names Name>,
         indent: usize,
@@ -116,57 +146,15 @@ impl<'names> Term<'names, '_> {
                 write!(f, ")")
             }
 
-            // ── Let binding ───────────────────────────────────────────────────────
-            // In statement position: print as a flat let-chain without extra braces.
+            // ── Let binding — block expression ────────────────────────────────────
             Term::Let(let_) => {
-                write!(f, "let {}@{}: ", let_.name, env.depth())?;
-                let_.ty.fmt_expr(env, indent, f)?;
-                write!(f, " = ")?;
-                let_.expr.fmt_expr(env, indent, f)?;
-                writeln!(f, ";")?;
-                env.push(let_.name);
-                write_indent(f, indent)?;
-                let_.body.fmt_term_inline(env, indent, f)?;
-                env.pop();
-                Ok(())
-            }
-
-            // ── Match ─────────────────────────────────────────────────────────────
-            Term::Match(match_) => {
-                write!(f, "match ")?;
-                match_.scrutinee.fmt_expr(env, indent, f)?;
-                writeln!(f, " {{")?;
-                for arm in match_.arms {
-                    arm.fmt_arm(env, indent + 1, f)?;
-                }
-                write_indent(f, indent)?;
-                write!(f, "}}")
-            }
-        }
-    }
-
-    /// Print `self` in **expression position** (inline, no leading indent).
-    ///
-    /// Unlike `fmt_term_inline`:
-    /// - `Let` is wrapped in `{ }` (a block expression, since `let` is only valid
-    ///   inside blocks in surface syntax).
-    /// - `Match` is wrapped in `( )` (parenthesised expression, matching how users
-    ///   write inline match expressions in surface syntax).
-    fn fmt_expr(
-        &self,
-        env: &mut Env<&'names Name>,
-        indent: usize,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        match self {
-            Term::Let(_) => {
                 writeln!(f, "{{")?;
-                write_indent(f, indent + 1)?;
-                self.fmt_term_inline(env, indent + 1, f)?;
-                writeln!(f)?;
+                let_.fmt_sequence(env, indent + 1, f)?;
                 write_indent(f, indent)?;
                 write!(f, "}}")
             }
+
+            // ── Match — parenthesised expression ─────────────────────────────────
             Term::Match(match_) => {
                 write!(f, "(match ")?;
                 match_.scrutinee.fmt_expr(env, indent, f)?;
@@ -177,16 +165,6 @@ impl<'names> Term<'names, '_> {
                 write_indent(f, indent)?;
                 write!(f, "}})")
             }
-            Term::Var(_)
-            | Term::Prim(_)
-            | Term::Lit(..)
-            | Term::Global(_)
-            | Term::App(_)
-            | Term::Pi(_)
-            | Term::Lam(_)
-            | Term::Lift(_)
-            | Term::Quote(_)
-            | Term::Splice(_) => self.fmt_term_inline(env, indent, f),
         }
     }
 }
