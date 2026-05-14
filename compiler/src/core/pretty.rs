@@ -36,19 +36,6 @@ fn fmt_params<'names>(
 // ── Core formatting ───────────────────────────────────────────────────────────
 
 impl<'names> Term<'names, '_> {
-    /// Print `self` in **statement position**: emits leading indentation, then
-    /// the term content without an enclosing `{ }` (the caller is responsible
-    /// for any surrounding braces).
-    fn fmt_term(
-        &self,
-        env: &mut Env<&'names Name>,
-        indent: usize,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        write_indent(f, indent)?;
-        self.fmt_term_inline(env, indent, f)
-    }
-
     /// Print `self` **inline** (no leading indentation). Used when the term
     /// appears as a sub-expression — inside `#(...)`, as an argument, etc.
     ///
@@ -138,7 +125,8 @@ impl<'names> Term<'names, '_> {
                 let_.expr.fmt_expr(env, indent, f)?;
                 writeln!(f, ";")?;
                 env.push(let_.name);
-                let_.body.fmt_term(env, indent, f)?;
+                write_indent(f, indent)?;
+                let_.body.fmt_term_inline(env, indent, f)?;
                 env.pop();
                 Ok(())
             }
@@ -173,7 +161,8 @@ impl<'names> Term<'names, '_> {
         match self {
             Term::Let(_) => {
                 writeln!(f, "{{")?;
-                self.fmt_term(env, indent + 1, f)?;
+                write_indent(f, indent + 1)?;
+                self.fmt_term_inline(env, indent + 1, f)?;
                 writeln!(f)?;
                 write_indent(f, indent)?;
                 write!(f, "}}")
