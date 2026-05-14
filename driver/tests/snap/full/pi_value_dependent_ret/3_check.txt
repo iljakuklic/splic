@@ -1,10 +1,10 @@
-def get_value: fn(b@0: u1) -> (match b@0 {
+def get_value: fn(b@0: u1) -> match b@0 {
     0 => u0,
     1 => u16,
-}) = lam(b@0: u1) = (match b@0 {
+} = lam(b@0: u1) = match b@0 {
     0 => 0_u0,
     1 => 42_u16,
-});
+};
 
 code def result_0() -> u0 = $(@embed_u0(get_value(0_u1)));
 

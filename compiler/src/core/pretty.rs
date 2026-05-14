@@ -154,16 +154,16 @@ impl<'names> Term<'names, '_> {
                 write!(f, "}}")
             }
 
-            // ── Match — parenthesised expression ─────────────────────────────────
+            // ── Match ────────────────────────────────────────────────────────────
             Term::Match(match_) => {
-                write!(f, "(match ")?;
+                write!(f, "match ")?;
                 match_.scrutinee.fmt_expr(env, indent, f)?;
                 writeln!(f, " {{")?;
                 for arm in match_.arms {
                     arm.fmt_arm(env, indent + 1, f)?;
                 }
                 write_indent(f, indent)?;
-                write!(f, "}})")
+                write!(f, "}}")
             }
         }
     }

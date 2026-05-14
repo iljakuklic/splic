@@ -2,12 +2,12 @@ def compose: fn(A@0: Type, B@1: Type, C@2: Type, f@3: fn(_: B@1) -> C@2, g@4: fn
 
 def double: fn(x@0: u64) -> u64 = lam(x@0: u64) = @add_u64(x@0, x@0);
 
-def to_u8: fn(x@0: u64) -> u8 = lam(x@0: u64) = (match x@0 {
+def to_u8: fn(x@0: u64) -> u8 = lam(x@0: u64) = match x@0 {
     0 => 0_u8,
     1 => 1_u8,
     2 => 2_u8,
     _ => 3_u8,
-});
+};
 
 def test: fn() -> u8 = lam() = compose(u64, u64, u8, to_u8, double)(5_u64);
 
