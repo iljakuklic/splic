@@ -1,8 +1,4 @@
-def answer: u32 {
-    42_u32
-}
+def answer: u32 = 42_u32;
 
-code def get_answer() -> u32 {
-    $(@embed_u32(answer))
-}
+code def get_answer() -> u32 = $(@embed_u32(answer));
 

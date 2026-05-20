@@ -1,12 +1,25 @@
 use std::fmt;
 
-use super::{Arm, Global, GlobalDef, Name, Pat, Program, Term};
+use super::{Arm, Global, GlobalDef, Let, Name, Pat, Program, Term};
 use crate::common::env::Env;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
-    write!(f, "{:width$}", "", width = depth * 4)
+#[derive(Clone, Copy, Debug)]
+struct Indent(usize);
+
+impl Indent {
+    const TOP: Self = Self(0);
+
+    const fn next(self) -> Self {
+        Self(self.0 + 1)
+    }
+}
+
+impl fmt::Display for Indent {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:width$}", "", width = self.0 * 4)
+    }
 }
 
 /// Write a comma-separated parameter list `name@depth: ty, ...`,
@@ -15,7 +28,7 @@ fn write_indent(f: &mut fmt::Formatter<'_>, depth: usize) -> fmt::Result {
 fn fmt_params<'names>(
     params: &[(&'names Name, &Term<'names, '_>)],
     env: &mut Env<&'names Name>,
-    indent: usize,
+    indent: Indent,
     f: &mut fmt::Formatter<'_>,
 ) -> fmt::Result {
     for (i, &(name, ty)) in params.iter().enumerate() {
@@ -35,36 +48,51 @@ fn fmt_params<'names>(
 
 // ── Core formatting ───────────────────────────────────────────────────────────
 
-impl<'names> Term<'names, '_> {
-    /// Print `self` in **statement position**: emits leading indentation, then
-    /// the term content. `Let` and `Match` are printed without an enclosing `{ }`
-    /// (the caller is responsible for any surrounding braces).
-    fn fmt_term(
+impl<'names> Let<'names, '_> {
+    /// Write the contents of a `{ }` block for this let-chain, without the
+    /// surrounding braces. Each binding occupies one line; the tail expression
+    /// is written last and followed by a newline.
+    fn fmt_sequence(
         &self,
         env: &mut Env<&'names Name>,
-        indent: usize,
+        indent: Indent,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-        match self {
-            // Let and Match manage their own indentation internally.
-            Term::Let(_) | Term::Match(_) => self.fmt_term_inline(env, indent, f),
-            // Everything else gets a leading indent.
-            _ => {
-                write_indent(f, indent)?;
-                self.fmt_term_inline(env, indent, f)
-            }
-        }
-    }
+        let mut let_ = self;
+        let depth_before = env.depth();
 
-    /// Print `self` **inline** (no leading indentation). Used when the term
-    /// appears as a sub-expression — inside `#(...)`, as an argument, etc.
+        let tail = loop {
+            write!(f, "{indent}let {}@{}: ", let_.name, env.depth())?;
+            let_.ty.fmt_expr(env, indent, f)?;
+            write!(f, " = ")?;
+            let_.expr.fmt_expr(env, indent, f)?;
+            writeln!(f, ";")?;
+            env.push(let_.name);
+            match let_.body {
+                Term::Let(inner) => let_ = inner,
+                tail => break tail,
+            }
+        };
+
+        write!(f, "{indent}")?;
+        tail.fmt_expr(env, indent, f)?;
+        writeln!(f)?;
+
+        env.truncate(depth_before);
+        Ok(())
+    }
+}
+
+impl<'names> Term<'names, '_> {
+    /// Print `self` in **expression position** (no leading indentation).
     ///
-    /// `indent` is the current block depth, used only when this term itself opens
-    /// a new indented block (e.g. `Let` / `Match`).
-    fn fmt_term_inline(
+    /// - `Let` is wrapped in `{ }` (block expression; `let` is only valid inside blocks).
+    /// - `Match` is wrapped in `( )` (parenthesised expression).
+    /// - Everything else is printed inline.
+    fn fmt_expr(
         &self,
         env: &mut Env<&'names Name>,
-        indent: usize,
+        indent: Indent,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
         match self {
@@ -136,64 +164,23 @@ impl<'names> Term<'names, '_> {
                 write!(f, ")")
             }
 
-            // ── Let binding ───────────────────────────────────────────────────────
-            // In statement position: print as a flat let-chain without extra braces.
+            // ── Let binding — block expression ────────────────────────────────────
             Term::Let(let_) => {
-                write_indent(f, indent)?;
-                write!(f, "let {}@{}: ", let_.name, env.depth())?;
-                let_.ty.fmt_expr(env, indent, f)?;
-                write!(f, " = ")?;
-                let_.expr.fmt_expr(env, indent, f)?;
-                writeln!(f, ";")?;
-                env.push(let_.name);
-                let_.body.fmt_term(env, indent, f)?;
-                env.pop();
-                Ok(())
+                writeln!(f, "{{")?;
+                let_.fmt_sequence(env, indent.next(), f)?;
+                write!(f, "{indent}}}")
             }
 
-            // ── Match ─────────────────────────────────────────────────────────────
+            // ── Match ────────────────────────────────────────────────────────────
             Term::Match(match_) => {
-                write_indent(f, indent)?;
                 write!(f, "match ")?;
                 match_.scrutinee.fmt_expr(env, indent, f)?;
                 writeln!(f, " {{")?;
                 for arm in match_.arms {
-                    arm.fmt_arm(env, indent + 1, f)?;
+                    arm.fmt_arm(env, indent.next(), f)?;
                 }
-                write_indent(f, indent)?;
-                write!(f, "}}")
+                write!(f, "{indent}}}")
             }
-        }
-    }
-
-    /// Print `self` in **expression position** (inline, no leading indent).
-    ///
-    /// Unlike `fmt_term_inline`, wraps `Let` and `Match` in `{ }` so they are
-    /// syntactically valid as sub-expressions.
-    fn fmt_expr(
-        &self,
-        env: &mut Env<&'names Name>,
-        indent: usize,
-        f: &mut fmt::Formatter<'_>,
-    ) -> fmt::Result {
-        match self {
-            Term::Let(_) | Term::Match(_) => {
-                writeln!(f, "{{")?;
-                self.fmt_term(env, indent + 1, f)?;
-                writeln!(f)?;
-                write_indent(f, indent)?;
-                write!(f, "}}")
-            }
-            Term::Var(_)
-            | Term::Prim(_)
-            | Term::Lit(..)
-            | Term::Global(_)
-            | Term::App(_)
-            | Term::Pi(_)
-            | Term::Lam(_)
-            | Term::Lift(_)
-            | Term::Quote(_)
-            | Term::Splice(_) => self.fmt_term_inline(env, indent, f),
         }
     }
 }
@@ -203,15 +190,14 @@ impl<'names> Arm<'names, '_> {
     fn fmt_arm(
         &self,
         env: &mut Env<&'names Name>,
-        indent: usize,
+        indent: Indent,
         f: &mut fmt::Formatter<'_>,
     ) -> fmt::Result {
-        write_indent(f, indent)?;
         match &self.pat {
-            Pat::Lit(n) => write!(f, "{n} => ")?,
-            Pat::Wildcard => write!(f, "_ => ")?,
+            Pat::Lit(n) => write!(f, "{indent}{n} => ")?,
+            Pat::Wildcard => write!(f, "{indent}_ => ")?,
             Pat::Bind(name) => {
-                write!(f, "{name}@{} => ", env.depth())?;
+                write!(f, "{indent}{name}@{} => ", env.depth())?;
                 env.push(*name);
                 self.body.fmt_expr(env, indent, f)?;
                 env.pop();
@@ -241,34 +227,29 @@ impl fmt::Display for GlobalDef<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.global {
             Global::Meta(meta) => {
-                // Meta constant: `def name: ty { body }`
                 let mut env: Env<&Name> = Env::new();
                 write!(f, "def {}: ", self.name)?;
-                meta.ty.fmt_expr(&mut env, 1, f)?;
-                writeln!(f, " {{")?;
-                meta.body.fmt_term(&mut env, 1, f)?;
+                meta.ty.fmt_expr(&mut env, Indent::TOP, f)?;
+                write!(f, " = ")?;
+                meta.body.fmt_expr(&mut env, Indent::TOP, f)?;
             }
             Global::CodeFn(codefn) => {
-                // Object function: `code def name(params) -> ret { body }`
                 let mut env: Env<&Name> = Env::with_capacity(codefn.params.len());
                 write!(f, "code def {}(", self.name)?;
-                fmt_params(codefn.params, &mut env, 1, f)?;
+                fmt_params(codefn.params, &mut env, Indent::TOP, f)?;
                 write!(f, ") -> ")?;
-                codefn.ret_ty.fmt_expr(&mut env, 1, f)?;
-                writeln!(f, " {{")?;
-                codefn.body.fmt_term(&mut env, 1, f)?;
+                codefn.ret_ty.fmt_expr(&mut env, Indent::TOP, f)?;
+                write!(f, " = ")?;
+                codefn.body.fmt_expr(&mut env, Indent::TOP, f)?;
             }
             Global::CodeConst(c) => {
-                // Object constant: `code def name: ty { body }`
                 let mut env: Env<&Name> = Env::new();
                 write!(f, "code def {}: ", self.name)?;
-                c.ty.fmt_expr(&mut env, 1, f)?;
-                writeln!(f, " {{")?;
-                c.body.fmt_term(&mut env, 1, f)?;
+                c.ty.fmt_expr(&mut env, Indent::TOP, f)?;
+                write!(f, " = ")?;
+                c.body.fmt_expr(&mut env, Indent::TOP, f)?;
             }
         }
-
-        writeln!(f)?;
-        writeln!(f, "}}")
+        writeln!(f, ";")
     }
 }

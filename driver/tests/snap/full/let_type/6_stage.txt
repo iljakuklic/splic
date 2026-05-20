@@ -1,4 +1,2 @@
-code def test() -> u32 {
-    1337_u32
-}
+code def test() -> u32 = 1337_u32;
 

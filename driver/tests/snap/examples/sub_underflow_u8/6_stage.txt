@@ -1,4 +1,2 @@
-code def g() -> u8 {
-    251_u8
-}
+code def g() -> u8 = 251_u8;
 

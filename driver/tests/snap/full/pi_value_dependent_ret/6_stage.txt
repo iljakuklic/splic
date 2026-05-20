@@ -1,8 +1,4 @@
-code def result_0() -> u0 {
-    0_u0
-}
+code def result_0() -> u0 = 0_u0;
 
-code def result_1() -> u16 {
-    42_u16
-}
+code def result_1() -> u16 = 42_u16;
 

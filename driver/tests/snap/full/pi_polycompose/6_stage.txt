@@ -1,4 +1,2 @@
-code def result() -> u8 {
-    3_u8
-}
+code def result() -> u8 = 3_u8;
 
