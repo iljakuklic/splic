@@ -21,6 +21,9 @@ functions, local values and functions, anonymous lambdas, and function types. Se
   (e.g. for zkVM termination) are enforced by semantic checks, not syntax
 - **Object-level lambdas are not allowed** — `lam` is meta-level only, matching the
   existing restriction on lambdas
+- **`=` for definitional equality, `=>` for "maps to"** — `=` is reserved for sites
+  where LHS and RHS are interchangeable terms (`def`, `let`); `=>` is used in `lam` and
+  match arms, where it reads "maps to"
 
 ## Syntax
 
