@@ -1,2 +1,2 @@
 ERROR
-in binding `test`: parsing expression in block: parsing function argument: expected ':' in parameter: expected Colon, got RParen
+in binding `test`: parsing expression in block: parsing function argument: parsing lambda parameters: expected ':' in parameter: expected Colon, got RParen

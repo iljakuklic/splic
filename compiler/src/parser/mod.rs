@@ -162,16 +162,23 @@ where
         Ok(GlobalDef { phase, def })
     }
 
+    /// Collect zero or more `(params)` groups, stopping at the first non-`(` token.
+    fn parse_param_groups(&mut self) -> Result<Vec<&'ast [Param<'names, 'ast>]>> {
+        let mut groups = Vec::new();
+        while self.consume_if(Token::LParen) {
+            groups.push(self.parse_params()?);
+            self.take(Token::RParen).context("expected ')'")?;
+        }
+        Ok(groups)
+    }
+
     /// Parse the shared `(params)* (-> ret_ty | : ret_ty)? = body ;` syntax
     /// used by both `def` and `let`. Multiple `(params)` groups are collected
     /// for curried definitions; zero groups means a simple value binding.
     fn parse_definition_body(&mut self, name: &'names Name) -> Result<Definition<'names, 'ast>> {
-        let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::new();
-        while self.consume_if(Token::LParen) {
-            let ps = self.parse_params()?;
-            self.take(Token::RParen).context("expected ')'")?;
-            groups.push(ps);
-        }
+        let groups = self
+            .parse_param_groups()
+            .context("parsing definition parameters")?;
         let ret_ty = if groups.is_empty() {
             self.consume_if(Token::Colon)
                 .then(|| self.parse_expr().context("expected type after ':'"))
@@ -325,20 +332,6 @@ where
         }
     }
 
-    /// Parse a function call with arguments
-    fn parse_function_call(&mut self, name: &'names Name) -> Result<&'ast Term<'names, 'ast>> {
-        let args = self.parse_separated_list(Token::RParen, |parser| {
-            parser.parse_expr().context("parsing function argument")
-        })?;
-        self.take(Token::RParen)
-            .context("expected ')' after function arguments")?;
-        let args = self.arena.alloc_slice_fill_iter(args);
-        Ok(self.alloc(Term::App {
-            func: FunName::Term(self.alloc(Term::Var(name))),
-            args,
-        }))
-    }
-
     /// Parse a parenthesized expression
     fn parse_paren_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let expr = self
@@ -366,12 +359,9 @@ where
     /// Called after consuming the `fn` token. Multiple `(params)` groups are
     /// desugared to nested `Pi` types at parse time.
     fn parse_fn_type(&mut self) -> Result<&'ast Term<'names, 'ast>> {
-        let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::with_capacity(2);
-        while self.consume_if(Token::LParen) {
-            groups.push(self.parse_params()?);
-            self.take(Token::RParen)
-                .context("expected ')' in function type")?;
-        }
+        let groups = self
+            .parse_param_groups()
+            .context("parsing function type parameters")?;
         self.take(Token::Arrow)
             .context("expected '->' in function type")?;
         let ret_ty = self
@@ -396,12 +386,9 @@ where
     /// Called after consuming the `lam` token. Multiple `(params)` groups are
     /// desugared to nested `Lam` terms at parse time; `ret_ty` applies to the innermost.
     fn parse_lambda(&mut self) -> Result<&'ast Term<'names, 'ast>> {
-        let mut groups: Vec<&'ast [Param<'names, 'ast>]> = Vec::with_capacity(2);
-        while self.consume_if(Token::LParen) {
-            groups.push(self.parse_params()?);
-            self.take(Token::RParen)
-                .context("expected ')' after lambda parameters")?;
-        }
+        let groups = self
+            .parse_param_groups()
+            .context("parsing lambda parameters")?;
 
         let ret_ty = self
             .consume_if(Token::Arrow)
@@ -440,13 +427,7 @@ where
         let token = self.next().context("expected expression")??;
         match token {
             Token::Num(n) => Ok(self.alloc(Term::Lit(n))),
-            Token::Ident(name) => {
-                if self.consume_if(Token::LParen) {
-                    self.parse_function_call(name)
-                } else {
-                    Ok(self.alloc(Term::Var(name)))
-                }
-            }
+            Token::Ident(name) => Ok(self.alloc(Term::Var(name))),
             // `fn` not followed by ident → function type expression
             Token::Fn => self.parse_fn_type(),
             Token::Lam => self.parse_lambda(),
