@@ -330,7 +330,7 @@ where
         }
     }
 
-/// Parse a parenthesized expression
+    /// Parse a parenthesized expression
     fn parse_paren_expr(&mut self) -> Result<&'ast Term<'names, 'ast>> {
         let expr = self
             .parse_expr()
