@@ -176,7 +176,9 @@ where
     /// used by both `def` and `let`. Multiple `(params)` groups are collected
     /// for curried definitions; zero groups means a simple value binding.
     fn parse_definition_body(&mut self, name: &'names Name) -> Result<Definition<'names, 'ast>> {
-        let groups = self.parse_param_groups()?;
+        let groups = self
+            .parse_param_groups()
+            .context("parsing definition parameters")?;
         let ret_ty = if groups.is_empty() {
             self.consume_if(Token::Colon)
                 .then(|| self.parse_expr().context("expected type after ':'"))
@@ -357,7 +359,9 @@ where
     /// Called after consuming the `fn` token. Multiple `(params)` groups are
     /// desugared to nested `Pi` types at parse time.
     fn parse_fn_type(&mut self) -> Result<&'ast Term<'names, 'ast>> {
-        let groups = self.parse_param_groups()?;
+        let groups = self
+            .parse_param_groups()
+            .context("parsing function type parameters")?;
         self.take(Token::Arrow)
             .context("expected '->' in function type")?;
         let ret_ty = self
@@ -382,7 +386,9 @@ where
     /// Called after consuming the `lam` token. Multiple `(params)` groups are
     /// desugared to nested `Lam` terms at parse time; `ret_ty` applies to the innermost.
     fn parse_lambda(&mut self) -> Result<&'ast Term<'names, 'ast>> {
-        let groups = self.parse_param_groups()?;
+        let groups = self
+            .parse_param_groups()
+            .context("parsing lambda parameters")?;
 
         let ret_ty = self
             .consume_if(Token::Arrow)
