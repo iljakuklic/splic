@@ -70,7 +70,7 @@ pub enum Term<'names, 'ast> {
         ret_ty: &'ast Self,
     },
 
-    /// Lambda: `lam(params) (-> ret_ty)? = body`
+    /// Lambda: `lam(params) (-> ret_ty)? => body`
     Lam {
         params: &'ast [Param<'names, 'ast>],
         ret_ty: Option<&'ast Self>,

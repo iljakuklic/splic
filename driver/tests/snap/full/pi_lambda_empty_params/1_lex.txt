@@ -16,7 +16,7 @@ LBrace
 Lam
 LParen
 RParen
-Eq
+DArrow
 Ident("x")
 RBrace
 Semi

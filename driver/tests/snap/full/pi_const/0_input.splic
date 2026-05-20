@@ -1,6 +1,6 @@
 // Const combinator: returns a function that ignores its argument
 def const_(A: Type, B: Type) -> fn(_: A) -> fn(_: B) -> A = {
-    lam(a: A) = lam(b: B) = a
+    lam(a: A) => lam(b: B) => a
 };
 
 def test() -> u64 = {

@@ -1,6 +1,6 @@
 // A lambda with an empty parameter list creates a thunk
 def make_thunk(x: u64) -> fn() -> u64 = {
-    lam() = x
+    lam() => x
 };
 
 def test() -> u64 = {

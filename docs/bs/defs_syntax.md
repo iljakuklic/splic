@@ -40,8 +40,8 @@ let f(x: u64) -> u64 = x + n;   // closes over n
 
 **`lam`** — anonymous lambda with mandatory parameter annotations:
 ```
-lam(x: u64, y: u64) = x + y
-lam(x: u64) -> u64 = x + 1     // with explicit return type
+lam(x: u64, y: u64) => x + y
+lam(x: u64) -> u64 => x + 1     // with explicit return type
 ```
 
 **`fn`** — function types (pi types), unchanged:
@@ -59,21 +59,21 @@ enabling dependent currying:
 ```
 // All equivalent ways to write a curried polymorphic identity:
 def id(A: Type)(x: A) -> A = x;
-def id: fn(A: Type)(x: A) -> A = lam(A: Type)(x: A) -> A = x;
-def id: fn(A: Type) -> fn(x: A) -> A = lam(A: Type) = lam(x: A) = x;
+def id: fn(A: Type)(x: A) -> A = lam(A: Type)(x: A) -> A => x;
+def id: fn(A: Type) -> fn(x: A) -> A = lam(A: Type) => lam(x: A) => x;
 ```
 
 Desugaring rules:
 
 ```
-lam(p1)(p2)...(pN) (-> T)? = e
-  ≡  lam(p1) = lam(p2) = ... = lam(pN) (-> T)? = e
+lam(p1)(p2)...(pN) (-> T)? => e
+  ≡  lam(p1) => lam(p2) => ... => lam(pN) (-> T)? => e
 
 let f(p1)(p2)...(pN) (-> T)? = e;
-  ≡  let f = lam(p1)(p2)...(pN) (-> T)? = e;
+  ≡  let f = lam(p1)(p2)...(pN) (-> T)? => e;
 
 def f(p1)(p2)...(pN) -> T = e;
-  ≡  def f: fn(p1)(p2)...(pN) -> T = lam(p1)(p2)...(pN) -> T = e;
+  ≡  def f: fn(p1)(p2)...(pN) -> T = lam(p1)(p2)...(pN) -> T => e;
 
 fn(p1)(p2)...(pN) -> T
   ≡  fn(p1) -> fn(p2) -> ... -> fn(pN) -> T
@@ -91,20 +91,20 @@ Each form is a small, mechanical addition to the previous:
 | Form | Syntax |
 |------|--------|
 | Function type | `fn(x: u64) -> u64` |
-| Lambda | `lam(x: u64) -> u64 = x + 1` |
+| Lambda | `lam(x: u64) -> u64 => x + 1` |
 | Local binding | `let f(x: u64) -> u64 = x + 1;` |
 | Global binding | `def f(x: u64) -> u64 = x + 1;` |
-| Curried (any of the above) | `fn(A: Type)(x: A) -> A` / `lam(A: Type)(x: A) = x` / … |
+| Curried (any of the above) | `fn(A: Type)(x: A) -> A` / `lam(A: Type)(x: A) => x` / … |
 
 Desugaring (meta-level only):
 ```
-let f(x: u64) -> u64 = e;   ≡   let f: fn(x: u64) -> u64 = lam(x: u64) -> u64 = e;
-def f(x: u64) -> u64 = e;   ≡   def f: fn(x: u64) -> u64 = lam(x: u64) -> u64 = e;
+let f(x: u64) -> u64 = e;   ≡   let f: fn(x: u64) -> u64 = lam(x: u64) -> u64 => e;
+def f(x: u64) -> u64 = e;   ≡   def f: fn(x: u64) -> u64 = lam(x: u64) -> u64 => e;
 ```
 
 Curried desugaring (see [Curried parameter groups](#curried-parameter-groups-proposed)):
 ```
-lam(A: Type)(x: A) = x   ≡   lam(A: Type) = lam(x: A) = x
+lam(A: Type)(x: A) => x   ≡   lam(A: Type) => lam(x: A) => x
 fn(A: Type)(x: A) -> A   ≡   fn(A: Type) -> fn(x: A) -> A
 ```
 
@@ -121,7 +121,7 @@ param_groups ::= ("(" params ")")+             -- one or more parameter groups (
 
 def_sig_req ::= param_groups "->" expr         -- currently: "(" params ")" "->" expr
 def_sig_opt ::= param_groups ("->" expr)?      -- currently: "(" params ")" ("->" expr)?
-lambda      ::= "lam" param_groups ("->" expr)? "=" expr   -- currently: single "(" params ")"
+lambda      ::= "lam" param_groups ("->" expr)? "=>" expr   -- currently: single "(" params ")"
 fn_ty       ::= "fn" param_groups "->" expr    -- currently: single "(" fn_params ")"
               | expr "->" expr                  -- shorthand non-dependent (right-associative)
 ```

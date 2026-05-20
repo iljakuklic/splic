@@ -44,7 +44,7 @@ Ident("u64")
 RParen
 Arrow
 Ident("u64")
-Eq
+DArrow
 Ident("x")
 Plus
 Num(1)

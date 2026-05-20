@@ -4,5 +4,5 @@ def map_code(f: fn(_: [[u64]]) -> [[u64]], x: [[u64]]) -> [[u64]] = {
 };
 
 code def double(x: u64) -> u64 = {
-    $(map_code(lam(y: [[u64]]) = #($(y) + $(y)), #(x)))
+    $(map_code(lam(y: [[u64]]) => #($(y) + $(y)), #(x)))
 };

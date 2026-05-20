@@ -16,7 +16,7 @@ Ident("y")
 Colon
 Ident("u64")
 RParen
-Eq
+DArrow
 Ident("y")
 RBrace
 Semi

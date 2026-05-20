@@ -57,7 +57,7 @@ DoubleLBracket
 Ident("u64")
 DoubleRBracket
 RParen
-Eq
+DArrow
 HashLParen
 DollarLParen
 Ident("y")
