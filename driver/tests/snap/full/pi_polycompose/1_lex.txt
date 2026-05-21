@@ -52,7 +52,7 @@ Ident("x")
 Colon
 Ident("A")
 RParen
-Eq
+DArrow
 Ident("f")
 LParen
 Ident("g")

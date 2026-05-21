@@ -141,7 +141,7 @@ impl<'names> Term<'names, '_> {
                 let depth_before = env.depth();
                 write!(f, "lam(")?;
                 fmt_params(lam.params, env, indent, f)?;
-                write!(f, ") = ")?;
+                write!(f, ") => ")?;
                 lam.body.fmt_expr(env, indent, f)?;
                 env.truncate(depth_before);
                 Ok(())

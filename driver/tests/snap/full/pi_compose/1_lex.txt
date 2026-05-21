@@ -40,7 +40,7 @@ Ident("x")
 Colon
 Ident("u64")
 RParen
-Eq
+DArrow
 Ident("f")
 LParen
 Ident("g")

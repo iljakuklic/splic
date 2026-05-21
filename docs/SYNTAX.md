@@ -5,12 +5,15 @@ Splic is a two-level language built on two-level type theory (2LTT). There is no
 ## Design Principles
 
 - **Orthogonality**: The basic building blocks are independent and suggestive of their semantics. Combining them should produce predictable results.
+- **Semantic precision**: Syntax should mean what it looks like it means. Operators carry consistent mathematical meaning everywhere they appear — `=` is definitional equality (both sides are interchangeable terms), `=>` is "maps to".
 - **Progressive enhancement**: Related syntactic concepts (function definitions, lambdas, function types) look similar and it is easy to move between them.
 - **Aesthetics**: The syntax should be pleasant to read. Rust is a good starting point.
 - **Explicit**: No hidden magic. Syntax sugar has a straightforward desugaring to more basic constructs. Annotations are available wherever they are useful, even if not always required.
 - **Uniformity**: The same construct works the same way everywhere. No special cases for specific positions or contexts.
 - **Tooling-friendly**: The grammar should be unambiguous and easy to parse, supporting the compiler and tools like formatters, syntax highlighters, and language servers without heroics.
 - **Unlimited weirdness budget**: While Rust is a starting point, we are not afraid to deviate if a different choice better serves the principles above.
+
+The principles above are roughly ordered by weight — earlier principles tend to win when there is no clear answer. Aesthetics and Rust familiarity are useful starting points but yield to the principles above them.
 
 ## Comments
 
@@ -64,7 +67,7 @@ code def f(x: u64) -> u64 = x + 1;     // object-level function
 `code def` marks object-level functions. Type and return type annotations are required
 (cannot be inferred at the top level). `def` allows self-reference — recursion is permitted.
 
-`def f(params) -> T = e;` is syntactic sugar for `def f: fn(params) -> T = lam(params) -> T = e;`.
+`def f(params) -> T = e;` is syntactic sugar for `def f: fn(params) -> T = lam(params) -> T => e;`.
 This desugaring applies at the meta level only; `code def` does not desugar to a lambda —
 the object-level sublanguage does not have first-class functions.
 
@@ -84,7 +87,7 @@ let f(x: u64) -> u64 = x + 1;        // local function, explicit return type
 let f(x: u64) -> u64 = { x + n };    // local function, block body (may close over n)
 ```
 
-`let f(params) (-> T)? = e;` is syntactic sugar for `let f (: fn(params) -> T)? = lam(params) (-> T)? = e;`.
+`let f(params) (-> T)? = e;` is syntactic sugar for `let f (: fn(params) -> T)? = lam(params) (-> T)? => e;`.
 
 Multiple parameter groups on `let` are supported for curried local functions (see
 [Curried Parameter Groups](#curried-parameter-groups) below).
@@ -118,11 +121,11 @@ Multiple parameter groups `fn(p1)(p2) -> T` are also supported (see
 Lambdas use the `lam` keyword with mandatory parameter type annotations:
 
 ```
-lam(x: u64) = x + 1                       // single parameter
-lam(x: u64, y: u64) = x + y               // multi-parameter
-lam(f: fn(_: u64) -> u64, x: u64) = f(x)  // higher-order
-lam(x: u64) -> u64 = x + 1                // with explicit return type
-lam() = expr                               // nullary: produces a fn() -> T value
+lam(x: u64) => x + 1                       // single parameter
+lam(x: u64, y: u64) => x + y               // multi-parameter
+lam(f: fn(_: u64) -> u64, x: u64) => f(x)  // higher-order
+lam(x: u64) -> u64 => x + 1                // with explicit return type
+lam() => expr                               // nullary: produces a fn() -> T value
 ```
 
 Type annotations on lambda parameters are required. This makes lambdas inferable — the
@@ -131,7 +134,7 @@ optional `-> T` return type annotation is also supported.
 
 Lambdas are meta-level only — they cannot appear in object-level (`code def`) bodies.
 
-Multiple parameter groups `lam(p1)(p2) = e` are also supported (see
+Multiple parameter groups `lam(p1)(p2) => e` are also supported (see
 [Curried Parameter Groups](#curried-parameter-groups) below).
 
 ## Curried Parameter Groups
@@ -142,8 +145,8 @@ groups. Each group becomes one level of lambda/pi nesting, enabling dependent cu
 ```
 // Equivalent ways to write a curried polymorphic identity:
 def id(A: Type)(x: A) -> A = x;
-def id: fn(A: Type)(x: A) -> A = lam(A: Type)(x: A) = x;
-def id: fn(A: Type) -> fn(x: A) -> A = lam(A: Type) = lam(x: A) = x;
+def id: fn(A: Type)(x: A) -> A = lam(A: Type)(x: A) => x;
+def id: fn(A: Type) -> fn(x: A) -> A = lam(A: Type) => lam(x: A) => x;
 ```
 
 The `-> T` return type annotation always applies to the innermost body. All parameters
@@ -151,20 +154,20 @@ from all groups are in scope for the return type and body, enabling dependent cu
 
 ```
 def const(A: Type)(B: Type) -> fn(_: A) -> fn(_: B) -> A =
-    lam(x: A)(y: B) = x;
+    lam(x: A)(y: B) => x;
 ```
 
 **Desugaring rules:**
 
 ```
-lam(p1)(p2)...(pN) (-> T)? = e
-  ≡  lam(p1) = lam(p2) = ... = lam(pN) (-> T)? = e
+lam(p1)(p2)...(pN) (-> T)? => e
+  ≡  lam(p1) => lam(p2) => ... => lam(pN) (-> T)? => e
 
 let f(p1)(p2)...(pN) (-> T)? = e;
-  ≡  let f = lam(p1)(p2)...(pN) (-> T)? = e;
+  ≡  let f = lam(p1)(p2)...(pN) (-> T)? => e;
 
 def f(p1)(p2)...(pN) -> T = e;
-  ≡  def f: fn(p1)(p2)...(pN) -> T = lam(p1)(p2)...(pN) -> T = e;
+  ≡  def f: fn(p1)(p2)...(pN) -> T = lam(p1)(p2)...(pN) -> T => e;
 
 fn(p1)(p2)...(pN) -> T
   ≡  fn(p1) -> fn(p2) -> ... -> fn(pN) -> T
@@ -242,7 +245,7 @@ fn_type     ::= "fn" param_groups "->" expr
 fn_params   ::= (fn_param ("," fn_param)*)?
 fn_param    ::= identifier ":" expr             -- name required; use "_" for non-dependent
 
-lambda      ::= "lam" param_groups ("->" expr)? "=" expr
+lambda      ::= "lam" param_groups ("->" expr)? "=>" expr
 
 binary_op   ::= "+" | "-" | "*" | "/" | "==" | "!=" | "<" | ">" | "<=" | ">=" | "&" | "|"
 unary_op    ::= "!"

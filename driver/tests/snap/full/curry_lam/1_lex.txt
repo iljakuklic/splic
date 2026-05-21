@@ -38,6 +38,6 @@ Ident("y")
 Colon
 Ident("B")
 RParen
-Eq
+DArrow
 Ident("x")
 Semi

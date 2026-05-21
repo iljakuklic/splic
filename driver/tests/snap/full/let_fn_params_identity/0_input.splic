@@ -1,6 +1,6 @@
 // Polymorphic identity using parametrized let for the outer binding
 def test_id() -> u64 = {
-    let id(T: Type) = lam(x: T) = x;
+    let id(T: Type) = lam(x: T) => x;
     let _ = id(u32)(67);
     id(u64)(42)
 };

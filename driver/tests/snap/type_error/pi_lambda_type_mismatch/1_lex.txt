@@ -42,7 +42,7 @@ Ident("x")
 Colon
 Ident("u32")
 RParen
-Eq
+DArrow
 Ident("x")
 Comma
 Num(42)

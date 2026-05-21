@@ -1,4 +1,4 @@
-def power: fn(x@0: [[u64]], exp@1: u64) -> [[u64]] = lam(x@0: [[u64]], exp@1: u64) = match exp@1 {
+def power: fn(x@0: [[u64]], exp@1: u64) -> [[u64]] = lam(x@0: [[u64]], exp@1: u64) => match exp@1 {
     0 => #(1_u64),
     1 => x@0,
     exp@2 => {

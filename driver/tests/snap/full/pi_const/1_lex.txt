@@ -33,14 +33,14 @@ Ident("a")
 Colon
 Ident("A")
 RParen
-Eq
+DArrow
 Lam
 LParen
 Ident("b")
 Colon
 Ident("B")
 RParen
-Eq
+DArrow
 Ident("a")
 RBrace
 Semi

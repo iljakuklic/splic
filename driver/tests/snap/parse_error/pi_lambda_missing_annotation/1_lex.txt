@@ -40,7 +40,7 @@ Lam
 LParen
 Ident("x")
 RParen
-Eq
+DArrow
 Ident("x")
 Plus
 Num(1)

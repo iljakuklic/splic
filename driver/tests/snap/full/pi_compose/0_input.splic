@@ -1,6 +1,6 @@
 // Function composition (monomorphic)
 def compose(f: fn(_: u64) -> u64, g: fn(_: u64) -> u64) -> fn(_: u64) -> u64 = {
-    lam(x: u64) = f(g(x))
+    lam(x: u64) => f(g(x))
 };
 
 def double(x: u64) -> u64 = { x + x };

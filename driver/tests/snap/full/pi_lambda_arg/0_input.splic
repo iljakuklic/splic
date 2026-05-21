@@ -4,7 +4,7 @@ def apply(f: fn(_: u64) -> u64, x: u64) -> u64 = {
 };
 
 def test() -> u64 = {
-    apply(lam(x: u64) = x + 1, 42)
+    apply(lam(x: u64) => x + 1, 42)
 };
 
 code def result() -> u64 = { $(test()) };

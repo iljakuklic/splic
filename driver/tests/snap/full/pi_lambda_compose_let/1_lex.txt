@@ -71,7 +71,7 @@ Ident("C")
 Colon
 Ident("Type")
 RParen
-Eq
+DArrow
 Lam
 LParen
 Ident("f")
@@ -96,14 +96,14 @@ RParen
 Arrow
 Ident("B")
 RParen
-Eq
+DArrow
 Lam
 LParen
 Ident("x")
 Colon
 Ident("A")
 RParen
-Eq
+DArrow
 Ident("f")
 LParen
 Ident("g")

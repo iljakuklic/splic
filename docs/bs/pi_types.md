@@ -17,7 +17,7 @@ fn repeat(f: fn([[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
 }
 
 code fn square_twice(x: u64) -> u64 {
-    $(repeat(lam(y: [[u64]]) = #($(y) * $(y)), 2, #(x)))
+    $(repeat(lam(y: [[u64]]) => #($(y) * $(y)), 2, #(x)))
 }
 ```
 
@@ -57,10 +57,10 @@ fn(x: A, y: B) -> C   -- two-argument function, not sugar for nested Pi
 Lambda expressions use the `lam` keyword:
 
 ```
-lam(x: A) = body              // type annotation required
-lam(x: A, y: B) = body        // multi-parameter
-lam() = body                  // nullary: produces a fn() -> T value
-lam(x: A) -> B = body         // with explicit return type annotation
+lam(x: A) => body              // type annotation required
+lam(x: A, y: B) => body        // multi-parameter
+lam() => body                  // nullary: produces a fn() -> T value
+lam(x: A) -> B => body         // with explicit return type annotation
 ```
 
 Type annotations on lambda parameters are **mandatory**. This makes lambdas inferable — the typechecker can construct the full Pi type from the annotation and the inferred body type, without needing an expected type pushed down from context. Check-mode lambdas are also supported when the expected Pi type is known from context. An optional `-> T` return type annotation is accepted in both modes.
@@ -90,7 +90,7 @@ Lambdas are **inferable** because type annotations on parameters are mandatory:
 ```
 Γ ⊢ A : Type    Γ, x : A ⊢ body ⇒ B
 ─────────────────────────────────────────
-   Γ ⊢ lam(x: A) = body ⇒ fn(x: A) -> B
+   Γ ⊢ lam(x: A) => body ⇒ fn(x: A) -> B
 ```
 
 The parameter type `A` comes from the annotation; the body type `B` is inferred in the extended context. The synthesised type is the Pi type `fn(x: A) -> B`.
@@ -107,7 +107,7 @@ Application is inferable when the function is inferable. For a call `f(a₁, ...
 
 Each argument is checked against its domain, which may depend on prior arguments (supporting dependent telescopes). The return type has all parameters substituted. For non-dependent functions the types simplify to plain `B`.
 
-**No partial application.** `f(a)` on a two-argument function `fn(A, B) -> C` is a type error — the arity must match exactly. To partially apply, the programmer must write an explicit eta-expansion: `lam(b: B) = f(a, b)`.
+**No partial application.** `f(a)` on a two-argument function `fn(A, B) -> C` is a type error — the arity must match exactly. To partially apply, the programmer must write an explicit eta-expansion: `lam(b: B) => f(a, b)`.
 
 **Nullary functions.** `fn() -> T` is a distinct type from `T`. A value `f: fn() -> T` must be called explicitly with `f()` to produce a `T`. A bare reference to `f` does not evaluate the body.
 
@@ -169,11 +169,11 @@ fn repeat(f: fn([[u64]]) -> [[u64]], n: u64, x: [[u64]]) -> [[u64]] {
 }
 
 code fn square_twice(x: u64) -> u64 {
-    $(repeat(lam(y: [[u64]]) = #($(y) * $(y)), 2, #(x)))
+    $(repeat(lam(y: [[u64]]) => #($(y) * $(y)), 2, #(x)))
 }
 ```
 
-Here `f` has type `fn([[u64]]) -> [[u64]]` — it takes object code and returns object code. The lambda `lam(y: [[u64]]) = #($(y) * $(y))` is a meta-level function that generates object-level multiplication code. After staging, all meta computation (including the lambda and the `repeat` recursion) is erased:
+Here `f` has type `fn([[u64]]) -> [[u64]]` — it takes object code and returns object code. The lambda `lam(y: [[u64]]) => #($(y) * $(y))` is a meta-level function that generates object-level multiplication code. After staging, all meta computation (including the lambda and the `repeat` recursion) is erased:
 
 ```splic
 code fn square_twice(x: u64) -> u64 {
@@ -198,7 +198,7 @@ fn use_id() -> u64 { id(u64, 42) }
 
 ```splic
 fn const_(A: Type, B: Type) -> fn(_: A) -> fn(_: B) -> A {
-    lam(a: A) = lam(b: B) = a
+    lam(a: A) => lam(b: B) => a
 }
 ```
 
@@ -206,7 +206,7 @@ fn const_(A: Type, B: Type) -> fn(_: A) -> fn(_: B) -> A {
 
 ```splic
 fn compose(A: Type, B: Type, C: Type, f: fn(_: B) -> C, g: fn(_: A) -> B) -> fn(_: A) -> C {
-    lam(x: A) = f(g(x))
+    lam(x: A) => f(g(x))
 }
 ```
 
@@ -218,7 +218,7 @@ fn map_code(f: fn(_: [[u64]]) -> [[u64]], x: [[u64]]) -> [[u64]] {
 }
 
 code fn double(x: u64) -> u64 {
-    $(map_code(lam(y: [[u64]]) = #($(y) + $(y)), #(x)))
+    $(map_code(lam(y: [[u64]]) => #($(y) + $(y)), #(x)))
 }
 // Stages to: code fn double(x: u64) -> u64 { x + x }
 ```

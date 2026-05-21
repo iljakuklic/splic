@@ -20,7 +20,7 @@ Ident("x")
 Colon
 Ident("T")
 RParen
-Eq
+DArrow
 Ident("x")
 Semi
 Let

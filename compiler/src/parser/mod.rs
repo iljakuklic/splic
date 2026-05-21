@@ -381,7 +381,7 @@ where
         }))
     }
 
-    /// Parse a lambda expression: `lam(params)+ (-> ret_ty)? = body`
+    /// Parse a lambda expression: `lam(params)+ (-> ret_ty)? => body`
     ///
     /// Called after consuming the `lam` token. Multiple `(params)` groups are
     /// desugared to nested `Lam` terms at parse time; `ret_ty` applies to the innermost.
@@ -395,11 +395,11 @@ where
             .then(|| self.parse_expr().context("expected return type after '->'"))
             .transpose()?;
 
-        self.take(Token::Eq)
-            .context("expected '=' after lambda parameters")?;
+        self.take(Token::DArrow)
+            .context("expected '=>' after lambda parameters")?;
         let body = self.parse_expr().context("expected lambda body")?;
 
-        // Desugar: lam(p1)(p2) -> T = e  ≡  Lam { p1, None, Lam { p2, Some(T), e } }
+        // Desugar: lam(p1)(p2) -> T => e  ≡  Lam { p1, None, Lam { p2, Some(T), e } }
         // ret_ty applies to the innermost group (the last one). Split it off, build the
         // innermost Lam, then fold the remaining groups outward; every node is arena-allocated.
         let Some((&last, init)) = groups.split_last() else {
