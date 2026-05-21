@@ -5,12 +5,15 @@ Splic is a two-level language built on two-level type theory (2LTT). There is no
 ## Design Principles
 
 - **Orthogonality**: The basic building blocks are independent and suggestive of their semantics. Combining them should produce predictable results.
+- **Semantic precision**: Syntax should mean what it looks like it means. Operators carry consistent mathematical meaning everywhere they appear — `=` is definitional equality (both sides are interchangeable terms), `=>` is "maps to".
 - **Progressive enhancement**: Related syntactic concepts (function definitions, lambdas, function types) look similar and it is easy to move between them.
 - **Aesthetics**: The syntax should be pleasant to read. Rust is a good starting point.
 - **Explicit**: No hidden magic. Syntax sugar has a straightforward desugaring to more basic constructs. Annotations are available wherever they are useful, even if not always required.
 - **Uniformity**: The same construct works the same way everywhere. No special cases for specific positions or contexts.
 - **Tooling-friendly**: The grammar should be unambiguous and easy to parse, supporting the compiler and tools like formatters, syntax highlighters, and language servers without heroics.
 - **Unlimited weirdness budget**: While Rust is a starting point, we are not afraid to deviate if a different choice better serves the principles above.
+
+The principles above are roughly ordered by weight — earlier principles tend to win when there is no clear answer. Aesthetics and Rust familiarity are useful starting points but yield to the principles above them.
 
 ## Comments
 
