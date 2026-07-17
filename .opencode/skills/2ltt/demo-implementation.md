@@ -1,345 +1,229 @@
-# Demo implementation (Kovács staged)
+# Reference implementation (Kovács `staged` demo)
 
-This file contains code snippets from the reference implementation at:
-https://github.com/AndrasKovacs/staged/tree/main/demo
+Code-level reference for https://github.com/AndrasKovacs/staged/tree/main/demo — the
+prototype accompanying the 2022 paper (theory: `kovacs-2022-staged-compilation-2ltt.md`).
+Features: two stages, dependent functions, type-in-type (no sigma; data is
+lambda-encoded), `Nat` at both stages, Agda-style implicits with higher-order
+unification, and strong inference for staging operations.
 
-## 1. Core types (Common.hs)
+Pipeline: parse → elaborate (bidirectional, NbE, metavariables) → zonk → stage.
 
-```hs
-data Stage = S0 | S1   -- S0 = object (runtime), S1 = meta (compile-time)
-
-newtype Ix  = Ix {unIx :: Int}   -- De Bruijn index
-newtype Lvl = Lvl {unLvl :: Int} -- De Bruijn level
-newtype MetaVar = MetaVar {unMetaVar :: Int}
-```
-
-## 2. Syntax (Syntax.hs)
+## 1. Core syntax (Syntax.hs)
 
 ```hs
 data Tm
   = Var Ix
-  | Lam Name Icit Tm Tm Verbosity          -- lambda
-  | App Tm Tm Icit Verbosity               -- application
-  | Pi Name Icit Ty Ty                     -- dependent function
-  | Let Stage Name Ty Tm Tm Verbosity      -- let (with stage)
-  
-  | U Stage                                -- universes
-  | Quote Tm                               -- ⟨t⟩ 
-  | Splice Tm                              -- [t] (splice)
-  | Lift Ty                                -- ⇑A
-  
-  | Nat Stage                              -- natural numbers
-  | Zero Stage
-  | Suc Stage
-  | NatElim Stage                          -- dependent elimination
-  deriving Show
+  | Lam Name Icit Tm Tm Verbosity        -- λ (domain annotation, body)
+  | App Tm Tm Icit Verbosity
+  | Pi Name Icit Ty Ty
+  | Let Stage Name Ty Tm Tm Verbosity    -- let with EXPLICIT stage (S0 | S1)
+  | U Stage                              -- U0 / U1
+  | Lift Ty                              -- ⇑A
+  | Quote Tm                             -- ⟨t⟩   (surface syntax: <t>)
+  | Splice Tm                            -- ∼t    (surface syntax: [t])
+  | Nat Stage | Zero Stage | Suc Stage | NatElim Stage
+  -- metavariable machinery (elaboration only; gone after zonking):
+  | Meta MetaVar
+  | InsertedMeta MetaVar Pruning         -- fresh meta applied to the bound-var mask
+  | AppPruning Tm Pruning
+  | Wk Tm                                -- explicit weakening, used by subtyping coercions
 ```
 
-Key differences from paper notation:
-- Paper uses `~t` for splice, demo uses `[t]`
-- `Let` is annotated with a `Stage` (S0 or S1)
-
-## 3. Semantic values for meta evaluation (Value.hs)
+`Verbosity` (`V0`/`V1`) marks elaboration-inserted material for printing. Smart
+constructors cancel quote/splice **already at elaboration time**:
 
 ```hs
-data Spine
-  = SId
-  | SApp Spine Val Icit Verbosity
-  | SSplice Spine
-  | SNatElim Stage Val Val Val Spine
+tQuote (Splice t) = t ; tQuote t = Quote t
+tSplice (Quote t) = t ; tSplice t = Splice t
+```
+
+## 2. Values for conversion checking (Value.hs, Evaluation.hs)
+
+One shared semantic domain for elaboration-time evaluation (used by unification and
+conversion). De Bruijn **indices** in terms, **levels** in values; closures are Haskell
+functions `Val -> Val`.
+
+```hs
+data Spine = SId | SApp Spine ~Val Icit Verbosity
+           | SSplice Spine                        -- stuck splice, as a spine entry
+           | SNatElim Stage Val Val Val Spine
 
 data Val
-  = VFlex MetaVar Spine                    -- unsolved meta variable
-  | VRigid Lvl Spine                       -- variable
-  | VLam Name Icit VTy (Val -> Val) Verbosity
-  | VPi Name Icit VTy (Val -> Val)
-  | VU Stage
-  | VLift Val                              -- lifted value
-  | VQuote Val                             -- quoted object term
-  | VNat Stage
-  | VZero Stage
-  | VSuc Stage Val
+  = VFlex MetaVar Spine                  -- stuck on an unsolved meta
+  | VRigid Lvl Spine                     -- stuck on a variable
+  | VLam Name Icit ~VTy (Val -> Val) Verbosity
+  | VPi Name Icit ~VTy (Val -> Val)
+  | VU Stage | VLift Val | VQuote Val
+  | VNat Stage | VZero Stage | VSuc Stage Val
 ```
 
-The `Spine` tracks pending applications and special operations during evaluation.
-
-## 4. Meta evaluator (Evaluation.hs)
+Key evaluation cases — quote/splice cancellation on both canonical values and neutrals:
 
 ```hs
-vApp :: Val -> Val -> Icit -> Verbosity -> Val
-vApp t ~u i o = case t of
-  VLam _ _ _ t o -> t u
-  VFlex  m sp    -> VFlex m  (SApp sp u i o)
-  VRigid x sp    -> VRigid x (SApp sp u i o)
-  _              -> impossible
+vSplice (VQuote t)    = t                              -- ∼⟨t⟩ = t
+vSplice (VFlex m sp)  = VFlex m (SSplice sp)           -- stuck: push splice onto spine
+vSplice (VRigid x sp) = VRigid x (SSplice sp)
+vSplice _             = impossible                     -- (well-typed input)
 
-vQuote :: Val -> Val
-vQuote = \case
-  VFlex  m (SSplice sp) -> VFlex m sp          -- quote/splice cancel
-  VRigid x (SSplice sp) -> VRigid x sp
-  t                     -> VQuote t
-
-vSplice :: Val -> Val
-vSplice = \case
-  VQuote t    -> t                              -- splice of quote
-  VFlex m sp  -> VFlex m (SSplice sp)
-  VRigid x sp -> VRigid x (SSplice sp)
-  _           -> impossible
-
-eval :: Env -> Tm -> Val
-eval env = \case
-  Var x             -> vVar env x
-  App t u i vr      -> vApp (eval env t) (eval env u) i vr
-  Lam x i a t vr    -> VLam x i (eval env a) (evalBind env t) vr
-  Pi x i a b        -> VPi x i (eval env a) (evalBind env b)
-  Let _ _ _ t u _   -> eval (env :> eval env t) u
-  U s               -> VU s
-  Quote t           -> vQuote (eval env t)
-  Splice t          -> vSplice (eval env t)
-  Lift t            -> VLift (eval env t)
-  -- ... nat eliminator handling
+vQuote (VFlex m (SSplice sp))  = VFlex m sp            -- ⟨∼n⟩ = n on neutrals
+vQuote (VRigid x (SSplice sp)) = VRigid x sp
+vQuote t                       = VQuote t              -- canonical
 ```
 
-Quotation (value back to syntax):
+Takeaways for any NbE 2LTT checker:
+- A stuck splice must be *representable* (here: `SSplice` spine entry on `VRigid`/`VFlex`).
+  Without it, splices on neutrals have nowhere to go.
+- Both cancellation directions are needed; the `⟨∼n⟩` direction fires when quoting a
+  neutral whose spine ends in a splice.
+- **This evaluator computes all redexes, object-level included** (the demo's object
+  theory has full β) — conversion checking is stage-agnostic here. Contrast staging (§3)
+  and the CFTT weak-equality alternative.
+
+`quote :: Lvl -> Val -> Tm` reads values back (standard NbE); `nf = quote ∘ eval`.
+`force` unfolds solved metas at the head. `zonk` inlines all solved metas into a term
+without evaluating anything else — run before staging.
+
+## 3. Staging (Staging.hs)
+
+Separate pass over zonked core syntax, with **two value domains and two evaluators** —
+meta values never appear in output, object values are the output:
+
 ```hs
-quote :: Lvl -> Val -> Tm
-quote l t = case force t of
-  VFlex m sp     -> quoteSp l (Meta m) sp
-  VRigid x sp    -> quoteSp l (Var (lvl2Ix l x)) sp
-  VLam x i a t o -> Lam x i (quote l a) (quote (l + 1) (t (VVar l))) o
-  VPi x i a b    -> Pi x i (quote l a) (quote (l + 1) (b (VVar l)))
-  VU s           -> U s
-  VLift t        -> Lift (quote l t)
-  VQuote t       -> Quote (quote l t)
-  VNat s         -> Nat s
-  -- ...
-```
+data Env = Nil | Def0 Env Val0 | Def1 Env Val1   -- one mixed-stage environment
 
-## 5. Staging / Unstaging (Staging.hs)
-
-The staging module separates meta and object evaluation:
-
-```hs
-data Env = Nil | Def0 Env Val0 | Def1 Env Val1
-
-data Val1  -- meta (compile-time) values
+data Val1                       -- meta values: computed with, then discarded
   = VLam1 (Val1 -> Val1)
-  | VQuote Val0
-  | VSomeU1                 -- meta types ignored during staging
-  | VZero1
-  | VSuc1 Val1
+  | VQuote Val0                 -- ⟨t⟩ evaluates its body with eval0
+  | VSomeU1                     -- ALL meta-level types erase to this dummy
+  | VZero1 | VSuc1 Val1
 
-data Val0  -- object (runtime) values
-  = VVar0 Lvl
+data Val0                       -- object values: mirror the object syntax
+  = VVar0 Lvl                   -- levels ⇒ no weakening/shifting ever
   | VApp0 Val0 Val0 Icit Verbosity
-  | VPi0 Name Icit Val0 (Val0 -> Val0)
-  | VLam0 Name Icit Val0 (Val0 -> Val0) Verbosity
+  | VLam0 Name Icit Val0 (Val0 -> Val0) Verbosity   -- closure per binder
+  | VPi0  Name Icit Val0 (Val0 -> Val0)
   | VLet0 Name Val0 Val0 (Val0 -> Val0) Verbosity
-  | VU0
-  | VNat0
-  | VZero0
-  | VSuc0
-  | VNatElim0
+  | VU0 | VNat0 | VZero0 | VSuc0 | VNatElim0
 ```
 
-Meta evaluation (only runs at compile time):
 ```hs
-eval1 :: Env -> Tm -> Val1
-eval1 env = \case
-  Var x             -> vVar1 env x
-  Lam x i a t o    -> VLam1 (eval1Bind env t)
-  App t u i o      -> vApp1 (eval1 env t) (eval1 env u)
-  Quote t          -> VQuote (eval0 env t)    -- quote object to meta
-  -- ...
-  Splice{}          -> impossible              -- splices only in object context
-  Lift{}            -> VSomeU1
-```
+eval1 env (Lam _ _ _ t _) = VLam1 (eval1Bind env t)   -- β computed via vApp1
+eval1 env (Quote t)       = VQuote (eval0 env t)      -- switch to object evaluation
+eval1 env (U{}|Pi{}|Lift{}|Nat{}) = VSomeU1           -- types erased
+eval1 env (Splice{})      = impossible                -- splice never in meta position
 
-Object evaluation (staging output):
-```hs
-eval0 :: Env -> Tm -> Val0
-eval0 env = \case
-  Var x            -> vVar0 env x
-  Lam x i a t o    -> VLam0 x i (eval0 env a) (eval0Bind env t) o
-  App t u i o      -> VApp0 (eval0 env t) (eval0 env u) i o
-  Splice t         -> vSplice (eval1 env t)   -- splice evaluates meta, embeds object
-  -- ...
-  Quote{}          -> impossible              -- quotes only in meta context
-```
+eval0 env (Lam x i a t o) = VLam0 x i (eval0 env a) (eval0Bind env t) o  -- NO β
+eval0 env (App t u i o)   = VApp0 (eval0 env t) (eval0 env u) i o        -- structural
+eval0 env (Splice t)      = vSplice (eval1 env t)     -- run metaprogram, embed result
+  where vSplice (VQuote v) = v ; vSplice _ = impossible
+eval0 env (Quote{})       = impossible
 
-Unstaging entry point:
-```hs
 stage :: Tm -> Tm
-stage t = quote0 0 $ eval0 Nil t
+stage t = quote0 0 (eval0 Nil t)      -- mixed-stage closed term → splice-free object term
 ```
 
-The key staging invariant: `stage` takes a mixed-stage term and produces a splice-free object term.
+Notes:
+- `eval0` is "evaluation" only in the sense of resolving variables/splices — it copies
+  object structure verbatim (strictness: no object β). It implements delayed renamings
+  via closures + levels.
+- Both evaluators error on `Meta`/`InsertedMeta`: **unsolved metas are a staging-time
+  error** (with a hint to inspect `elab-verbose`).
+- Variables in `Env` are stage-tagged (`Def0`/`Def1`); lookup projects the right domain.
 
-## 6. Typechecking / Elaboration (Elaboration.hs)
+## 4. Elaboration (Elaboration.hs, Cxt.hs)
 
-The demo uses bidirectional typechecking with separate checking and inference modes.
+Bidirectional: `check :: Cxt -> P.Tm -> VTy -> Stage -> IO Tm` and
+`infer :: Cxt -> P.Tm -> IO (Tm, VTy, Stage)` — **infer returns the type *and* the
+stage**. `inferS` is infer with an expected stage, reconciled via `adjustStage`.
 
-### Implicit argument insertion:
+### 4.1 Context (Cxt.hs)
+`Cxt = { env :: [Val], lvl, path :: Path, pruning, srcNames :: Map Name (Lvl, VTy, Stage), pos }`.
+Every binding records its **stage** in `srcNames`; `Path` is a context zipper used to
+build closed Pi types for fresh metas cheaply. `bind` (bound var), `newBinder`
+(elaboration-inserted, invisible to source), `define` (let).
+
+### 4.2 Stage handling: repair, not reject
+There is **no stage check at variable lookup** — `infer (Var x)` just returns the stored
+stage. Mismatches between inferred and expected stage/type are *repaired* by coercive
+subtyping (rules `A ≤ ⇑A`, `⇑A ≤ A`, `U0 ≤ U1`; theory in
+`kovacs-2022-staged-compilation-2ltt.md` §3.3):
 
 ```hs
-insert' :: Cxt -> IO (Tm, VTy, Stage) -> IO (Tm, VTy, Stage)
-insert' cxt act = go =<< act where
-  go (!t, !va, !st) = case force va of
-    VPi x Impl a b -> do
-      m <- freshMeta cxt a st
-      let mv = eval (env cxt) m
-      go (App t m Impl V1, b $ mv, st)
-    va -> pure (t, va, st)
+adjustStage cxt t a s s'    -- move (t : a : U s) to stage s'
+  | s == s' = (t, a)
+  | s <  s' = (tQuote t, VLift a)                    -- 0→1: quote
+  | s >  s' = case force a of                        -- 1→0: splice
+      VLift a -> (tSplice t, a)
+      a       -> do m <- freshMeta (VU S0) S0        -- a must be ⇑?m
+                    unifyCatch cxt a (VLift m)
+                    (tSplice t, m)
+
+coe cxt t a s a' s'         -- full coercion (t : a : U s) to (a' : U s')
+  -- Pi vs Pi: contravariant/covariant, η-expanding with Wk for the shifted body;
+  --   tracks "trivial coercion" (Nothing) to avoid inserting useless η-expansions
+  -- (VU S0, VU S1)      -> Lift t                   -- U0 ≤ U1 witnessed by Lift
+  -- (VLift a, VLift a') -> unify a a'
+  -- (VLift a, a')       -> coe (tSplice t) ...      -- unwrap and retry
+  -- (a, VLift a')       -> tQuote <$> coe t ...
+  -- otherwise           -> adjustStage then unify
 ```
 
-### Subtyping / stage coercion:
+`Wk` (explicit weakening) exists solely so `coe` can reuse `t` under the binders it
+introduces. Stage errors thus surface as *unification* failures, not as a dedicated
+"wrong stage" error. (A simpler checker without subtyping can instead make stage
+mismatch a hard error at lookup — a valid design choice, but not what this demo does.)
+
+### 4.3 Notable check/infer cases
 
 ```hs
-adjustStage :: Cxt -> Tm -> VTy -> Stage -> Stage -> IO (Tm, VTy)
-adjustStage cxt t a s s' = case compare s s' of
-  EQ -> pure (t, a)
-  LT -> pure (tQuote t, VLift a)
-  GT -> case force a of
-    VLift a -> pure (tSplice t, a)
-    a       -> do
-      m <- freshMeta cxt (VU S0) S0
-      unifyCatch cxt a (VLift m)
-      pure (tSplice t, m)
+checkU cxt t s = check cxt t (VU s) s                -- "this must be a type at stage s"
+
+check (P.Quote t) (VLift a) = tQuote <$> check t a S0
+check t           (VLift a) = tQuote <$> check t a S0
+  -- quote INSERTION: checking any non-quote against ⇑A recurses at stage 0.
+  -- Loses no solutions: every value of ⇑A is ⟨t⟩ up to defeq. Major inference win.
+
+check (P.Let st' x a t u) a' | st == st'             -- let stage must match the
+  -- current stage; body elaborated in `define`d context
+
+infer (P.Quote t)  = do (t, a) <- inferS t S0; pure (tQuote t, VLift a, S1)
+infer (P.Splice t) = do (t, a) <- inferS t S1
+                        (t, a) <- adjustStage t a S1 S0   -- forces a ≅ ⇑?m
+                        pure (t, a, S0)
+infer (P.App t u i) -- implicit insertion (insert'/insertUntilName), then:
+  -- if head type isn't Pi, coerce it to a fresh Pi (coe) — subsumes stage repair
 ```
 
-### Checking (mode where expected type is known):
+Fallback cases of `check` infer + `coe`. Implicit-argument insertion (`insert`,
+`insert'`, `insertUntilName`) is standard elaboration-zoo style.
 
-```hs
-check :: Cxt -> P.Tm -> VTy -> Stage -> IO Tm
-check cxt t a st = case (t, force a) of
+### 4.4 Design notes (from the demo README)
+- **Stages must be unambiguous in source**: no stage metavariables/stage unification.
+  Explicit stages on every `let` turn out to make the rest of inference highly effective;
+  stage metavariables were tried in earlier prototypes and dropped as useless complexity.
+- **Contextual metavariables** abstract over mixed-stage scopes — formally *outside*
+  2LTT (no 2LTT type former crosses stages). Fine in practice; after zonking, pure 2LTT
+  syntax remains. A fresh meta's type is a closed iterated Pi over its scope (`closeTy`).
+- Coercion avoidance: `coe` returns `Nothing` for trivial coercions so e.g.
+  `(Nat0 → Nat0) ≤ (Nat0 → Nat0)` doesn't η-expand.
 
-  (P.Lam x a i t, VPi x' i' a' b) | either (\x -> x == x' && i' == Impl) (==i') i -> do
-    (a, va) <- case a of
-      Just a -> do
-        a <- checkU cxt a st
-        let va = eval (env cxt) a
-        unifyCatch cxt va a'
-        pure (a, va)
-      Nothing -> pure (quote (lvl cxt) a', a')
-    Lam x i' a <$!> check (bind cxt x va st) t (b $ VVar (lvl cxt)) st
+## 5. Unification (Unification.hs)
 
-  (P.Quote t, VLift a) ->
-    tQuote <$!> check cxt t a S0
+Pattern unification with pruning, à la elaboration-zoo, extended for staging:
+- spine inversion treats **quote/splice like a unary record's constructor/projection**
+  (analogous to Σ projections), so metas can be solved under splices;
+- meta η-expansion to eliminate splices from spines;
+- intersection/pruning for nonlinear spines; occurs check; no postponed constraints;
+- `unify` has `VLift/VLift` and `VQuote/VQuote` congruence cases; `solve` splits the
+  spine at outer non-invertible entries (e.g. `SSplice`) and η-expands as needed.
 
-  (P.Let st' x a t u, a') | st == st' -> do
-    (!a, !va, !t, !vt, !verbosity) <- case a of
-      Nothing -> do
-        (t, a) <- inferS cxt t st
-        pure (quote (lvl cxt) a, a, t, eval (env cxt) t, V1)
-      Just a -> do
-        a <- checkU cxt a st
-        let ~va = eval (env cxt) a
-        t <- check cxt t va st
-        pure (a, va, t, eval (env cxt) t, V0)
-    u <- check (define cxt x t vt a va st) u a' st
-    pure (Let st' x a t u verbosity)
+## 6. What to copy vs. reconsider
 
-  (P.Hole, a) ->
-    freshMeta cxt a st
-```
+Copy: smart constructors; stage-tagged bindings + `infer` returning stage; quote
+insertion in `check`; stuck-splice spines; zonk-before-stage; unsolved-meta staging
+error; two-domain staging with levels + closures; meta-type erasure in staging.
 
-### Inference (mode where type is synthesized):
-
-```hs
-infer :: Cxt -> P.Tm -> IO (Tm, VTy, Stage)
-infer cxt = \case
-  P.Var x -> case M.lookup x (srcNames cxt) of
-    Just (x', a, st) -> pure (Var (lvl2Ix (lvl cxt) x'), a, st)
-    Nothing          -> throwIO $ Error cxt $ NameNotInScope x
-
-  P.App t u i -> do
-    (i, t, tty, st) <- case i of
-      Left name -> do
-        (!t, !tty, !ts) <- insertUntilName cxt name $ infer cxt t
-        pure (Impl, t, tty, ts)
-      Right Impl -> do
-        (!t, !tty, !ts) <- infer cxt t
-        pure (Impl, t, tty, ts)
-      Right Expl -> do
-        (!t, !tty, !ts) <- insert' cxt $ infer cxt t
-        pure (Expl, t, tty, ts)
-
-    (!t, !a, !b) <- case force tty of
-      VPi x i' a b -> do
-        unless (i == i') $ throwIO $ Error cxt $ IcitMismatch i i'
-        pure (t, a, b)
-      tty -> do
-        a <- freshMeta cxt (VU st) st
-        b <- freshMeta (bind cxt "x" a st) (VU st) st
-        t <- coe cxt t tty st (VPi "x" i a b) st
-        pure (t, a, b)
-
-    u <- check cxt u a st
-    pure (App t u i V0, b $ eval (env cxt) u, st)
-
-  P.Quote t -> do
-    (!t, !a) <- inferS cxt t S0
-    pure (tQuote t, VLift a, S1)
-
-  P.Splice t -> do
-    (!t, !a) <- inferS cxt t S1
-    (!t, !a) <- adjustStage cxt t a S1 S0
-    pure (t, a, S0)
-```
-
-## 7. Unification (Unification.hs)
-
-Higher-order unification with pruning for implicit arguments.
-
-### Meta variable solving:
-
-```hs
-solve :: Lvl -> MetaVar -> Spine -> Val -> IO ()
-solve l m topSp topRhs = do
-  (!sp, !outer) <- pure $! splitSpine topSp
-  (!m, !sp)     <- expandVFlex m sp
-  psub          <- invert l sp
-  if isSId outer then do
-    solveWithPSub m psub topRhs
-  else case force topRhs of
-    VRigid x rhsSp -> do
-      let go SId                   sp' = solveWithPSub m psub (VRigid x sp')
-          go (SApp sp u _ _)       (SApp sp' u' _ _) = go sp sp' >> unify l u u'
-          go (SSplice sp)          (SSplice sp')     = go sp sp'
-          go (SNatElim _ p s z sp) (SNatElim _ p' s' z' sp') = unify l p p' >> unify l s s' >> unify l z z' >> go sp sp'
-          go _ _ = throwIO UnifyError
-      go outer rhsSp
-    _ -> throwIO UnifyError
-```
-
-### Main unify function:
-
-```hs
-unify :: Lvl -> Val -> Val -> IO ()
-unify l t u = case (force t, force u) of
-  (VU s        , VU s'          ) | s == s' -> pure ()
-  (VPi x i a b , VPi x' i' a' b') | i == i' -> unify l a a' >> unify (l + 1) (b $ VVar l) (b' $ VVar l)
-  (VLift t     , VLift t'       )           -> unify l t t'
-  (VQuote t    , VQuote t'      )           -> unify l t t'
-  (VRigid x sp , VRigid x' sp'  ) | x == x' -> unifySp l sp sp'
-  (VFlex m sp  , VFlex m' sp'   ) | m == m' -> intersect l m sp sp'
-                                  | True    -> flexFlex l m sp m' sp'
-  (VFlex m sp  , t'             )           -> solve l m sp t'
-  (t           , VFlex m' sp'   )           -> solve l m' sp' t
-  _                                         -> throwIO UnifyError
-```
-
-Key features:
-- **Partial substitution**: Used for inverting spines during meta solving
-- **Pruning**: Removes arguments from meta solutions to handle nonlinearity
-- **Eta-expansion**: Expands splices in spines to enable solving
-- **Occurs check**: Prevents infinite types
-
-## 8. Key design notes
-
-- **Two separate value types**: `Val1` for meta-level computation, `Val0` for object-level code. They never mix.
-- **Quote/Splice as primitives**: Quote converts object → meta (as value), splice runs meta and embeds object.
-- **Stage-annotated let**: `Let S0` for object lets, `Let S1` for meta lets.
-- **No object beta reduction during staging**: object lambdas are opaque; only meta computation runs.
-- **Bidirectional elaboration**: separate checking and inference passes.
-- **Implicit inference**: uses Agda-style implicit arguments with higher-order unification.
+Reconsider per design: the coercive-subtyping repair (powerful but complex — a hard
+stage error is the simple alternative); full object β in conversion (fits the 2022-style
+object theory; a CFTT-style object language wants weak object equality instead — see
+`kovacs-2024-closure-free-2ltt.md` §2.4); type-in-type (demo-only shortcut).

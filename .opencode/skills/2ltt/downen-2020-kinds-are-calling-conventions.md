@@ -1,87 +1,125 @@
-# Downen/Ariola/Peyton Jones/Eisenberg 2020 — *Kinds Are Calling Conventions* (substantive rewrite, implementation-focused)
+# Downen/Ariola/Peyton Jones/Eisenberg 2020 — *Kinds Are Calling Conventions* (implementation-oriented rewrite)
 
-This note extracts and rewrites the parts most relevant to implementing a staged language where types carry low-level compilation information.
+An intermediate language (**IL**) where the *kind* of a type carries everything codegen
+needs: representation, evaluation strategy, and function arity. Polymorphic code compiles
+to a single block of machine code (type erasure, no monomorphization), with kind-level
+side conditions ruling out exactly the uncompilable cases.
 
-## 1. Motivation: polymorphism vs efficient code
+## 1. The three axes
 
-Polymorphism is great for source languages, but compilers need concrete calling conventions and concrete representations to generate efficient code.
+- **Representation** — how a value is stored (heap pointer, machine int, …). Determines
+  registers/moves.
+- **Levity** — `L` (lifted: may be a thunk, evaluated lazily) vs `U` (unlifted: always a
+  value, evaluated eagerly). Lets one IL serve both eager and lazy source languages.
+- **Arity** — how many arguments (and of what representations) a primitive function
+  needs before it does work; determines the call sequence.
 
-This work proposes an intermediate language (IL) where you can still write polymorphic programs, but the type/kind system tracks:
-- runtime representation of values (boxed pointer vs unboxed int, etc.)
-- arity / calling convention information for functions
-- evaluation order / strictness (e.g. call-by-name vs call-by-value variants)
+Arity is *intensional* — types like `Int → Int → Int` don't determine it (`λx λy. e` has
+arity 2; `λx. let z = expensive x in λy. e` has arity 1). The IL exists to *memorialize*
+the result of an arity analysis, not to perform it.
 
-Key slogan:
-- store calling-convention info in **kinds** (or kind-like indices), not as ad-hoc compiler metadata.
+## 2. Kind grammar
 
-## 2. "Boxing/unboxing is explicit" as an optimizer-enabling design
+```
+κ ::= TYPE ρ ν                     -- every type former yields TYPE ρ ν
+ρ ::= r | PtrR | IntR | ...        -- representation (r: rep variable)
+γ ::= g | L | U                    -- levity (g: levity variable)
+ν ::= n | Eval γ | Call[α]         -- convention (n: convention variable)
+α ::= ρ, α | ε | arity(ν)          -- arity: list of argument reps
+```
 
-A recurring pattern in the IL:
-- There is a primitive/unboxed representation (fast, low-level)
-- There is a boxed/wrapped representation (uniform, convenient)
-- There are explicit constructors/destructors to move between them
+A type's convention is *either* `Eval γ` (data: levity) *or* `Call[α]` (primitive
+function: arity) — functions are **called, not evaluated**, so they have no levity.
+Examples:
 
-Examples discussed include:
-- closure wrappers for arity/evaluation control (`Clos`/`App`)
-- boxed vs unboxed integers (`I#` and case on `I#`)
+```
+Int# : TYPE IntR (Eval U)          IntL : TYPE PtrR (Eval L)
+Int# ⤳ Int# ⤳ Int# : TYPE PtrR Call[IntR, IntR]
+```
 
-Implementation takeaway for a staged system:
-- if metaprograms can choose representations, you want those choices reflected explicitly in the object language output so downstream optimization is simpler and more reliable.
+Haskell's default kind `★` = `TYPE PtrR (Eval L)`; an eager language's default is
+`TYPE PtrR (Eval U)`. Function-type formation *concatenates* arities: if
+`τ₁ : TYPE ρ₁ ν₁` and `τ₂ : TYPE ρ' Call[ρ₂,…,ρₘ]` then
+`τ₁ ⤳ τ₂ : TYPE PtrR Call[ρ₁,ρ₂,…,ρₘ]` (if `τ₂` is `Eval γ`, arity is just `[ρ₁]`);
+`arity(ν)` may be stuck on a convention variable. `∀` is kind-transparent (erased at
+runtime) but its variable must not escape into the kind.
 
-## 3. Indexing types by representation and convention (core technique)
+## 3. Explicit boxing, in two parallel instances
 
-A simplified view of the IL's approach:
+The same box/unbox pattern applies to representations and to arities; making both
+explicit in IL is what lets the optimizer remove redundant round-trips:
 
-### 3.1 Representation indices
-Introduce a kind/index `Rep` describing runtime storage (pointer, int register, etc.).
+| primitive (fast) | boxed (uniform) | box | unbox |
+|---|---|---|---|
+| `Int#` (machine int) | `Int γ` (heap) | `I# e` | `case e of I# x → …` |
+| `τ ⤳ σ` (arity-n code) | `γ{τ ⤳ σ}` (closure) | `Clos e` | `App e` |
 
-Then define a family `TYPE : Rep -> *` (or "types classified by representation").
-So a type is not just `Int`, but `Int : TYPE IntR` (illustrative).
+`Clos`/`App` convert between statically-called primitive functions and first-class
+closures with a uniform (arity-1-ish) calling convention. Wherever a function must be
+stored, passed at unknown convention, or kept as a value after erasure (e.g. CBV source
+lambdas), it gets `Clos`-boxed.
 
-### 3.2 Conventions / levity / evaluation order indices
-In addition to representation, the paper supports indices that describe:
-- evaluation strategy of arguments/results
-- function arity / calling protocol
-- (and related "levity polymorphism" concerns)
+## 4. Polymorphism restrictions: `mono-rep` / `mono-conv`
 
-The point is to precisely control what can be polymorphic:
-- some functions can be representation-polymorphic
-- but some combinations are rejected because codegen would not know how to pass arguments
+Instead of forbidding quantification over unboxed/function kinds (GHC's old "draconian"
+rule — too restrictive, and broken by kind polymorphism), IL allows *all* quantification
+and puts **side conditions on the term rules**:
 
-The paper gives examples where a seemingly innocent "polymorphic application helper" must be rejected unless it restricts representations to pointer-like ones, because otherwise the call sequence is not statically determined.
+```
+Fun-I: λx:τ. e   requires  τ mono-rep
+Fun-E: e e'      requires  τ mono-rep  and  τ mono-conv   (τ = argument type)
+Clo-I: Clos e    requires the function's arity to be statically known
+```
 
-## 4. Type system structure (what to reuse)
+`mono-rep`/`mono-conv` = the representation/convention contains no variables. Rationale:
+compiling an *application* requires knowing how the argument is stored (rep) and when to
+evaluate it / what code shape to build for it (conv). A variant rule (`Fun-A-E`) relaxes
+`mono-conv` when the argument is syntactically an answer (value) — lazy vs eager is then
+indistinguishable. These conditions are validated by the lowering translation (§6): they
+are exactly what the compilation scheme needs, no more.
 
-The IL has typing rules that:
-- prevent "unknown representation" values from being used in ways that require a concrete calling convention
-- ensure you only call primitive ops with the right number/kind of arguments
-- ensure closure wrappers are used where needed to preserve language-level semantics (e.g. call-by-value polymorphic lambdas must remain values after erasure)
+What *can* be polymorphic — perhaps surprisingly much:
+- `error : ∀ (r : Rep) (a : TYPE r ν). String → a` — never returns, so the result rep
+  is irrelevant; one code block serves all instantiations.
+- Return types may be rep/levity-polymorphic thanks to tail calls (the callee returns to
+  the caller's caller): `revapp : ∀ n r g (t₁ : TYPE PtrR n) (t₂ : TYPE r (Eval g)). t₁ ⤳ (t₁ ⤳ t₂) ⤳ t₂`
+  — `t₁` may be convention-polymorphic (only moved, never called/evaluated) but must be
+  pointer-represented; `t₂` fully rep/levity-polymorphic but *not* conv-polymorphic
+  (the λ-bound `f` gets called, so its arity must be known).
+- `twice f x = f (f x)` must fix `Eval L` *or* `Eval U` for the intermediate result —
+  polymorphism boundaries are exactly where a strategy decision is forced.
+- Data types may be levity/convention-polymorphic:
+  `data List (g : Lev) (n : Conv) (t : TYPE PtrR n)`; a fully strict function like `sum`
+  is levity-polymorphic in everything, while `map` must pick the result spine's levity
+  (it changes evaluation order — same IL definition, different machine code).
 
-Implementation takeaway for 2LTT/CFTT:
-- if you want *layout control* as a staged feature, adopt the same discipline:
-  make representation/convention indices part of object typing, so unstaging outputs code that is already "codegen-determined".
+## 5. Equational theory: substitutability by type, not syntax
 
-## 5. How this complements 2LTT
+β for primitive functions fires only on **substitutable** arguments `S`, defined by
+*kind*: all answers are substitutable; any expression of `Eval L` type is substitutable
+(CBN-style); `Eval U` arguments must be reduced to answers first (CBV-style). This
+integrates multiple evaluation orders in one calculus. Primitive function types enjoy
+**unrestricted η** (in both directions) — precisely because functions cannot be observed,
+only called. (Same property Kovács cites for CFTT's object language.)
 
-2LTT gives you:
-- a meta language where you can compute programs/types
+## 6. Lowering to machine language (ML)
 
-KACC gives you:
-- a way to make the object language's types rich enough to express low-level calling/representation choices safely
+IL compiles (kind-directed, type-erasing) to **ML**: uncurried, fully η-expanded
+functions, fully saturated calls, types = representations only. E.g. arity-3 `g` becomes
+`λ(x:PtrR, y:PtrR, z:IntR). …` and every call site passes all three at once. The paper
+also gives CBN and CBV System F translations *into* IL (CBN: everything `★ = TYPE PtrR
+(Eval L)`; CBV: functions must be `Clos`-boxed to stay values), with correctness theorems
+end-to-end. §7 adds optional *dynamic* arity dispatch on closures (runtime arity check to
+use the best available calling convention).
 
-Combined design sketch:
-- Meta level computes object types that include representation indices.
-- Unstaging produces an IL-like object program whose typing guarantees calling convention correctness.
+## 7. Use with a 2LTT
 
-This is especially relevant if you want to reproduce "memory layout control" / "monomorphization-by-staging" style applications mentioned in the staging literature.
-
-## 6. Practical "minimum viable" adaptation
-
-If the full IL is too large, start with:
-- `Rep = Ptr | I64 | F64 | ...`
-- `Ty rep` object types, so every object term is typed with a rep
-- restrict polymorphism so that:
-  - fully representation-polymorphic functions can only do things that are representation-agnostic
-  - calling a function at a rep-polymorphic type is restricted unless you wrap it into a uniform calling convention (closure) that erases the rep differences
-
-This gives you a stepping stone toward the richer kind discipline described in the paper.
+KACC is orthogonal kit for the *object language*: index object types by
+rep/levity/arity so unstaging emits codegen-determined code. In a 2LTT the meta level
+replaces IL's quantifiers: rep/levity/arity polymorphism becomes meta-level abstraction
+that staging eliminates, so the `mono-*` side conditions reappear as "these indices must
+be canonical by staging time" (cf. the memory-representation-polymorphism variation in
+`kovacs-2022-staged-compilation-2ltt.md` §5.2, and the CFTT ≈ simply-typed-IL-fragment
+remark in `kovacs-2024-closure-free-2ltt.md` §7). A minimal adaptation: `Rep` as a meta
+type, object types indexed by `Rep`, and — if functions are first-class — a `Clos`-style
+boxing former to recover uniform representation where needed.
