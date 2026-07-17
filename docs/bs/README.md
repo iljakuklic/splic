@@ -27,3 +27,4 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 
 - [prototype_next.md](prototype_next.md) — Next steps after basic prototype (phases: staging, meta functions, dependent types)
 - [quality.md](quality.md) — Clippy lint philosophy and workflow
+- [2ltt_conformance_2026_07_17.md](2ltt_conformance_2026_07_17.md) — Audit of the implementation against 2LTT theory and the reference implementation (soundness bugs, conversion gaps, design decisions)
