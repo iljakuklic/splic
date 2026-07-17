@@ -123,6 +123,50 @@ either way. [#112](https://github.com/iljakuklic/splic/issues/112)
 - `Prim::Embed` does not range-mask its argument; unreachable with well-typed
   input today, but worth an assert once the soundness holes close.
 
+## Suggested remediation order
+
+The dependency structure suggests the following order. The pivotal constraint:
+the [#112](https://github.com/iljakuklic/splic/issues/112) design decision
+gates the *shape* of the [#74](https://github.com/iljakuklic/splic/issues/74)
+fix (under CFTT-style weak equality, object matches stay structural in
+conversion always and object lets stop unfolding, which changes what the
+stuck-match neutral must represent), so decide before implementing.
+
+1. **[#113](https://github.com/iljakuklic/splic/issues/113)** — trivial fix,
+   no dependencies; dependent `let` annotations are useful for test cases for
+   everything below.
+2. **[#114](https://github.com/iljakuklic/splic/issues/114)** — pin down the
+   staging pass's currently-correct behaviour *before* evaluator surgery. Add
+   this audit's probe programs as regression tests at the same time (they flip
+   to "expected: clean error" as fixes land).
+3. **[#27](https://github.com/iljakuklic/splic/issues/27)** — mechanical,
+   independent, closes both ICEs; makes the staging pass's "typechecker
+   invariant" panics trustworthy assumptions for later work.
+4. **[#112](https://github.com/iljakuklic/splic/issues/112)** — cheap (a
+   decision plus a doc), but must precede #74 for the reason above.
+5. **[#74](https://github.com/iljakuklic/splic/issues/74)** — the unsoundness
+   fix, implemented per #112's choice. Highest-value single change: closes the
+   `42_u0` hole, removes the `expected_term` threading, and un-deadens
+   `alpha_eq`'s match case (fix its binder-name comparison in the same change).
+6. **[#110](https://github.com/iljakuklic/splic/issues/110) plus a minimal
+   [#72](https://github.com/iljakuklic/splic/issues/72)** — δ-unfolding paired
+   with signatures seeing previously-defined globals (defer the
+   metavariable/forward-reference machinery). These only pay off together;
+   afterwards, type families across definitions work.
+7. **[#48](https://github.com/iljakuklic/splic/issues/48), minimal slice** —
+   compute meta-phase primitives in the checker's evaluator, mirroring the
+   staging evaluator's wrapping semantics. Defer the `Nat`/size-index design
+   until there is a concrete consumer (e.g. `Vec`); η can ride along or wait.
+8. **[#111](https://github.com/iljakuklic/splic/issues/111)** — last; the
+   largest change (staging must evaluate object-type positions, `MetaVal::Ty`
+   splits into erased-meta vs staged-object types) and it builds on #27, #110,
+   and #112. Natural point to revisit #78 and #91.
+
+Steps 1–3 are freely permutable; keep all three ahead of the evaluator work.
+If a single most-urgent pick is needed, it is the #112 → #74 pair: that is the
+only confirmed path to silently wrong staged output, whereas the #27 holes at
+least fail loudly.
+
 ## What conforms (verified, no action needed)
 
 - **Staging pass** (`staging/mod.rs`): separate pass; two value domains; meta
