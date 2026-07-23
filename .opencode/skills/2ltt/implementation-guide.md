@@ -20,7 +20,7 @@ Two distinct evaluation mechanisms, easy to conflate:
    (*strictness*), regardless of what conversion does.
 
 Both are NbE-style: eval into a semantic domain with De Bruijn levels + closures, read
-back into syntax with indices. See `demo-implementation.md` for the reference shapes
+back into syntax with indices. See [`demo-implementation.md`](demo-implementation.md) for the reference shapes
 (§2 conversion evaluator, §3 two-domain staging evaluator).
 
 ## 2. Design decisions to make up front
@@ -48,7 +48,7 @@ return `(Term, VTy, Stage)`. On a stage mismatch there are two designs:
   (insert splice), optionally `U0 ≤ U1` (insert `Lift`), with contravariant/covariant
   function rule. Powerful inference (quotes/splices mostly disappear from surface
   syntax); costs a coercion pass, explicit weakening in the core, coercion-avoidance
-  logic. See `demo-implementation.md` §4.2–4.3.
+  logic. See [`demo-implementation.md`](demo-implementation.md) §4.2–4.3.
 - **Reject**: hard "stage mismatch" error at the point of use. Much simpler; forces
   explicit staging operators in the surface language. Fine as a first iteration —
   the type structure is identical, only elaboration ergonomics differ.
@@ -59,12 +59,12 @@ effective and stage unification unnecessary.
 
 ### 2.3 Optional extensions (see the respective files)
 - Closure-free discipline `ValTy`/`CompTy`, computation products, call saturation —
-  `kovacs-2024-closure-free-2ltt.md` §2.
+  [`kovacs-2024-closure-free-2ltt.md`](kovacs-2024-closure-free-2ltt.md) §2.
 - Representation/arity/levity indexing of object types —
-  `downen-2020-kinds-are-calling-conventions.md`; meta-level `Rep` indexing —
-  `kovacs-2022-staged-compilation-2ltt.md` §5.2.
+  [`downen-2020-kinds-are-calling-conventions.md`](downen-2020-kinds-are-calling-conventions.md); meta-level `Rep` indexing —
+  [`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md) §5.2.
 - Intensional analysis (needs a non-standard setup) —
-  `kovacs-2022-staged-compilation-2ltt.md` §6.
+  [`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md) §6.
 
 ## 3. NbE core (checker)
 
@@ -118,7 +118,7 @@ These invariants prevent whole classes of bugs:
 
 ## 5. Staging pass essentials
 
-(Reference shape: `demo-implementation.md` §3.)
+(Reference shape: [`demo-implementation.md`](demo-implementation.md) §3.)
 
 - Separate pass over elaborated (zonked) syntax; do not reuse the conversion evaluator.
 - **Two value domains**: meta values (functions-as-closures, inductive values, quoted
@@ -138,7 +138,7 @@ These invariants prevent whole classes of bugs:
 Meta-level use of object code duplicates it (using `x : ⇑A` twice pastes the expression
 twice). The toolkit — `Gen` monad (CPS let-insertion, polymorphic answer type),
 `gen`/`genRec`, case-splitting via `Split`, join points via `MonadJoin` + SOP — is
-library-level metaprogramming, specified in `kovacs-2024-closure-free-2ltt.md` §3–4.
+library-level metaprogramming, specified in [`kovacs-2024-closure-free-2ltt.md`](kovacs-2024-closure-free-2ltt.md) §3–4.
 A staged compiler doesn't need built-in support, but its object language must offer
 `let`/`letrec` insertable at arbitrary positions for these libraries to be writable.
 Deduplication/caching of generated code across splice sites is an open engineering
@@ -165,25 +165,6 @@ problem (flagged in both papers).
   branch `01-eval-closures-debruijn` is the minimal NbE + De Bruijn reference;
   later branches add metas/implicits.
 - **staged demo** (Kovács): https://github.com/AndrasKovacs/staged/tree/main/demo —
-  full 2LTT elaborator + stager; excerpted in `demo-implementation.md`. The repo also
+  full 2LTT elaborator + stager; excerpted in [`demo-implementation.md`](demo-implementation.md). The repo also
   contains the LaTeX sources of both Kovács papers and an Agda embedding of CFTT
   (`icfp24paper/supplement`).
-
-## 9. Glossary
-
-| Term | Definition |
-|------|-----------|
-| **Stage** | 0 = object/runtime, 1 = meta/compile-time. Some implementations say "phase". |
-| **Lift `⇑A`** | Meta type of metaprograms producing object code of type `A`. |
-| **Quote `⟨t⟩`** | Staging intro: object term `t : A` as meta value of `⇑A`. |
-| **Splice `∼t`** | Staging elim: run `t : ⇑A` during staging, insert resulting object term. |
-| **Staging / unstaging** | Running all metaprograms; output is splice-free object code. Same operation, two names (2022 / 2024 papers). |
-| **Soundness / stability / strictness** | Staging output ≈ input up to conversion / staging is identity on object code / staging preserves object term formers exactly. |
-| **NbE** | Normalization by evaluation: eval syntax → semantic values, read back to syntax. |
-| **Read-back ("quotation" in NbE jargon)** | `Lvl → Value → Term`. Not the staging quote. |
-| **Neutral** | Value stuck on a variable/meta, carrying a spine of pending eliminations. |
-| **Closure** | Captured environment + unevaluated body; applied by environment extension. |
-| **De Bruijn index / level** | Count from nearest binder (syntax) / from outermost (values). |
-| **Zonk** | Inline solved metavariables into a term. |
-| **Binding-time improvement** | Rewriting toward meta-level structure (e.g. `⇑(A→B)` → `⇑A→⇑B`) so more computes at staging time. |
-| **Generativity** | Metaprograms can't inspect object terms; internalizable as an axiom (CFTT). |

@@ -1,7 +1,7 @@
 # Reference implementation (Kovács `staged` demo)
 
 Code-level reference for https://github.com/AndrasKovacs/staged/tree/main/demo — the
-prototype accompanying the 2022 paper (theory: `kovacs-2022-staged-compilation-2ltt.md`).
+prototype accompanying the 2022 paper (theory: [`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md)).
 Features: two stages, dependent functions, type-in-type (no sigma; data is
 lambda-encoded), `Nat` at both stages, Agda-style implicits with higher-order
 unification, and strong inference for staging operations.
@@ -146,7 +146,7 @@ build closed Pi types for fresh metas cheaply. `bind` (bound var), `newBinder`
 There is **no stage check at variable lookup** — `infer (Var x)` just returns the stored
 stage. Mismatches between inferred and expected stage/type are *repaired* by coercive
 subtyping (rules `A ≤ ⇑A`, `⇑A ≤ A`, `U0 ≤ U1`; theory in
-`kovacs-2022-staged-compilation-2ltt.md` §3.3):
+[`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md) §3.3):
 
 ```hs
 adjustStage cxt t a s s'    -- move (t : a : U s) to stage s'
@@ -226,4 +226,4 @@ error; two-domain staging with levels + closures; meta-type erasure in staging.
 Reconsider per design: the coercive-subtyping repair (powerful but complex — a hard
 stage error is the simple alternative); full object β in conversion (fits the 2022-style
 object theory; a CFTT-style object language wants weak object equality instead — see
-`kovacs-2024-closure-free-2ltt.md` §2.4); type-in-type (demo-only shortcut).
+[`kovacs-2024-closure-free-2ltt.md`](kovacs-2024-closure-free-2ltt.md) §2.4); type-in-type (demo-only shortcut).

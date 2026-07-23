@@ -28,13 +28,13 @@ This skill is derived from (and intended to be read alongside) the following sou
    *ICFP 2022 presentation slides: Staged Compilation with Two-Level Type Theory.*
    Presented 12 September 2022, ICFP Ljubljana.
    https://github.com/AndrasKovacs/staged/blob/main/icfp22prez/ICFP-Kov%C3%A1cs-StagedCompilationwithTwoLevelTypeTheory.pdf
-   (Content folded into `kovacs-2022-staged-compilation-2ltt.md`; no separate notes file.)
+   (Content folded into [`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md); no separate notes file.)
 
 ## Reference implementations
 
 5. András Kovács. *staged* — demo implementation, paper sources, Agda embeddings.
    https://github.com/AndrasKovacs/staged
-   (The `demo/` directory and its `README.md` are the basis of `demo-implementation.md`.)
+   (The `demo/` directory and its `README.md` are the basis of [`demo-implementation.md`](demo-implementation.md).)
 
 6. András Kovács. *elaboration-zoo* — minimal NbE / bidirectional elaboration
    references (see branch `01-eval-closures-debruijn` and later branches for

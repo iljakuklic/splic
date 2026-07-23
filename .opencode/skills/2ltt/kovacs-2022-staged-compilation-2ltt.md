@@ -107,7 +107,7 @@ Extract a **coercive subtyping** system used during bidirectional elaboration:
 When comparing inferred vs. expected type, insert coercions. With this plus Agda-style
 implicits + pattern unification, `map` can be written with no quotes/splices at all.
 Where the elaborator must choose between improved/unimproved types, default to
-**improved**, with explicit lifting to opt out. (See `demo-implementation.md` for the
+**improved**, with explicit lifting to opt out. (See [`demo-implementation.md`](demo-implementation.md) for the
 actual algorithm, including coercion avoidance.)
 
 ## 4. Staging: definition, algorithm, correctness (§3–5)
@@ -199,7 +199,7 @@ Refinement: internalize representations as a meta type and index runtime types b
 `Rep` is meta-level, so it cannot be abstracted over at runtime; staging computes all
 `Rep` indices to canonical representations. This reconciles dependent types with memory
 layout control. (Compare *Kinds Are Calling Conventions* for a much richer treatment of
-the same axis — see `downen-2020-kinds-are-calling-conventions.md`.)
+the same axis — see [`downen-2020-kinds-are-calling-conventions.md`](downen-2020-kinds-are-calling-conventions.md).)
 
 ## 6. Intensional analysis (§6)
 

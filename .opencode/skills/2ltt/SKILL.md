@@ -13,29 +13,32 @@ and the staging algorithm that runs metaprograms to produce splice-free object c
 
 ## Files (each owns its topic; minimal overlap)
 
-1. **`implementation-guide.md`** — start here. Pipeline architecture, the up-front
+1. **[`implementation-guide.md`](implementation-guide.md)** — start here. Pipeline architecture, the up-front
    design decisions (object-equality strength, stage repair vs. reject), NbE core,
-   elaboration guardrails, staging-pass essentials, pitfalls checklist, glossary.
+   elaboration guardrails, staging-pass essentials, pitfalls checklist.
 
-2. **`demo-implementation.md`** — code-level walkthrough of the reference Haskell
+2. **[`demo-implementation.md`](demo-implementation.md)** — code-level walkthrough of the reference Haskell
    implementation (https://github.com/AndrasKovacs/staged): core syntax, conversion
    evaluator with stuck splices, two-domain staging evaluator, coercive-subtyping
    elaboration, unification extensions, what to copy vs. reconsider.
 
-3. **`kovacs-2022-staged-compilation-2ltt.md`** — the core theory (*Staged Compilation
+3. **[`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md)** — the core theory (*Staged Compilation
    with Two-Level Type Theory*): rules, programming patterns, binding-time improvement
    and inference, staging-by-evaluation with soundness/stability/strictness,
    object-language variations (monomorphization, representation polymorphism),
    intensional-analysis options. Also covers the ICFP'22 slides' examples.
 
-4. **`kovacs-2024-closure-free-2ltt.md`** — the CFTT deltas (*Closure-Free Functional
+4. **[`kovacs-2024-closure-free-2ltt.md`](kovacs-2024-closure-free-2ltt.md)** — the CFTT deltas (*Closure-Free Functional
    Programming in a 2LTT*): first-order object language with `ValTy`/`CompTy`, weak
    object equality, `Gen`/let-insertion, `Improve` monad library, join points + SOP,
    stream fusion, generativity axiom.
 
-5. **`downen-2020-kinds-are-calling-conventions.md`** — optional layout/arity control:
+5. **[`downen-2020-kinds-are-calling-conventions.md`](downen-2020-kinds-are-calling-conventions.md)** — optional layout/arity control:
    `TYPE ρ ν` kinds, levity, `mono-rep`/`mono-conv` restrictions, closure boxing,
    lowering to machine language; how it composes with a 2LTT.
+
+6. **[`glossary.md`](glossary.md)** — shared terminology (stage, lift/quote/splice,
+   NbE, read-back, neutral, closure, zonk, binding-time improvement, generativity).
 
 ## When to use me
 
@@ -52,7 +55,7 @@ and the staging algorithm that runs metaprograms to produce splice-free object c
   code (strictness). Whether *conversion checking* computes object redexes depends on
   the chosen object theory: full-MLTT object level (2022) — yes; CFTT-style first-order
   object level — no β/η/let-unfolding at all. Pick one coherently
-  (`implementation-guide.md` §2.1).
+  ([`implementation-guide.md`](implementation-guide.md) §2.1).
 - **`infer` returns `(Term, VTy, Stage)`** — never reconstruct types (or stages) from
   elaborated terms afterwards.
 - **`checkU`** — when a term must be a type, check it against `U s` directly; don't

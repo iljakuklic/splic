@@ -15,7 +15,7 @@ side conditions ruling out exactly the uncompilable cases.
   needs before it does work; determines the call sequence.
 
 Arity is *intensional* — types like `Int → Int → Int` don't determine it (`λx λy. e` has
-arity 2; `λx. let z = expensive x in λy. e` has arity 1). The IL exists to *memorialize*
+arity 2; `λx. let z = expensive x in λy. e` has arity 1). The IL exists to *record*
 the result of an arity analysis, not to perform it.
 
 ## 2. Kind grammar
@@ -119,7 +119,7 @@ rep/levity/arity so unstaging emits codegen-determined code. In a 2LTT the meta 
 replaces IL's quantifiers: rep/levity/arity polymorphism becomes meta-level abstraction
 that staging eliminates, so the `mono-*` side conditions reappear as "these indices must
 be canonical by staging time" (cf. the memory-representation-polymorphism variation in
-`kovacs-2022-staged-compilation-2ltt.md` §5.2, and the CFTT ≈ simply-typed-IL-fragment
-remark in `kovacs-2024-closure-free-2ltt.md` §7). A minimal adaptation: `Rep` as a meta
+[`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md) §5.2, and the CFTT ≈ simply-typed-IL-fragment
+remark in [`kovacs-2024-closure-free-2ltt.md`](kovacs-2024-closure-free-2ltt.md) §7). A minimal adaptation: `Rep` as a meta
 type, object types indexed by `Rep`, and — if functions are first-class — a `Clos`-style
 boxing former to recover uniform representation where needed.

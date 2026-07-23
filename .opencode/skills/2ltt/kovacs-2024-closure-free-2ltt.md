@@ -4,7 +4,7 @@ Checked against the paper's LaTeX source. The system is called **CFTT** ("closur
 type theory"). This file only covers what CFTT *adds or changes* relative to the 2022
 2LTT — for the shared core (lift/quote/splice rules, staging-by-evaluation,
 soundness/stability/strictness, binding-time improvement, inference) see
-`kovacs-2022-staged-compilation-2ltt.md`.
+[`kovacs-2022-staged-compilation-2ltt.md`](kovacs-2022-staged-compilation-2ltt.md).
 
 Terminology: this paper says **unstaging** for what the 2022 paper calls "staging"
 (running metaprograms in splices to extract object code). Same thing.
@@ -214,5 +214,5 @@ which vanish if users respect the discipline.
 - Downstream compiler still wants: dead code elimination, unused-arg removal,
   de-duplication of generated code.
 - The object language is close to a simply-typed fragment of the KACC intermediate
-  language (see `downen-2020-kinds-are-calling-conventions.md`): function types distinct
+  language (see [`downen-2020-kinds-are-calling-conventions.md`](downen-2020-kinds-are-calling-conventions.md)): function types distinct
   from closure types, universal η, explicit arity — KACC lacks only `letrec`.
