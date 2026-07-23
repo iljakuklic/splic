@@ -37,6 +37,13 @@ Int# : TYPE IntR (Eval U)          IntL : TYPE PtrR (Eval L)
 Int# ⤳ Int# ⤳ Int# : TYPE PtrR Call[IntR, IntR]
 ```
 
+Reading the arrow kind: the representation `PtrR` is that of **the function value
+itself** — a code/closure pointer — *not* of anything it takes or returns; the arity
+`Call[IntR, IntR]` lists **only the argument** reps. The **return type's representation
+never appears in the kind**: `Int# ⤳ Int#` and `Int# ⤳ Bool#` both have kind
+`TYPE PtrR Call[IntR]`. That omission is deliberate — it is what lets return types stay
+representation/levity-polymorphic (§4, tail-call return convention).
+
 Haskell's default kind `★` = `TYPE PtrR (Eval L)`; an eager language's default is
 `TYPE PtrR (Eval U)`. Function-type formation *concatenates* arities: if
 `τ₁ : TYPE ρ₁ ν₁` and `τ₂ : TYPE ρ' Call[ρ₂,…,ρₘ]` then
