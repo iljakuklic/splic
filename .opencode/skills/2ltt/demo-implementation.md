@@ -157,16 +157,17 @@ adjustStage cxt t a s s'    -- move (t : a : U s) to stage s'
       a       -> do m <- freshMeta (VU S0) S0        -- a must be ⇑?m
                     unifyCatch cxt a (VLift m)
                     (tSplice t, m)
-
-coe cxt t a s a' s'         -- full coercion (t : a : U s) to (a' : U s')
-  -- Pi vs Pi: contravariant/covariant, η-expanding with Wk for the shifted body;
-  --   tracks "trivial coercion" (Nothing) to avoid inserting useless η-expansions
-  -- (VU S0, VU S1)      -> Lift t                   -- U0 ≤ U1 witnessed by Lift
-  -- (VLift a, VLift a') -> unify a a'
-  -- (VLift a, a')       -> coe (tSplice t) ...      -- unwrap and retry
-  -- (a, VLift a')       -> tQuote <$> coe t ...
-  -- otherwise           -> adjustStage then unify
 ```
+
+`coe cxt t a s a' s'` (full coercion of `t : a : U s` to `a' : U s'`) dispatches on
+`(force a, force a')`:
+- **Pi vs Pi** — contravariant/covariant, η-expanding with `Wk` for the shifted body;
+  tracks a "trivial coercion" (`Nothing`) to avoid inserting useless η-expansions.
+- `(VU S0, VU S1)` → `Lift t` — `U0 ≤ U1`, witnessed by `Lift`.
+- `(VLift a, VLift a')` → `unify a a'`.
+- `(VLift a, a')` → `coe (tSplice t) …` — unwrap and retry.
+- `(a, VLift a')` → `tQuote <$> coe t …`.
+- otherwise → `adjustStage` then `unify`.
 
 `Wk` (explicit weakening) exists solely so `coe` can reuse `t` under the binders it
 introduces. Stage errors thus surface as *unification* failures, not as a dedicated
