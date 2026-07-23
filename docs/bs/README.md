@@ -20,6 +20,7 @@ The folder name, `bs`, stands for brainstorming. Obviously.
 - [self_typed_ir.md](self_typed_ir.md) — Self-typed core IR and a future `type_of` method
 - [prototype_eval.md](prototype_eval.md) — Evaluator design and implementation sequence (substitution → spines → dependent types)
 - [nbe_and_debruijn.md](nbe_and_debruijn.md) — Normalization by Evaluation, De Bruijn indices vs levels, free variable index shifting in staging
+- [2ltt-notes.md](2ltt-notes.md) — Definitional vs propositional equality, conversion vs staging, weak object equality, intensional analysis, and the rules for adding implicit coercions
 - [pi_types.md](pi_types.md) — Dependent function types (Pi) and lambdas at the meta level (implementation details and NbE type checking)
 - [wasm_backend.md](wasm_backend.md) — WebAssembly backend design: type mapping, u0 erasure, wrapping semantics
 
