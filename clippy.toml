@@ -1,0 +1,5 @@
+# ref-cast 1.0.26 pulls in syn 3.0.3 while every other proc-macro dependency
+# (clap_derive, derive_more-impl, bolero-generator-derive, rstest_macros, ...)
+# still depends on syn 2.0.117. syn is a compile-time-only dependency, so the
+# duplicate has no effect on the built artifact; suppress the cargo lint for it.
+allowed-duplicate-crates = ["syn"]
