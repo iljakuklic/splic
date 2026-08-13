@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - run: rustup component add rustfmt
-      - uses: taiki-e/install-action@v2.85.4
+      - uses: taiki-e/install-action@v2.85.11
         with:
           tool: just
       - name: Check formatting
@@ -29,10 +29,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7.0.1
       - run: rustup component add clippy
-      - uses: taiki-e/install-action@v2.85.4
+      - uses: taiki-e/install-action@v2.85.11
         with:
           tool: just
-      - uses: Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@v2.9.2
       - name: Clippy
         run: just clippy
 
@@ -41,10 +41,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: taiki-e/install-action@v2.85.4
+      - uses: taiki-e/install-action@v2.85.11
         with:
           tool: just
-      - uses: Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@v2.9.2
       - name: Check rustdocs
         run: just ci::check-doc
 
@@ -53,9 +53,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7.0.1
-      - uses: taiki-e/install-action@v2.85.4
+      - uses: taiki-e/install-action@v2.85.11
         with:
           tool: just
-      - uses: Swatinem/rust-cache@v2.9.1
+      - uses: Swatinem/rust-cache@v2.9.2
       - name: Run tests
         run: just ci::test
