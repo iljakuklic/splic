@@ -17,4 +17,4 @@ ref-cast.workspace = true
 [dev-dependencies]
 bolero.workspace = true
 expect-test = "1.5"
-rstest = "0.26"
+rstest = "0.27"
