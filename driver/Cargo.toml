@@ -21,4 +21,4 @@ bumpalo.workspace = true
 splic-driver = { path = ".", features = ["backend-wasm"] }
 expect-test = "1.5"
 rstest = "0.27"
-wasmprinter = { version = "0.258", default-features = false }
+wasmprinter = { version = "0.259", default-features = false }
