@@ -138,7 +138,8 @@ stuck-match neutral must represent), so decide before implementing.
 2. **[#114](https://github.com/iljakuklic/splic/issues/114)** — pin down the
    staging pass's currently-correct behaviour *before* evaluator surgery. Add
    this audit's probe programs as regression tests at the same time (they flip
-   to "expected: clean error" as fixes land).
+   to "expected: clean error" as fixes land). The probes for #74, #27, #48,
+   and #72/#110 are already pinned in `driver/tests/known_issues.rs`.
 3. **[#27](https://github.com/iljakuklic/splic/issues/27)** — mechanical,
    independent, closes both ICEs; makes the staging pass's "typechecker
    invariant" panics trustworthy assumptions for later work.
