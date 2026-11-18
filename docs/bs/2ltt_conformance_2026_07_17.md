@@ -118,10 +118,13 @@ either way. [#112](https://github.com/iljakuklic/splic/issues/112)
   [#114](https://github.com/iljakuklic/splic/issues/114)
 - No `tQuote`/`tSplice` smart constructors on elaborated terms; cancellation
   exists only at the value level. Cosmetic (smaller core terms).
+  [#130](https://github.com/iljakuklic/splic/issues/130)
 - `TODO(#24)`: match-bound variables get a hardcoded meta-`u64` value in
   `eval` — also silently mis-phases object scrutinees.
+  [#24](https://github.com/iljakuklic/splic/issues/24)
 - `Prim::Embed` does not range-mask its argument; unreachable with well-typed
   input today, but worth an assert once the soundness holes close.
+  [#131](https://github.com/iljakuklic/splic/issues/131)
 
 ## Suggested remediation order
 
