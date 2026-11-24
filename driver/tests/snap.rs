@@ -1,11 +1,18 @@
 #![allow(clippy::unwrap_used, reason = "test code")]
 #![expect(clippy::indexing_slicing, reason = "test code")]
 
+mod common;
+
 use bumpalo::Bump;
+use common::global_alpha_eq;
 use expect_test::expect_file;
 use rstest::rstest;
 use splic_compiler::{
-    checker::elaborate_program, lexer::Lexer, parser::Parser, staging::unstage_program,
+    checker::elaborate_program,
+    core::{Global, Program, Term},
+    lexer::Lexer,
+    parser::Parser,
+    staging::unstage_program,
 };
 use std::path::{Path, PathBuf};
 
@@ -113,13 +120,21 @@ fn assert_outcome(expected: ExpectedOutcome, ok: bool, last_phase: Phase, dir: &
 /// Write a snapshot and decide whether to continue the pipeline.
 ///
 /// Writes `snap` to the snapshot file for `phase`, then:
+/// - If `result` is `Ok` and a `post` check is given: runs it on the inner value. It runs
+///   after the snapshot is written, so a failing check still leaves the snapshot to inspect.
 /// - If `result` is `Err`: calls `assert_outcome` (expecting failure) and returns.
 /// - If `result` is `Ok` and this is `expected.last_phase`: calls `assert_outcome`
 ///   (expecting success) and returns.
 /// - Otherwise: evaluates to the inner `Ok` value so the next phase can proceed.
 macro_rules! phase {
-    ($snap:expr, $result:expr, $phase:expr, $expected:expr, $dir:expr) => {{
+    ($snap:expr, $result:expr, $phase:expr, $expected:expr, $dir:expr) => {
+        phase!($snap, $result, $phase, $expected, $dir, |_| ())
+    };
+    ($snap:expr, $result:expr, $phase:expr, $expected:expr, $dir:expr, $post:expr) => {{
         expect_file![$dir.join($phase.snap_filename())].assert_eq(&$snap);
+        if let Ok(val) = &$result {
+            $post(val);
+        }
         match $result {
             Err(_) => {
                 assert_outcome($expected, false, $phase, $dir);
@@ -132,6 +147,80 @@ macro_rules! phase {
             Ok(val) => val,
         }
     }};
+}
+
+/// Check the staging pass's correctness properties on a successfully staged program:
+///
+/// - **Stability**: a `code def` containing no splices stages to itself.
+/// - **Idempotence**: staging the staged output again changes nothing (it is splice-free,
+///   so this is stability applied to every program in the suite).
+fn check_staging_properties(core: &Program<'_, '_>, staged: &Program<'_, '_>) {
+    for def in core
+        .defs
+        .iter()
+        .filter(|d| !global_contains_splice(&d.global))
+    {
+        if let Global::Meta(_) = def.global {
+            continue;
+        }
+        let out = staged
+            .defs
+            .iter()
+            .find(|d| d.name == def.name)
+            .unwrap_or_else(|| panic!("code def `{}` missing from staged output", def.name));
+        assert!(
+            global_alpha_eq(&def.global, &out.global),
+            "stability: splice-free code def changed by staging\n\
+             before:\n{def}\nafter:\n{out}",
+        );
+    }
+
+    let arena = Bump::new();
+    let restaged = unstage_program(&arena, staged).expect("restaging staged output failed");
+    assert_eq!(
+        staged.defs.len(),
+        restaged.defs.len(),
+        "restaging changed def count"
+    );
+    for (a, b) in staged.defs.iter().zip(restaged.defs) {
+        assert!(
+            a.name == b.name && global_alpha_eq(&a.global, &b.global),
+            "idempotence: restaging changed a def\nstaged:\n{a}\nrestaged:\n{b}",
+        );
+    }
+}
+
+fn global_contains_splice(global: &Global<'_, '_>) -> bool {
+    match global {
+        Global::Meta(m) => contains_splice(m.ty) || contains_splice(m.body),
+        Global::CodeFn(f) => {
+            f.params.iter().any(|(_, t)| contains_splice(t))
+                || contains_splice(f.ret_ty)
+                || contains_splice(f.body)
+        }
+        Global::CodeConst(c) => contains_splice(c.ty) || contains_splice(c.body),
+    }
+}
+
+/// Whether `term` contains a splice anywhere. The match is exhaustive on purpose, so a
+/// new `Term` variant must be handled here.
+fn contains_splice(term: &Term<'_, '_>) -> bool {
+    match term {
+        Term::Splice(_) => true,
+        Term::Var(_) | Term::Prim(_) | Term::Lit(..) | Term::Global(_) => false,
+        Term::App(app) => contains_splice(app.func) || app.args.iter().any(|a| contains_splice(a)),
+        Term::Pi(pi) => {
+            pi.params.iter().any(|(_, t)| contains_splice(t)) || contains_splice(pi.body_ty)
+        }
+        Term::Lam(lam) => {
+            lam.params.iter().any(|(_, t)| contains_splice(t)) || contains_splice(lam.body)
+        }
+        Term::Lift(t) | Term::Quote(t) => contains_splice(t),
+        Term::Let(l) => contains_splice(l.ty) || contains_splice(l.expr) || contains_splice(l.body),
+        Term::Match(m) => {
+            contains_splice(m.scrutinee) || m.arms.iter().any(|arm| contains_splice(arm.body))
+        }
+    }
 }
 
 /// Run the full compiler pipeline on the input, writing a snapshot file for each phase.
@@ -192,7 +281,14 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
         Ok(staged) => format!("{staged}\n"),
         Err(e) => format!("ERROR\n{e:#}\n"),
     };
-    let staged = phase!(stage_snap, stage_result, Phase::Stage, expected, dir);
+    let staged = phase!(
+        stage_snap,
+        stage_result,
+        Phase::Stage,
+        expected,
+        dir,
+        |staged| check_staging_properties(&core_program, staged)
+    );
 
     // ── Phase 8: Wasm ────────────────────────────────────────────────────────
     // (slot 7 reserved for a future optimisation pass)
