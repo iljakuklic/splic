@@ -19,6 +19,9 @@ default:
 fmt:
     cargo fmt --all
 
+# Run all CI checks on the working copy (uncommitted changes allowed).
+qa: ci::qa
+
 # Run Clippy lints.
 clippy: ci::clippy
 
