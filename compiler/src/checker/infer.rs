@@ -464,17 +464,14 @@ where
 
     let (core_expr, bind_ty_term) = if stmt.params.is_empty() {
         // Simple let: `let x (: ty)? = body`
-        let (core_e, bind_ty_val) = if let Some(ann) = stmt.ret_ty {
-            let (ty, _) = infer(ctx, phase, ann)?;
-            let ty_val = ctx.eval(ty);
-            let core_e = check_val(ctx, phase, stmt.body, ty_val).with_context(label)?;
-            (core_e, ctx.eval(ty))
+        if let Some(ann) = stmt.ret_ty {
+            let ty = check_universe(ctx, phase, ann).with_context(label)?;
+            let core_e = check(ctx, phase, stmt.body, ty).with_context(label)?;
+            (core_e, ty)
         } else {
-            let (core_e, bind_ty) = infer(ctx, phase, stmt.body).with_context(label)?;
-            (core_e, bind_ty)
-        };
-        let bind_ty_term = ctx.quote_val(&bind_ty_val);
-        (core_e, bind_ty_term)
+            let (core_e, bind_ty_val) = infer(ctx, phase, stmt.body).with_context(label)?;
+            (core_e, ctx.quote_val(&bind_ty_val))
+        }
     } else {
         // Parameterized let: `let f(ps)+ (-> ret_ty)? = body`
         // Elaborate each param group in order (params in later groups can depend on earlier

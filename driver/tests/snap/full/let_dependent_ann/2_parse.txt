@@ -1,0 +1,116 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Meta,
+            def: Definition {
+                name: "get_value",
+                params: [
+                    [
+                        Param {
+                            name: "b",
+                            ty: "u1",
+                        },
+                    ],
+                ],
+                ret_ty: Some(
+                    Match {
+                        scrutinee: "b",
+                        arms: [
+                            MatchArm {
+                                pat: 0,
+                                body: "u0",
+                            },
+                            MatchArm {
+                                pat: 1,
+                                body: "u16",
+                            },
+                        ],
+                    },
+                ),
+                body: Block {
+                    stmts: [
+                        Definition {
+                            name: "y",
+                            params: [],
+                            ret_ty: Some(
+                                Match {
+                                    scrutinee: "b",
+                                    arms: [
+                                        MatchArm {
+                                            pat: 0,
+                                            body: "u0",
+                                        },
+                                        MatchArm {
+                                            pat: 1,
+                                            body: "u16",
+                                        },
+                                    ],
+                                },
+                            ),
+                            body: Match {
+                                scrutinee: "b",
+                                arms: [
+                                    MatchArm {
+                                        pat: 0,
+                                        body: 0,
+                                    },
+                                    MatchArm {
+                                        pat: 1,
+                                        body: 42,
+                                    },
+                                ],
+                            },
+                        },
+                    ],
+                    expr: "y",
+                },
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "result_0",
+                params: [
+                    [],
+                ],
+                ret_ty: Some(
+                    "u0",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "get_value",
+                            args: [
+                                0,
+                            ],
+                        },
+                    ),
+                },
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "result_1",
+                params: [
+                    [],
+                ],
+                ret_ty: Some(
+                    "u16",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        App {
+                            func: "get_value",
+                            args: [
+                                1,
+                            ],
+                        },
+                    ),
+                },
+            },
+        },
+    ],
+}
