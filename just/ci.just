@@ -1,5 +1,8 @@
 # Run all CI checks.
-all: check-fmt clippy check-doc test
+all: qa check-clean
+
+# Run all CI checks on the working copy (uncommitted changes allowed).
+qa: check-fmt clippy check-doc test
 
 # Check formatting without modifying files.
 check-fmt:
@@ -13,7 +16,10 @@ clippy:
 check-doc:
     RUSTDOCFLAGS="-D warnings" cargo doc --locked --workspace --no-deps --all-features --document-private-items
 
-# Run tests and check for snapshot drift.
+# Run tests.
 test:
     cargo test --locked --workspace
+
+# Check that the working tree is clean (catches snapshot drift).
+check-clean:
     git diff --exit-code

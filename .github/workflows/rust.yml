@@ -59,3 +59,5 @@ jobs:
       - uses: Swatinem/rust-cache@v2.9.3
       - name: Run tests
         run: just ci::test
+      - name: Check for snapshot drift
+        run: just ci::check-clean
