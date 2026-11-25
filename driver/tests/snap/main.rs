@@ -1,12 +1,17 @@
 #![allow(clippy::unwrap_used, reason = "test code")]
 #![expect(clippy::indexing_slicing, reason = "test code")]
 
+#[path = "../common/mod.rs"]
+mod common;
+mod staging_checks;
+
 use bumpalo::Bump;
 use expect_test::expect_file;
 use rstest::rstest;
 use splic_compiler::{
     checker::elaborate_program, lexer::Lexer, parser::Parser, staging::unstage_program,
 };
+use staging_checks::check_staging_properties;
 use std::path::{Path, PathBuf};
 
 /// The compiler phases that produce snapshot files.
@@ -78,7 +83,7 @@ fn expected_outcome(folder: &str) -> ExpectedOutcome {
         "type_error" => ExpectedOutcome::fail_at(Phase::Check),
         "stage_error" => ExpectedOutcome::fail_at(Phase::Stage),
         other => panic!(
-            "unknown test folder {other:?}; add it to `expected_outcome` in compiler/tests/snap.rs"
+            "unknown test folder {other:?}; add it to `expected_outcome` in driver/tests/snap/main.rs"
         ),
     }
 }
@@ -113,13 +118,21 @@ fn assert_outcome(expected: ExpectedOutcome, ok: bool, last_phase: Phase, dir: &
 /// Write a snapshot and decide whether to continue the pipeline.
 ///
 /// Writes `snap` to the snapshot file for `phase`, then:
+/// - If `result` is `Ok` and a `post` check is given: runs it on the inner value. It runs
+///   after the snapshot is written, so a failing check still leaves the snapshot to inspect.
 /// - If `result` is `Err`: calls `assert_outcome` (expecting failure) and returns.
 /// - If `result` is `Ok` and this is `expected.last_phase`: calls `assert_outcome`
 ///   (expecting success) and returns.
 /// - Otherwise: evaluates to the inner `Ok` value so the next phase can proceed.
 macro_rules! phase {
-    ($snap:expr, $result:expr, $phase:expr, $expected:expr, $dir:expr) => {{
+    ($snap:expr, $result:expr, $phase:expr, $expected:expr, $dir:expr) => {
+        phase!($snap, $result, $phase, $expected, $dir, |_| ())
+    };
+    ($snap:expr, $result:expr, $phase:expr, $expected:expr, $dir:expr, $post:expr) => {{
         expect_file![$dir.join($phase.snap_filename())].assert_eq(&$snap);
+        if let Ok(val) = &$result {
+            $post(val);
+        }
         match $result {
             Err(_) => {
                 assert_outcome($expected, false, $phase, $dir);
@@ -192,7 +205,14 @@ fn snap(#[files("tests/snap/*/*/0_input.splic")] path: PathBuf) {
         Ok(staged) => format!("{staged}\n"),
         Err(e) => format!("ERROR\n{e:#}\n"),
     };
-    let staged = phase!(stage_snap, stage_result, Phase::Stage, expected, dir);
+    let staged = phase!(
+        stage_snap,
+        stage_result,
+        Phase::Stage,
+        expected,
+        dir,
+        |staged| check_staging_properties(&core_program, staged)
+    );
 
     // ── Phase 8: Wasm ────────────────────────────────────────────────────────
     // (slot 7 reserved for a future optimisation pass)
