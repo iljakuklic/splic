@@ -19,7 +19,7 @@ splic/
 ├── backend/
 │   └── wasm/          # splic-backend-wasm: WebAssembly codegen (feature-gated)
 ├── driver/            # splic-driver: pipeline orchestration, arena management
-│   └── tests/         # Snapshot integration tests (lex → parse → check → stage)
+│   └── tests/         # Integration tests; snapshot runner + cases in snap/ (lex → parse → check → stage)
 ├── cli/               # splic-cli: thin CLI wrapper over splic-driver
 ├── docs/              # Documentation
 │   ├── README.md      # Language design and user-facing docs
@@ -89,7 +89,7 @@ Each crate gets a `target/doc-md/<crate>/index.md` with links to submodule files
 
 ### Test Structure
 - Unit tests located throughout `compiler/src/` in `test` modules (e.g., `compiler/src/lexer/test/`, `compiler/src/parser/test/`)
-- Integration tests in `compiler/tests/`
+- Integration tests in `driver/tests/`; the snapshot runner is `driver/tests/snap/main.rs`, with one folder of snapshot cases per expected outcome alongside it
 - Uses **rstest** for parameterized tests
 - Snapshot testing with **expect-test** (diff output may show ANSI color codes which can be misleading — if colors appear in the diff, run `just update-snapshots` to regenerate snapshots and verify actual state)
 - Fuzz tests with **bolero** in component `test` modules
