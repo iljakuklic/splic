@@ -42,13 +42,15 @@ pub fn infer<'names, 'ast, 'core>(
                 return Ok((term, ty));
             }
             // Locals
-            if let Some((ix, ty)) = ctx.lookup_local(name) {
+            if let Some((ix, ty, var_phase)) = ctx.lookup_local(name) {
+                ensure_var_phase(name, "variable", var_phase, phase)?;
                 let ty = ty.clone();
                 return Ok((ctx.alloc(core::Term::Var(ix)), ty));
             }
-            // Globals — bare reference without call
+            // Globals — bare reference, or callee of a meta-level call
             match ctx.globals.get(name) {
                 Some(GlobalEntry::Meta(ty_term)) => {
+                    ensure_var_phase(name, "definition", Phase::Meta, phase)?;
                     let ty = value::eval(ctx.arena, &value::Env::new(), ty_term);
                     Ok((ctx.alloc(core::Term::Global(name)), ty))
                 }
@@ -218,7 +220,7 @@ pub fn infer<'names, 'ast, 'core>(
             for p in *params {
                 let param_ty = check_universe(ctx, Phase::Meta, p.ty)?;
                 elaborated_params.push((p.name, param_ty));
-                ctx.push_local(p.name, param_ty);
+                ctx.push_local(p.name, param_ty, Phase::Meta);
             }
 
             let core_ret_ty = check_universe(ctx, Phase::Meta, ret_ty)?;
@@ -255,7 +257,7 @@ pub fn infer<'names, 'ast, 'core>(
             for p in *params {
                 let (param_ty, _) = infer(ctx, Phase::Meta, p.ty)?;
                 elaborated_params.push((p.name, param_ty));
-                ctx.push_local(p.name, param_ty);
+                ctx.push_local(p.name, param_ty, Phase::Meta);
             }
 
             // Elaborate the body inside the param scope. Delay the `?` so that
@@ -416,6 +418,30 @@ fn check_exhaustiveness(
     Ok(())
 }
 
+/// Reject a reference to a binding from a phase other than its own.
+///
+/// Splic takes the *reject* option of 2LTT stage discipline: there is no implicit
+/// coercion between `A` and `[[A]]`, so crossing phases must be written out as a
+/// quote or splice.
+fn ensure_var_phase(name: &core::Name, what: &str, var_phase: Phase, phase: Phase) -> Result<()> {
+    if var_phase == phase {
+        return Ok(());
+    }
+    let hint = match var_phase {
+        Phase::Object => {
+            "object-level values exist only at runtime; to manipulate one as code, \
+             quote the object expression with `#(...)`"
+        }
+        Phase::Meta => {
+            "meta-level values exist only at compile time; to use one in object code, \
+             splice the meta expression with `$(...)`"
+        }
+    };
+    Err(anyhow!(
+        "{var_phase}-phase {what} `{name}` cannot be used in {phase}-phase code; {hint}"
+    ))
+}
+
 /// Elaborate a match pattern into a core pattern.
 fn elaborate_pat<'names>(pat: &ast::Pat<'names>) -> core::Pat<'names> {
     match pat {
@@ -437,7 +463,7 @@ pub fn check_with_params<'names, 'ast, 'core>(
     expected: &'core core::Term<'names, 'core>,
 ) -> Result<&'core core::Term<'names, 'core>> {
     for (name, ty) in params {
-        ctx.push_local(name, ty);
+        ctx.push_local(name, ty, phase);
     }
     let result = check(ctx, phase, body, expected)?;
     for _ in params {
@@ -483,7 +509,7 @@ where
             let mut ps = Vec::with_capacity(group.len());
             for p in *group {
                 let ty = check_universe(ctx, phase, p.ty).with_context(label)?;
-                ctx.push_local(p.name, ty);
+                ctx.push_local(p.name, ty, phase);
                 ps.push((p.name, ty));
             }
             all_groups.push(ctx.arena.alloc_slice_fill_iter(ps));
@@ -526,7 +552,7 @@ where
     let expr_val = ctx.eval(core_expr);
     let bind_ty_val = ctx.eval(bind_ty_term);
     let bind_name = stmt.name;
-    ctx.push_let_binding(bind_name, bind_ty_val, expr_val);
+    ctx.push_let_binding(bind_name, bind_ty_val, expr_val, phase);
     let cont_result = cont(ctx);
     ctx.pop_local();
     let cont_result = cont_result?;
@@ -814,7 +840,7 @@ fn check_val_impl<'names, 'ast, 'core>(
                     );
                     elaborated_params.push((param_name, annotated_ty));
                     let lvl = ctx.depth().as_lvl();
-                    ctx.push_local_val(param_name, expected_domain);
+                    ctx.push_local_val(param_name, expected_domain, Phase::Meta);
                     arg_vals.push(value::Value::Rigid(lvl));
                 }
 
@@ -881,7 +907,7 @@ fn check_val_impl<'names, 'ast, 'core>(
                     };
 
                     if let Some(bname) = core_pat.bound_name() {
-                        ctx.push_local(bname, scrut_ty_term);
+                        ctx.push_local(bname, scrut_ty_term, phase);
                     }
 
                     let arm_result = check_val(ctx, phase, arm.body, arm_expected);

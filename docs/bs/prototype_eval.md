@@ -104,6 +104,9 @@ This approach was chosen over the substitution-first → spine-based path origin
 
 **Rationale**:
 - Phase checking happens at elaboration time; phase invariants are enforced then.
+  Every binding records the phase it was bound at, and a reference from any other
+  phase is rejected — crossing phases requires an explicit quote or splice (no
+  implicit `A ≤ [[A]]` coercion).
 - Evaluators (`eval_meta`, `eval_obj`) take a `&Term` and produce phase-specific values.
 - Matches the reference impl's approach (unified through elaboration, split in values).
 - No IR duplication; simpler to maintain.

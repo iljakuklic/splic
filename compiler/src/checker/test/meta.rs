@@ -41,7 +41,7 @@ fn infer_lift_of_non_type_fails() {
 
     // Push a local `x: u32` (a value, not a type) then write `[[x]]`
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local(core::Name::new("x"), u32_ty);
+    ctx.push_local(core::Name::new("x"), u32_ty, Phase::Meta);
 
     let inner = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Lift(inner));
@@ -137,7 +137,7 @@ fn check_quote_switches_to_object_phase() {
     // x : [[u64]] — meta variable holding object code; Lift contains an object-phase type.
     let u64_obj = core::Term::int_ty(IntWidth::U64, Phase::Object);
     let lifted = ctx.lift_ty(u64_obj);
-    ctx.push_local(core::Name::new("x"), lifted);
+    ctx.push_local(core::Name::new("x"), lifted, Phase::Meta);
 
     // `#($(x))` — splice x inside a quote; type should be [[u64]]
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
@@ -164,7 +164,7 @@ fn infer_splice_of_lifted_var_returns_inner_type() {
 
     let u64_ty = &core::Term::U64_META;
     let lifted = ctx.lift_ty(u64_ty);
-    ctx.push_local(core::Name::new("x"), lifted); // x: [[u64]]
+    ctx.push_local(core::Name::new("x"), lifted, Phase::Meta); // x: [[u64]]
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));
@@ -190,7 +190,7 @@ fn infer_splice_at_meta_phase_fails() {
 
     let u64_ty = &core::Term::U64_META;
     let lifted = ctx.lift_ty(u64_ty);
-    ctx.push_local(core::Name::new("x"), lifted); // x: [[u64]]
+    ctx.push_local(core::Name::new("x"), lifted, Phase::Meta); // x: [[u64]]
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));
@@ -208,7 +208,7 @@ fn infer_splice_of_meta_int_succeeds() {
 
     // x: u32 at meta phase
     let u32_meta = &core::Term::U32_META;
-    ctx.push_local(core::Name::new("x"), u32_meta);
+    ctx.push_local(core::Name::new("x"), u32_meta, Phase::Meta);
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));
@@ -247,7 +247,7 @@ fn infer_splice_of_non_lifted_non_int_var_fails() {
     let mut ctx = test_ctx(&core_arena);
 
     let type_ty = &core::Term::TYPE; // Type (meta universe), not an integer or [[T]]
-    ctx.push_local(core::Name::new("x"), type_ty);
+    ctx.push_local(core::Name::new("x"), type_ty, Phase::Meta);
 
     let x = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let term = src_arena.alloc(ast::Term::Splice(x));

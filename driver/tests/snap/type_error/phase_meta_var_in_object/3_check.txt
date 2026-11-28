@@ -1,0 +1,2 @@
+ERROR
+in `g`: meta-phase variable `n` cannot be used in object-phase code; meta-level values exist only at compile time; to use one in object code, splice the meta expression with `$(...)`

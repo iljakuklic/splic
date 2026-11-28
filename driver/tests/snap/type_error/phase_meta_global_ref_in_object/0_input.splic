@@ -1,0 +1,2 @@
+def k: [[u64]] = #(3);
+code def h() -> u64 = { let y = k; 0 };

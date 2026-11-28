@@ -1,0 +1,2 @@
+ERROR
+in `h`: in let binding `y`: meta-phase definition `k` cannot be used in object-phase code; meta-level values exist only at compile time; to use one in object code, splice the meta expression with `$(...)`

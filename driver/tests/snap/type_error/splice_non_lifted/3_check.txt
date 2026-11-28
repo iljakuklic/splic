@@ -1,2 +1,2 @@
 ERROR
-in `bad`: type mismatch
+in `bad`: object-phase variable `x` cannot be used in meta-phase code; object-level values exist only at runtime; to manipulate one as code, quote the object expression with `#(...)`

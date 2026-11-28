@@ -67,35 +67,6 @@ fn issue_74_stuck_match_conversion_accepts_unsound_program() {
     );
 }
 
-/// Issue #27: match scrutinee phases are never checked, so a meta-phase
-/// `match` on an object-phase variable elaborates and then panics in the
-/// staging pass (the naive rendering of the CFTT case-split-on-code pattern).
-///
-/// Once #27 is fixed, elaboration must reject this with a phase error and
-/// this test should move to a `type_error` snapshot.
-#[test]
-#[should_panic(expected = "object variable")]
-fn issue_27_meta_match_on_object_var_panics_in_staging() {
-    let src = "
-        code def f(x: u64) -> u64 = {
-            $( match x { 0 => #(1), _ => #(2) } )
-        };
-    ";
-    let _ = stage(src);
-}
-
-/// Issue #27 (dual direction): an object-phase `match` on a meta-phase
-/// variable elaborates and then panics in the staging pass.
-#[test]
-#[should_panic(expected = "referenced in object context")]
-fn issue_27_object_match_on_meta_var_panics_in_staging() {
-    let src = "
-        def g(n: u64) -> [[u64]] = #( match n { 0 => 1, _ => 2 } );
-        code def h() -> u64 = { $(g(3)) };
-    ";
-    let _ = stage(src);
-}
-
 /// Issue #48: no meta-level computation of primitives in conversion, and
 /// match scrutinees are elaborated with `infer`, which rejects arithmetic —
 /// so `match 1 + 1 { ... }` cannot appear in a type at all.

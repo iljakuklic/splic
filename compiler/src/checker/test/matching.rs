@@ -19,7 +19,7 @@ fn check_match_all_arms_same_type_succeeds() {
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local(core::Name::new("x"), u32_ty);
+    ctx.push_local(core::Name::new("x"), u32_ty, Phase::Meta);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
@@ -61,7 +61,7 @@ fn check_match_u1_fully_covered_succeeds() {
         }))),
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
-    ctx.push_local(core::Name::new("x"), u1_ty_core);
+    ctx.push_local(core::Name::new("x"), u1_ty_core, Phase::Meta);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
@@ -104,7 +104,7 @@ fn infer_match_u1_partially_covered_fails() {
         }))),
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
-    ctx.push_local(core::Name::new("x"), u1_ty_core);
+    ctx.push_local(core::Name::new("x"), u1_ty_core, Phase::Meta);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
@@ -138,7 +138,7 @@ fn infer_match_no_catch_all_fails() {
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local(core::Name::new("x"), u32_ty);
+    ctx.push_local(core::Name::new("x"), u32_ty, Phase::Meta);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
@@ -190,7 +190,7 @@ fn infer_match_arms_type_mismatch_fails() {
     );
     let mut ctx = test_ctx_with_globals(&core_arena, &globals);
     let u32_ty = &core::Term::U32_META;
-    ctx.push_local(core::Name::new("x"), u32_ty);
+    ctx.push_local(core::Name::new("x"), u32_ty, Phase::Meta);
 
     let scrutinee = src_arena.alloc(ast::Term::Var(ast::Name::new("x")));
     let arm0_body = src_arena.alloc(ast::Term::App {
