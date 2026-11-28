@@ -42,6 +42,12 @@ reachable once the neutral is added.
 Tracked in [#27](https://github.com/iljakuklic/splic/issues/27) (previously
 framed as an error-message-quality improvement; it is a soundness gap).
 
+**Resolved** (reject policy): bindings record their phase and cross-phase
+references are elaboration errors. The fix also closed two further holes of
+the same kind not listed below — meta *globals* referenced or called from
+object code (`let y = k();` in a `code def`) also elaborated and then panicked
+in staging.
+
 `CtxEntry` stores no phase and `infer` never compares a variable's phase with
 the ambient one. Phase discipline instead leaks through phase-indexed types,
 which fails wherever `infer` demands only "some integer type": match
@@ -65,7 +71,7 @@ implementation does via `adjustStage`/`coe` — it has no `guardStage` reject)
 or *reject* with a clear stage error — but decide explicitly. Reject is the
 simpler fit for Splic. Global lookups need the same check.
 `docs/bs/prototype_eval.md`'s claim that "phase invariants are enforced" at
-elaboration is inaccurate until this is fixed.
+elaboration was inaccurate until this was fixed.
 
 ## Meta-level conversion is weaker than 2LTT requires
 

@@ -1,0 +1,42 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Meta,
+            def: Definition {
+                name: "k",
+                params: [],
+                ret_ty: Some(
+                    Lift(
+                        "u64",
+                    ),
+                ),
+                body: Quote(
+                    3,
+                ),
+            },
+        },
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "h",
+                params: [
+                    [],
+                ],
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [
+                        Definition {
+                            name: "y",
+                            params: [],
+                            ret_ty: None,
+                            body: "k",
+                        },
+                    ],
+                    expr: 0,
+                },
+            },
+        },
+    ],
+}

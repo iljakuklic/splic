@@ -1,0 +1,43 @@
+Program {
+    defs: [
+        GlobalDef {
+            phase: Object,
+            def: Definition {
+                name: "f",
+                params: [
+                    [
+                        Param {
+                            name: "x",
+                            ty: "u64",
+                        },
+                    ],
+                ],
+                ret_ty: Some(
+                    "u64",
+                ),
+                body: Block {
+                    stmts: [],
+                    expr: Splice(
+                        Match {
+                            scrutinee: "x",
+                            arms: [
+                                MatchArm {
+                                    pat: 0,
+                                    body: Quote(
+                                        1,
+                                    ),
+                                },
+                                MatchArm {
+                                    pat: "_",
+                                    body: Quote(
+                                        2,
+                                    ),
+                                },
+                            ],
+                        },
+                    ),
+                },
+            },
+        },
+    ],
+}

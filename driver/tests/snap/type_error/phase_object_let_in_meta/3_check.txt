@@ -1,0 +1,2 @@
+ERROR
+in `m`: in argument 0 of function call: object-phase variable `x` cannot be used in meta-phase code; object-level values exist only at runtime; to manipulate one as code, quote the object expression with `#(...)`

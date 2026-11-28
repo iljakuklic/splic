@@ -30,7 +30,7 @@ fn elaborate_sig<'names, 'ast, 'core>(
     for group in d.params {
         let core_group = arena.alloc_slice_try_fill_iter(group.iter().map(|p| -> Result<_> {
             let ty = infer::check(&mut ctx, def.phase, p.ty, universe)?;
-            ctx.push_local(p.name, ty);
+            ctx.push_local(p.name, ty, def.phase);
             Ok((p.name, ty))
         }))?;
         all_groups.push(core_group);
@@ -161,7 +161,10 @@ fn elaborate_bodies<'names, 'ast, 'core>(
                         }
                         // Push all params from all groups into scope.
                         let depth_before = ctx.depth();
-                        ctx.extend(pi_chain.iter().flat_map(|pi| pi.params.iter().copied()));
+                        ctx.extend(
+                            pi_chain.iter().flat_map(|pi| pi.params.iter().copied()),
+                            Phase::Meta,
+                        );
                         let core_body =
                             infer::check(&mut ctx, Phase::Meta, def.def.body, innermost_body_ty)
                                 .with_context(|| format!("in `{name}`"))?;

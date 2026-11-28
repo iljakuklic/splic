@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::common::de_bruijn;
 use crate::common::env::Env;
-use crate::core::{self, value};
+use crate::core::{self, Phase, value};
 
 /// How a global name is bound: either a meta-level definition (constant or function)
 /// whose type is a `Term`, or a code function whose calling convention is stored directly.
@@ -32,6 +32,9 @@ pub struct CtxEntry<'names, 'core> {
     /// For lambda/Pi parameters this is `Rigid(level)`; for `let` bindings it is
     /// the evaluated expression.
     pub val: value::Value<'names, 'core>,
+    /// Phase at which the variable was bound. A variable may only be referenced
+    /// at its own phase; crossing phases requires an explicit quote or splice.
+    pub phase: Phase,
 }
 
 /// Elaboration context.
@@ -40,8 +43,10 @@ pub struct CtxEntry<'names, 'core> {
 /// The source AST lifetime `'src` only appears in method signatures where
 /// surface terms are passed in — it does not need to be on the struct itself.
 ///
-/// Phase is not stored here — it is threaded as an argument to `infer`/`check`
-/// since it shifts locally when entering `Quote`, `Splice`, or `Lift`.
+/// The *current* phase is not stored here — it is threaded as an argument to
+/// `infer`/`check` since it shifts locally when entering `Quote`, `Splice`, or
+/// `Lift`. Each local binding does record the phase it was bound at, so that
+/// variable references can be checked against the current phase.
 #[derive(Debug)]
 pub struct Ctx<'names, 'core, 'globals> {
     /// Arena for allocating core terms
@@ -87,9 +92,14 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
 
     /// Push a local variable onto the context, given its type as a term.
     /// Evaluates the type term in the current environment.
-    pub fn push_local(&mut self, name: &'names core::Name, ty: &'core core::Term<'names, 'core>) {
+    pub fn push_local(
+        &mut self,
+        name: &'names core::Name,
+        ty: &'core core::Term<'names, 'core>,
+        phase: Phase,
+    ) {
         let ty_val = value::eval(self.arena, &self.value_env(), ty);
-        self.push_local_val(name, ty_val);
+        self.push_local_val(name, ty_val, phase);
     }
 
     /// Push a local variable onto the context, given its type as a Value.
@@ -98,12 +108,14 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         &mut self,
         name: &'names core::Name,
         ty_val: value::Value<'names, 'core>,
+        phase: Phase,
     ) {
         let lvl = self.depth().as_lvl();
         self.locals.push(CtxEntry {
             name,
             ty: ty_val,
             val: value::Value::Rigid(lvl),
+            phase,
         });
     }
 
@@ -114,11 +126,13 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         name: &'names core::Name,
         ty_val: value::Value<'names, 'core>,
         expr_val: value::Value<'names, 'core>,
+        phase: Phase,
     ) {
         self.locals.push(CtxEntry {
             name,
             ty: ty_val,
             val: expr_val,
+            phase,
         });
     }
 
@@ -132,24 +146,25 @@ impl<'names, 'core, 'globals> Ctx<'names, 'core, 'globals> {
         self.locals.truncate(depth);
     }
 
-    /// Push multiple local variables in order, each via `push_local`.
+    /// Push multiple local variables in order, each via `push_local`, all at `phase`.
     pub fn extend(
         &mut self,
         iter: impl IntoIterator<Item = (&'names core::Name, &'core core::Term<'names, 'core>)>,
+        phase: Phase,
     ) {
         for (name, ty) in iter {
-            self.push_local(name, ty);
+            self.push_local(name, ty, phase);
         }
     }
 
-    /// Look up a variable by name, returning its (index, type as Value).
+    /// Look up a variable by name, returning its (index, type as Value, binding phase).
     /// Searches from the most recently pushed variable inward to handle shadowing.
     pub fn lookup_local(
         &self,
         name: &core::Name,
-    ) -> Option<(de_bruijn::Ix, &value::Value<'names, 'core>)> {
+    ) -> Option<(de_bruijn::Ix, &value::Value<'names, 'core>, Phase)> {
         let (_, ix, entry) = self.locals.lookup(name, |e| e.name)?;
-        Some((ix, &entry.ty))
+        Some((ix, &entry.ty, entry.phase))
     }
 
     /// Helper to create a lifted type \[\[T\]\]
